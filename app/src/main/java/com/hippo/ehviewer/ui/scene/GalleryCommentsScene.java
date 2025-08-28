@@ -449,8 +449,13 @@ public final class GalleryCommentsScene extends ToolbarScene
             commentHolder.comment.clearCurrentSpan();
 
             if (span instanceof URLSpan) {
-                UrlOpener.openUrl(activity, ((URLSpan) span).getURL(), true);
+                String url = ((URLSpan) span).getURL();
+                android.util.Log.d("GalleryCommentsScene", "=== Link clicked in comment ===");
+                android.util.Log.d("GalleryCommentsScene", "URL: " + url);
+                android.util.Log.d("GalleryCommentsScene", "Activity: " + (activity != null ? activity.getClass().getSimpleName() : "null"));
+                UrlOpener.openUrl(activity, url, true);
             } else {
+                android.util.Log.d("GalleryCommentsScene", "Non-URL span clicked, showing comment dialog");
                 showCommentDialog(position);
             }
         } else if (holder instanceof MoreCommentHolder && !mRefreshingComments && mAdapter != null) {

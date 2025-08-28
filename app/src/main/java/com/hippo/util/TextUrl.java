@@ -31,10 +31,13 @@ public final class TextUrl {
     private static final Pattern URL_PATTERN = Pattern.compile("(http|https)://[a-z0-9A-Z%-]+(\\.[a-z0-9A-Z%-]+)+(:\\d{1,5})?(/[a-zA-Z0-9-_~:#@!&',;=%/\\*\\.\\?\\+\\$\\[\\]\\(\\)]+)?/?");
 
     public static CharSequence handleTextUrl(CharSequence content) {
+        android.util.Log.d("TextUrl", "Processing text for URLs: " + content);
+
         Matcher m = URL_PATTERN.matcher(content);
 
         Spannable spannable = null;
         while (m.find()) {
+            android.util.Log.d("TextUrl", "Found URL: " + m.group(0));
             // Ensure spannable
             if (spannable == null) {
                 if (content instanceof Spannable) {

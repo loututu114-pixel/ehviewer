@@ -37,29 +37,7 @@ public final class UrlOpener {
     private UrlOpener() {
     }
 
-    /**
-     * 判断URL是否是EHentai相关的网站
-     */
-    private static boolean isEhentaiRelatedUrl(String url) {
-        if (TextUtils.isEmpty(url)) {
-            return false;
-        }
 
-        String lowerUrl = url.toLowerCase();
-
-        // EHentai相关域名
-        boolean isEhUrl = lowerUrl.contains("e-hentai.org") ||
-                         lowerUrl.contains("exhentai.org") ||
-                         lowerUrl.contains("g.e-hentai.org") ||
-                         lowerUrl.contains("lofi.e-hentai.org") ||
-                         lowerUrl.contains("forums.e-hentai.org") ||
-                         lowerUrl.contains("ehwiki.org");
-
-        // 调试信息
-        android.util.Log.d("UrlOpener", "isEhentaiRelatedUrl: " + url + " -> " + isEhUrl);
-
-        return isEhUrl;
-    }
 
     public static void openUrl(@NonNull Context context, String url, boolean ehUrl) {
         try {
@@ -71,14 +49,20 @@ public final class UrlOpener {
         }
 
         // 调试信息
-        android.util.Log.d("UrlOpener", "Opening URL: " + url + ", ehUrl: " + ehUrl);
+        android.util.Log.d("UrlOpener", "=== UrlOpener.openUrl called ===");
+        android.util.Log.d("UrlOpener", "URL: " + url);
+        android.util.Log.d("UrlOpener", "ehUrl: " + ehUrl);
+        android.util.Log.d("UrlOpener", "Context: " + context.getClass().getSimpleName());
 
         Intent intent;
         Uri uri = Uri.parse(url);
 
+        // 首先检查是否是EHentai内部链接（能被EhUrlOpener解析的）
         if (ehUrl) {
             Announcer announcer = EhUrlOpener.parseUrl(url);
             if (null != announcer) {
+                // 如果是EHentai内部链接，使用原有的Scene处理
+                android.util.Log.d("UrlOpener", "EHentai internal URL, using original Scene: " + url);
                 intent = new Intent(context, MainActivity.class);
                 intent.setAction(StageActivity.ACTION_START_SCENE);
                 intent.putExtra(StageActivity.KEY_SCENE_NAME, announcer.getClazz().getName());
@@ -89,48 +73,30 @@ public final class UrlOpener {
             }
         }
 
-        // 对URL进行判断，决定使用哪种方式打开
-        boolean isEhentaiUrl = isEhentaiRelatedUrl(url);
+        // 所有其他情况都使用内置WebView浏览器
+        android.util.Log.d("UrlOpener", "Using built-in WebView for URL: " + url);
 
-        // 调试信息
-        android.util.Log.d("UrlOpener", "URL: " + url + ", isEhentaiUrl: " + isEhentaiUrl);
+        try {
+            Intent webViewIntent = new Intent(context, com.hippo.ehviewer.ui.WebViewActivity.class);
+            webViewIntent.putExtra(com.hippo.ehviewer.ui.WebViewActivity.EXTRA_URL, url);
+            webViewIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(webViewIntent);
 
-        if (isEhentaiUrl) {
-            // EHentai内部链接，使用系统浏览器
-            Intent systemIntent = new Intent(Intent.ACTION_VIEW, uri);
-            systemIntent.putExtra(Browser.EXTRA_APPLICATION_ID, context.getPackageName());
+            android.util.Log.d("UrlOpener", "WebViewActivity started successfully");
+
+        } catch (Throwable e) {
+            android.util.Log.e("UrlOpener", "Failed to start WebViewActivity", e);
+            ExceptionUtils.throwIfFatal(e);
+            // 如果WebView启动失败，回退到系统浏览器
             try {
+                android.util.Log.d("UrlOpener", "Falling back to system browser");
+                Intent systemIntent = new Intent(Intent.ACTION_VIEW, uri);
+                systemIntent.putExtra(Browser.EXTRA_APPLICATION_ID, context.getPackageName());
                 context.startActivity(systemIntent);
-            } catch (Throwable e) {
-                ExceptionUtils.throwIfFatal(e);
+            } catch (Throwable ex) {
+                android.util.Log.e("UrlOpener", "Failed to start system browser", ex);
+                ExceptionUtils.throwIfFatal(ex);
                 Toast.makeText(context, R.string.error_cant_find_activity, Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            // 外部链接，使用内置WebView浏览器Activity
-            try {
-                android.util.Log.d("UrlOpener", "Starting WebViewActivity with URL: " + url);
-
-                Intent webViewIntent = new Intent(context, com.hippo.ehviewer.ui.WebViewActivity.class);
-                webViewIntent.putExtra(com.hippo.ehviewer.ui.WebViewActivity.EXTRA_URL, url);
-                webViewIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(webViewIntent);
-
-                android.util.Log.d("UrlOpener", "WebViewActivity started successfully");
-
-            } catch (Throwable e) {
-                android.util.Log.e("UrlOpener", "Failed to start WebViewActivity", e);
-                ExceptionUtils.throwIfFatal(e);
-                // 如果WebView启动失败，回退到系统浏览器
-                try {
-                    android.util.Log.d("UrlOpener", "Falling back to system browser");
-                    Intent systemIntent = new Intent(Intent.ACTION_VIEW, uri);
-                    systemIntent.putExtra(Browser.EXTRA_APPLICATION_ID, context.getPackageName());
-                    context.startActivity(systemIntent);
-                } catch (Throwable ex) {
-                    android.util.Log.e("UrlOpener", "Failed to start system browser", ex);
-                    ExceptionUtils.throwIfFatal(ex);
-                    Toast.makeText(context, R.string.error_cant_find_activity, Toast.LENGTH_SHORT).show();
-                }
             }
         }
     }
