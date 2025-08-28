@@ -62,6 +62,16 @@
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         tools:ignore="UnusedAttribute"
         tools:replace="android:appComponentFactory">
+
+        <!-- WebView 进程配置 -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="true" />
+
+        <!-- WebView 多进程配置 -->
+        <meta-data
+            android:name="android.webkit.WebView.MultiProcess"
+            android:value="true" />
         <!--        tools:targetApi="n">-->
 
         <uses-library
@@ -193,6 +203,11 @@
                 <data android:pathPattern=".*\\.zip" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name="com.hippo.ehviewer.ui.WebViewActivity"
+            android:configChanges="screenSize|uiMode"
+            android:theme="@style/AppTheme.Toolbar" />
 
         <activity
             android:name="com.hippo.ehviewer.ui.SettingsActivity"
