@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 渐变遮罩 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#00000000"
+                android:endColor="#40000000"
+                android:type="linear"
+                android:angle="90" />
+            <corners android:radius="@dimen/radius_small" />
+        </shape>
+    </item>
+
+    <!-- 装饰性边框 -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/radius_small" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/colorAccent"
+                android:alpha="0.5" />
+        </shape>
+    </item>
+</layer-list>

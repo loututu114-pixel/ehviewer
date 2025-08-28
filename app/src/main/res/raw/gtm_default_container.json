@@ -1,0 +1,28 @@
+{
+  "container": {
+    "containerId": "GTM-MBDL2QT7",
+    "containerVersion": {
+      "container": {
+        "version": "1",
+        "containerId": "GTM-MBDL2QT7",
+        "accountId": "王子公主",
+        "container": {
+          "publicId": "王子公主",
+          "version": "1",
+          "fingerprint": "王子公主",
+          "usageContext": [
+            "WEB",
+            "ANDROID"
+          ],
+          "enableAutoEventTracking": true,
+          "macro": [],
+          "tag": [],
+          "rule": [],
+          "variable": []
+        }
+      },
+      "containerVersionId": "1"
+    }
+  },
+  "runtime": []
+}

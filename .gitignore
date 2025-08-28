@@ -1,0 +1,60 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# APK files
+*.apk
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Android Studio
+/.idea/
+*.iws
+/out/
+
+# Gradle
+.gradle/
+/gradle.properties
+!gradle.properties
+!/gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration
+local.properties
+
+# Firebase
+google-services.json
+
+# Temporary directories
+Ehviewer_CN_SXJ/
+*.tmp/
