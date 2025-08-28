@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 主渐变背景 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="@color/colorPrimary"
+                android:endColor="@color/colorPrimaryDark"
+                android:type="linear"
+                android:angle="135" />
+        </shape>
+    </item>
+
+    <!-- 卡通风格的装饰渐变 -->
+    <item
+        android:left="50dp"
+        android:top="30dp">
+        <shape android:shape="oval">
+            <size android:width="150dp" android:height="150dp" />
+            <gradient
+                android:startColor="@color/cartoon_accent_pink"
+                android:endColor="@color/cartoon_accent_blue"
+                android:type="radial"
+                android:gradientRadius="75dp" />
+        </shape>
+    </item>
+
+    <item
+        android:right="80dp"
+        android:top="80dp">
+        <shape android:shape="oval">
+            <size android:width="120dp" android:height="120dp" />
+            <gradient
+                android:startColor="@color/cartoon_accent_yellow"
+                android:endColor="@color/cartoon_accent_pink"
+                android:type="radial"
+                android:gradientRadius="60dp" />
+        </shape>
+    </item>
+
+    <!-- 半透明遮罩 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#40000000" />
+        </shape>
+    </item>
+</layer-list>

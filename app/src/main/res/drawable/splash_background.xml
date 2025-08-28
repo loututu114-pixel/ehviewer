@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 背景渐变 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="@color/colorPrimary"
+                android:endColor="@color/colorPrimaryDark"
+                android:type="linear"
+                android:angle="135" />
+        </shape>
+    </item>
+
+    <!-- 装饰性圆形 -->
+    <item
+        android:left="50dp"
+        android:top="100dp"
+        android:right="150dp"
+        android:bottom="200dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/colorAccent" />
+            <size android:width="100dp" android:height="100dp" />
+        </shape>
+    </item>
+
+    <item
+        android:left="200dp"
+        android:top="300dp"
+        android:right="300dp"
+        android:bottom="400dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/colorSecondary" />
+            <size android:width="100dp" android:height="100dp" />
+        </shape>
+    </item>
+
+    <item
+        android:left="100dp"
+        android:top="500dp"
+        android:right="200dp"
+        android:bottom="600dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/colorAccentVariant" />
+            <size android:width="100dp" android:height="100dp" />
+        </shape>
+    </item>
+
+    <!-- 半透明遮罩 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#33000000" />
+        </shape>
+    </item>
+</layer-list>

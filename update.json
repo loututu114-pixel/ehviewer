@@ -1,0 +1,16 @@
+{
+  "version": "1.9.9.18",
+  "versionCode": 189918,
+  "mustUpdate": false,
+  "updateContent": {
+    "title": "EhViewer卡通风格新版本",
+    "content": [
+      "🎨 全新的卡通风格UI设计",
+      "📱 完美适配手机、平板等多屏幕设备",
+      "🔧 优化详情页样式和图标显示",
+      "⚡ 提升应用性能和响应速度",
+      "🎯 改进标签显示效果和交互体验"
+    ],
+    "fileDownloadUrl": "https://github.com/loututu114-pixel/ehviewer/releases/download/v1.9.9.18/EhViewer_CN_SXJ_v1.9.9.18.apk"
+  }
+}

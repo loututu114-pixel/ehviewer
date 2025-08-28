@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 平板响应式设计优化 -->
+    <dimen name="gallery_list_thumb_height">180dp</dimen>
+    <dimen name="gallery_list_thumb_width">120dp</dimen>
+
+    <!-- 平板间距调整 - 更大的间距适应更大的屏幕 -->
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="spacing_xlarge">32dp</dimen>
+    <dimen name="spacing_xxlarge">40dp</dimen>
+    <dimen name="spacing_xxxlarge">48dp</dimen>
+
+    <!-- 平板字体调整 - 更大的字体适应平板屏幕 -->
+    <dimen name="text_heading_large">36sp</dimen>
+    <dimen name="text_heading_medium">32sp</dimen>
+    <dimen name="text_heading_small">28sp</dimen>
+    <dimen name="text_body_large">22sp</dimen>
+    <dimen name="text_body_medium">20sp</dimen>
+    <dimen name="text_body_small">18sp</dimen>
+    <dimen name="text_caption">16sp</dimen>
+
+    <!-- 平板卡片尺寸调整 -->
+    <dimen name="card_corner_radius">20dp</dimen>
+    <dimen name="card_elevation">8dp</dimen>
+    <dimen name="card_max_elevation">12dp</dimen>
+
+    <!-- 平板网格布局优化 -->
+    <dimen name="gallery_grid_column_width_large">200dp</dimen>
+    <dimen name="gallery_grid_column_width_middle">160dp</dimen>
+    <dimen name="gallery_grid_column_width_small">120dp</dimen>
+
+    <!-- 🎨 平板卡通字体调整 -->
+    <dimen name="text_cartoon_title">32sp</dimen>
+    <dimen name="text_cartoon_subtitle">24sp</dimen>
+    <dimen name="text_cartoon_caption">18sp</dimen>
+    <dimen name="text_cartoon_button">22sp</dimen>
+    <dimen name="text_cartoon_button_small">20sp</dimen>
+    <dimen name="cartoon_shadow_radius">4dp</dimen>
+    <dimen name="cartoon_line_spacing">6dp</dimen>
+    <dimen name="cartoon_line_spacing_small">4dp</dimen>
+
+</resources>
