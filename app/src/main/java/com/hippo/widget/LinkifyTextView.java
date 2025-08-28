@@ -79,6 +79,10 @@ public class LinkifyTextView extends ObservedTextView {
 
                     if (spans.length > 0) {
                         mCurrentSpan = spans[0];
+                        android.util.Log.d("LinkifyTextView", "Detected clickable span: " + spans[0].getClass().getSimpleName());
+                        if (spans[0] instanceof android.text.style.URLSpan) {
+                            android.util.Log.d("LinkifyTextView", "URL: " + ((android.text.style.URLSpan) spans[0]).getURL());
+                        }
                     }
                 }
             }
