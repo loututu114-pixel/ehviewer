@@ -50,6 +50,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.hippo.drawerlayout.DrawerLayout;
@@ -62,6 +63,8 @@ import com.hippo.ehviewer.callBack.ImageChangeCallBack;
 import com.hippo.ehviewer.client.EhCookieStore;
 import com.hippo.ehviewer.client.EhTagDatabase;
 import com.hippo.ehviewer.client.EhUrl;
+import com.hippo.ehviewer.client.NetworkDetector;
+import com.hippo.ehviewer.client.SearchEngineManager;
 import com.hippo.ehviewer.client.EhUrlOpener;
 import com.hippo.ehviewer.client.EhUtils;
 import com.hippo.ehviewer.client.data.ListUrlBuilder;
@@ -137,6 +140,8 @@ public final class MainActivity extends StageActivity
     @Nullable
     private NavigationView mNavView;
     @Nullable
+    private BottomNavigationView mBottomNavView;
+    @Nullable
     private FrameLayout mRightDrawer;
     @Nullable
     private AvatarImageView mAvatar;
@@ -148,6 +153,10 @@ public final class MainActivity extends StageActivity
     private LimitsCountView limitsCountView;
     @Nullable
     UserImageChange userImageChange;
+
+    // 浏览器相关组件
+    private NetworkDetector mNetworkDetector;
+    private SearchEngineManager mSearchEngineManager;
 
     private int mNavCheckedItem = 0;
 
@@ -385,6 +394,7 @@ public final class MainActivity extends StageActivity
         mDrawerLayout = (EhDrawerLayout) ViewUtils.$$(this, R.id.draw_view);
         mDrawerLayout.setDrawerListener(this);
         mNavView = (NavigationView) ViewUtils.$$(this, R.id.nav_view);
+        mBottomNavView = (BottomNavigationView) ViewUtils.$$(this, R.id.bottom_navigation);
         mRightDrawer = (FrameLayout) ViewUtils.$$(this, R.id.right_drawer);
         View headerLayout = mNavView.getHeaderView(0);
         mAvatar = (AvatarImageView) ViewUtils.$$(headerLayout, R.id.avatar);
@@ -401,6 +411,7 @@ public final class MainActivity extends StageActivity
         mDrawerLayout.setStatusBarColor(ResourcesUtils.getAttrColor(this, androidx.appcompat.R.attr.colorPrimaryDark));
 //        mDrawerLayout.setStatusBarColor(0);
 
+        // 初始化导航组件
         if (mNavView != null) {
 //            if (Settings.isLogin()){
 //                MenuItem newsItem = mNavView.getMenu().findItem(R.id.nav_eh_news);
@@ -408,6 +419,23 @@ public final class MainActivity extends StageActivity
 //            }
             mNavView.setNavigationItemSelectedListener(this);
         }
+
+        // 初始化底部导航栏
+        if (mBottomNavView != null) {
+            android.util.Log.d("MainActivity", "Setting up bottom navigation listener");
+            mBottomNavView.setOnNavigationItemSelectedListener(this::onBottomNavigationItemSelected);
+            // 默认选中Eh主页
+            mBottomNavView.setSelectedItemId(R.id.nav_bottom_eh);
+            android.util.Log.d("MainActivity", "Bottom navigation setup completed");
+        } else {
+            android.util.Log.e("MainActivity", "Bottom navigation view is null!");
+        }
+
+        // 初始化浏览器组件
+        initializeBrowserComponents();
+
+        // 测试底部导航栏
+        testBottomNavigation();
         if (Settings.getTheme() == 0) {
             mChangeTheme.setTextColor(getColor(R.color.theme_change_light));
 
@@ -955,5 +983,212 @@ public final class MainActivity extends StageActivity
     @Override
     public void onDrawerStateChanged(View drawerView, int newState) {
 
+    }
+
+    /**
+     * 初始化浏览器组件
+     */
+    private void initializeBrowserComponents() {
+        // 初始化网络检测器
+        mNetworkDetector = NetworkDetector.getInstance(this);
+
+        // 初始化搜索引擎管理器
+        mSearchEngineManager = SearchEngineManager.getInstance(this);
+
+        // 启动网络检测
+        mNetworkDetector.detectNetworkStatus(new NetworkDetector.NetworkCallback() {
+            @Override
+            public void onNetworkStatusDetected(NetworkDetector.NetworkStatus status) {
+                // 根据网络状态调整搜索引擎
+                updateSearchEngineForNetwork(status);
+            }
+
+            @Override
+            public void onDetectionFailed(String error) {
+                // 检测失败时使用默认设置
+                android.util.Log.w("MainActivity", "Network detection failed: " + error);
+            }
+        });
+    }
+
+    /**
+     * 根据网络状态更新搜索引擎
+     */
+    private void updateSearchEngineForNetwork(NetworkDetector.NetworkStatus status) {
+        if (mSearchEngineManager == null) return;
+
+        if (status == NetworkDetector.NetworkStatus.GFW_BLOCKED) {
+            // 被GFW屏蔽时自动切换到百度
+            mSearchEngineManager.setSearchEngine(SearchEngineManager.SearchEngine.BAIDU);
+            showTip("检测到网络限制，已自动切换到百度搜索", BaseScene.LENGTH_SHORT);
+        } else {
+            // 正常网络使用自动选择
+            mSearchEngineManager.setSearchEngine(SearchEngineManager.SearchEngine.AUTO);
+        }
+    }
+
+    /**
+     * 底部导航栏项目选择处理
+     */
+    private boolean onBottomNavigationItemSelected(android.view.MenuItem item) {
+        int itemId = item.getItemId();
+
+        android.util.Log.d("MainActivity", "Bottom navigation item selected: " + itemId);
+
+        if (itemId == R.id.nav_bottom_eh) {
+            // Eh主页 - 默认进入Eh当前页面
+            Bundle args = new Bundle();
+            args.putString(GalleryListScene.KEY_ACTION, Settings.getLaunchPageGalleryListSceneAction());
+            startSceneFirstly(new Announcer(GalleryListScene.class).setArgs(args));
+        } else if (itemId == R.id.nav_bottom_browser) {
+            // 浏览器 - 直接进入浏览器界面，默认访问Google或百度
+            android.util.Log.d("MainActivity", "Browser button clicked, calling openBrowserWithSmartUrl");
+            openBrowserWithSmartUrl();
+        } else if (itemId == R.id.nav_bottom_bookmarks) {
+            // 书签 - 打开书签管理（Eh图库书签）
+            try {
+                com.hippo.ehviewer.ui.BookmarksActivity.startBookmarks(this);
+            } catch (Exception e) {
+                android.util.Log.e("MainActivity", "Failed to start BookmarksActivity", e);
+                showTip("无法打开书签管理", BaseScene.LENGTH_SHORT);
+            }
+        } else if (itemId == R.id.nav_bottom_history) {
+            // 历史记录 - 打开历史记录（Eh图库历史）
+            try {
+                com.hippo.ehviewer.ui.HistoryActivity.startHistory(this);
+            } catch (Exception e) {
+                android.util.Log.e("MainActivity", "Failed to start HistoryActivity", e);
+                showTip("无法打开历史记录", BaseScene.LENGTH_SHORT);
+            }
+        } else if (itemId == R.id.nav_bottom_settings) {
+            // 设置 - 打开设置页面
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_SETTINGS);
+        }
+
+        // 关闭抽屉（如果打开的话）
+        if (mDrawerLayout != null) {
+            mDrawerLayout.closeDrawers();
+        }
+
+        return true;
+    }
+
+    /**
+     * 打开浏览器主页
+     */
+    private void openBrowserHome() {
+        // 打开浏览器主页，可以是自定义的浏览器启动页面
+        // 或者根据用户偏好打开特定的页面
+
+        // 检查是否有设置的浏览器主页
+        String browserHomeUrl = Settings.getString("browser_home_url", null);
+        if (browserHomeUrl == null || browserHomeUrl.trim().isEmpty()) {
+            // 默认打开百度或Google（根据网络状况）
+            if (mNetworkDetector != null &&
+                mNetworkDetector.getCurrentStatus() == NetworkDetector.NetworkStatus.GFW_BLOCKED) {
+                browserHomeUrl = "https://www.baidu.com";
+            } else {
+                browserHomeUrl = "https://www.google.com";
+            }
+        }
+
+        // 使用WebViewActivity打开浏览器
+        Intent intent = new Intent(this, com.hippo.ehviewer.ui.WebViewActivity.class);
+        intent.setData(android.net.Uri.parse(browserHomeUrl));
+        startActivity(intent);
+    }
+
+    /**
+     * 智能打开浏览器（根据GFW状态自动选择搜索引擎）
+     */
+    private void openBrowserWithSmartUrl() {
+        // 直接进入浏览器界面，默认访问Google，如果GFW拦截则访问百度
+        String defaultUrl;
+
+        // 检查网络状态，决定默认搜索引擎
+        if (mNetworkDetector != null &&
+            mNetworkDetector.getCurrentStatus() == NetworkDetector.NetworkStatus.GFW_BLOCKED) {
+            // 被GFW屏蔽，使用百度
+            defaultUrl = "https://www.baidu.com";
+            android.util.Log.d("MainActivity", "GFW detected, using Baidu as default");
+        } else {
+            // 正常网络，使用Google
+            defaultUrl = "https://www.google.com";
+            android.util.Log.d("MainActivity", "Normal network, using Google as default");
+        }
+
+        // 直接启动WebViewActivity进入浏览器界面
+        try {
+            android.util.Log.d("MainActivity", "Starting browser with URL: " + defaultUrl);
+            Intent intent = new Intent(this, com.hippo.ehviewer.ui.WebViewActivity.class);
+            intent.putExtra("url", defaultUrl);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            android.util.Log.d("MainActivity", "Intent created with URL: " + defaultUrl);
+            startActivity(intent);
+            android.util.Log.d("MainActivity", "Browser started successfully");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to start browser", e);
+            showTip("无法启动浏览器: " + e.getMessage(), BaseScene.LENGTH_SHORT);
+        }
+    }
+
+    /**
+     * 启动浏览器搜索
+     */
+    public void startBrowserSearch(String query) {
+        if (mSearchEngineManager != null) {
+            mSearchEngineManager.performSearch(query, new SearchEngineManager.SearchCallback() {
+                @Override
+                public void onSearchUrlGenerated(String url, String engineName) {
+                    // 使用WebViewActivity打开搜索结果
+                    Intent intent = new Intent(MainActivity.this, com.hippo.ehviewer.ui.WebViewActivity.class);
+                    intent.setData(android.net.Uri.parse(url));
+                    startActivity(intent);
+                }
+
+                @Override
+                public void onSearchFailed(String error) {
+                    showTip("搜索失败: " + error, BaseScene.LENGTH_SHORT);
+                }
+            });
+        }
+    }
+
+    /**
+     * 获取网络状态信息
+     */
+    public NetworkDetector.NetworkStatus getCurrentNetworkStatus() {
+        return mNetworkDetector != null ? mNetworkDetector.getCurrentStatus() :
+               NetworkDetector.NetworkStatus.UNKNOWN;
+    }
+
+    /**
+     * 测试底部导航栏是否正常工作
+     */
+    public void testBottomNavigation() {
+        if (mBottomNavView != null) {
+            android.util.Log.d("MainActivity", "Bottom navigation test - view is not null");
+            android.util.Log.d("MainActivity", "Menu items count: " + mBottomNavView.getMenu().size());
+
+            // 遍历所有菜单项
+            for (int i = 0; i < mBottomNavView.getMenu().size(); i++) {
+                android.view.MenuItem item = mBottomNavView.getMenu().getItem(i);
+                android.util.Log.d("MainActivity", "Menu item " + i + ": ID=" + item.getItemId() + ", Title=" + item.getTitle());
+            }
+        } else {
+            android.util.Log.e("MainActivity", "Bottom navigation test - view is null");
+        }
+    }
+
+    /**
+     * 获取当前搜索引擎信息
+     */
+    public String getCurrentSearchEngineInfo() {
+        if (mSearchEngineManager != null) {
+            SearchEngineManager.SearchEngine engine = mSearchEngineManager.getCurrentSearchEngine();
+            return mSearchEngineManager.getSearchEngineDisplayName(engine);
+        }
+        return "未知";
     }
 }

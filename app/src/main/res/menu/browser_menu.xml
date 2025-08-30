@@ -46,4 +46,24 @@
         android:title="浏览器设置"
         android:icon="@drawable/v_settings_black_x24" />
 
+    <item
+        android:id="@+id/menu_screenshot"
+        android:title="页面截图"
+        android:icon="@drawable/v_download_black_x24" />
+
+    <item
+        android:id="@+id/menu_desktop_mode"
+        android:title="桌面模式"
+        android:icon="@drawable/v_settings_black_x24" />
+
+    <item
+        android:id="@+id/menu_clear_cache"
+        android:title="清除缓存"
+        android:icon="@drawable/v_delete_dark_x24" />
+
+    <item
+        android:id="@+id/menu_ad_block"
+        android:title="广告拦截"
+        android:icon="@drawable/v_sec_primary_x24" />
+
 </menu>
