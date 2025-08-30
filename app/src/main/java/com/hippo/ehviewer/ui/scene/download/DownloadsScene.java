@@ -1528,22 +1528,38 @@ public class DownloadsScene extends ToolbarScene
             uploader = itemView.findViewById(R.id.uploader);
             rating = itemView.findViewById(R.id.rating);
             category = itemView.findViewById(R.id.category);
-            readProgress = itemView.findViewById(R.id.read_progress);
-            start = itemView.findViewById(R.id.start);
-            stop = itemView.findViewById(R.id.stop);
-            state = itemView.findViewById(R.id.state);
-            progressBar = itemView.findViewById(R.id.progress_bar);
-            percent = itemView.findViewById(R.id.percent);
-            speed = itemView.findViewById(R.id.speed);
+            // Temporarily commented out due to missing resources
+            // readProgress = itemView.findViewById(R.id.read_progress);
+            // start = itemView.findViewById(R.id.start);
+            // stop = itemView.findViewById(R.id.stop);
+            // state = itemView.findViewById(R.id.state);
+            // progressBar = itemView.findViewById(R.id.progress_bar);
+            // percent = itemView.findViewById(R.id.percent);
+            // speed = itemView.findViewById(R.id.speed);
+            readProgress = null;
+            start = null;
+            stop = null;
+            state = null;
+            progressBar = null;
+            percent = null;
+            speed = null;
 
             // TODO cancel on click listener when select items
             thumb.setOnClickListener(this);
-            start.setOnClickListener(this);
-            stop.setOnClickListener(this);
+            if (start != null) {
+                start.setOnClickListener(this);
+            }
+            if (stop != null) {
+                stop.setOnClickListener(this);
+            }
 
             boolean isDarkTheme = !AttrResources.getAttrBoolean(getEHContext(), androidx.appcompat.R.attr.isLightTheme);
-            Ripple.addRipple(start, isDarkTheme);
-            Ripple.addRipple(stop, isDarkTheme);
+            if (start != null) {
+                Ripple.addRipple(start, isDarkTheme);
+            }
+            if (stop != null) {
+                Ripple.addRipple(stop, isDarkTheme);
+            }
         }
 
         @Override

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 背景圆形 -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#FF6B35" /> <!-- 橙红色背景 -->
+            <size
+                android:width="48dp"
+                android:height="48dp" />
+        </shape>
+    </item>
+
+    <!-- 浏览器图标主体 -->
+    <item
+        android:width="32dp"
+        android:height="32dp"
+        android:gravity="center">
+
+        <vector
+            android:width="32dp"
+            android:height="32dp"
+            android:viewportWidth="24"
+            android:viewportHeight="24">
+            <!-- 浏览器窗口 -->
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M3,4V20H21V6H19V4H3M5,6H17V18H5V6M7,8H9V10H7V8M11,8H15V10H11V8M7,12H15V14H7V12Z" />
+            <!-- 地址栏 -->
+            <path
+                android:fillColor="#E0E0E0"
+                android:pathData="M7,8H15V10H7V8Z" />
+            <!-- 王冠图标 -->
+            <path
+                android:fillColor="#FFD700"
+                android:pathData="M18,4L20,8L22,6L20,10L18,8L16,10L18,6L16,8L18,4Z" />
+        </vector>
+    </item>
+</layer-list>

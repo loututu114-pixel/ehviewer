@@ -36,6 +36,8 @@
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 密码自动填充权限 -->
+    <uses-permission android:name="android.permission.BIND_AUTOFILL_SERVICE" />
     <!--  用于获取wifi状态  -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!--  使用系统自带下载器  -->
@@ -206,6 +208,34 @@
                 <data android:pathPattern=".*\\.rar" />
                 <data android:pathPattern=".*\\.zip" />
             </intent-filter>
+
+            <!-- 图片文件支持 -->
+            <intent-filter android:label="EhViewer图片查看器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="image/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 图片文件扩展名支持 -->
+            <intent-filter android:label="EhViewer图片查看器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.jpg" />
+                <data android:pathPattern=".*\\.jpeg" />
+                <data android:pathPattern=".*\\.png" />
+                <data android:pathPattern=".*\\.gif" />
+                <data android:pathPattern=".*\\.bmp" />
+                <data android:pathPattern=".*\\.webp" />
+                <data android:pathPattern=".*\\.svg" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -234,8 +264,8 @@
             android:exported="true"
             android:theme="@style/AppTheme.Toolbar">
 
-            <!-- 浏览器intent-filter：处理所有HTTP/HTTPS链接 -->
-            <intent-filter android:autoVerify="true">
+            <!-- 浏览器intent-filter：处理所有HTTP/HTTPS链接 - 高优先级 -->
+            <intent-filter android:autoVerify="true" android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -244,8 +274,16 @@
                 <data android:host="*" />
             </intent-filter>
 
+            <!-- 通用浏览器intent-filter：处理所有可浏览内容 -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="*" />
+            </intent-filter>
+
             <!-- 浏览器intent-filter：处理tel:链接 -->
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -253,15 +291,24 @@
             </intent-filter>
 
             <!-- 浏览器intent-filter：处理mailto:链接 -->
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="mailto" />
             </intent-filter>
 
+            <!-- 浏览器intent-filter：处理sms:链接 -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+            </intent-filter>
+
             <!-- 浏览器intent-filter：处理geo:链接 -->
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -269,7 +316,7 @@
             </intent-filter>
 
             <!-- 浏览器intent-filter：处理market:链接 -->
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -277,11 +324,213 @@
             </intent-filter>
 
             <!-- 浏览器intent-filter：处理intent:链接 -->
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="intent" />
+            </intent-filter>
+
+            <!-- 文件查看器intent-filter：文档文件 -->
+            <intent-filter android:label="EhViewer文档查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/msword" />
+                <data android:mimeType="application/vnd.ms-excel" />
+                <data android:mimeType="application/vnd.ms-powerpoint" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/html" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 文件查看器intent-filter：文档文件扩展名 -->
+            <intent-filter android:label="EhViewer文档查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.pdf" />
+                <data android:pathPattern=".*\\.doc" />
+                <data android:pathPattern=".*\\.docx" />
+                <data android:pathPattern=".*\\.xls" />
+                <data android:pathPattern=".*\\.xlsx" />
+                <data android:pathPattern=".*\\.ppt" />
+                <data android:pathPattern=".*\\.pptx" />
+                <data android:pathPattern=".*\\.txt" />
+                <data android:pathPattern=".*\\.html" />
+                <data android:pathPattern=".*\\.htm" />
+            </intent-filter>
+
+            <!-- 图片文件intent-filter -->
+            <intent-filter android:label="EhViewer图片查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="image/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 图片文件扩展名 -->
+            <intent-filter android:label="EhViewer图片查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.jpg" />
+                <data android:pathPattern=".*\\.jpeg" />
+                <data android:pathPattern=".*\\.png" />
+                <data android:pathPattern=".*\\.gif" />
+                <data android:pathPattern=".*\\.bmp" />
+                <data android:pathPattern=".*\\.webp" />
+                <data android:pathPattern=".*\\.svg" />
+                <data android:pathPattern=".*\\.ico" />
+            </intent-filter>
+
+            <!-- 视频文件intent-filter -->
+            <intent-filter android:label="EhViewer视频播放器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="video/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 视频文件扩展名 -->
+            <intent-filter android:label="EhViewer视频播放器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.mp4" />
+                <data android:pathPattern=".*\\.avi" />
+                <data android:pathPattern=".*\\.mkv" />
+                <data android:pathPattern=".*\\.mov" />
+                <data android:pathPattern=".*\\.wmv" />
+                <data android:pathPattern=".*\\.flv" />
+                <data android:pathPattern=".*\\.webm" />
+                <data android:pathPattern=".*\\.3gp" />
+                <data android:pathPattern=".*\\.mpg" />
+                <data android:pathPattern=".*\\.mpeg" />
+            </intent-filter>
+
+            <!-- 音频文件intent-filter -->
+            <intent-filter android:label="EhViewer音频播放器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="audio/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 音频文件扩展名 -->
+            <intent-filter android:label="EhViewer音频播放器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.mp3" />
+                <data android:pathPattern=".*\\.wav" />
+                <data android:pathPattern=".*\\.ogg" />
+                <data android:pathPattern=".*\\.aac" />
+                <data android:pathPattern=".*\\.flac" />
+                <data android:pathPattern=".*\\.m4a" />
+                <data android:pathPattern=".*\\.wma" />
+            </intent-filter>
+
+            <!-- 压缩文件intent-filter -->
+            <intent-filter android:label="EhViewer压缩文件查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-rar-compressed" />
+                <data android:mimeType="application/x-7z-compressed" />
+                <data android:mimeType="application/x-tar" />
+                <data android:mimeType="application/gzip" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+            </intent-filter>
+
+            <!-- 压缩文件扩展名 -->
+            <intent-filter android:label="EhViewer压缩文件查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.zip" />
+                <data android:pathPattern=".*\\.rar" />
+                <data android:pathPattern=".*\\.7z" />
+                <data android:pathPattern=".*\\.tar" />
+                <data android:pathPattern=".*\\.gz" />
+                <data android:pathPattern=".*\\.bz2" />
+                <data android:pathPattern=".*\\.xz" />
+            </intent-filter>
+
+            <!-- APK文件intent-filter -->
+            <intent-filter android:label="EhViewer APK安装器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.apk" />
+            </intent-filter>
+
+            <!-- 文本文件intent-filter -->
+            <intent-filter android:label="EhViewer文本查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="text/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+            </intent-filter>
+
+            <!-- 更多文本文件扩展名 -->
+            <intent-filter android:label="EhViewer文本查看器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.json" />
+                <data android:pathPattern=".*\\.xml" />
+                <data android:pathPattern=".*\\.css" />
+                <data android:pathPattern=".*\\.js" />
+                <data android:pathPattern=".*\\.php" />
+                <data android:pathPattern=".*\\.py" />
+                <data android:pathPattern=".*\\.java" />
+                <data android:pathPattern=".*\\.cpp" />
+                <data android:pathPattern=".*\\.c" />
+                <data android:pathPattern=".*\\.h" />
+                <data android:pathPattern=".*\\.md" />
+                <data android:pathPattern=".*\\.log" />
+                <data android:pathPattern=".*\\.conf" />
+                <data android:pathPattern=".*\\.ini" />
+                <data android:pathPattern=".*\\.cfg" />
             </intent-filter>
 
         </activity>
@@ -330,13 +579,35 @@
         <activity
             android:name="com.hippo.ehviewer.ui.BrowserSettingsActivity"
             android:configChanges="screenSize|uiMode"
+            android:exported="true"
             android:label="浏览器设置"
+            android:theme="@style/AppTheme.Toolbar" />
+
+        <activity
+            android:name="com.hippo.ehviewer.ui.DownloadManagerActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="下载管理"
             android:theme="@style/AppTheme.Toolbar" />
 
         <activity
             android:name="com.hippo.ehviewer.ui.ReadingModeSettingsActivity"
             android:configChanges="screenSize|uiMode"
             android:label="阅读模式设置"
+            android:theme="@style/AppTheme.Toolbar" />
+
+        <activity
+            android:name="com.hippo.ehviewer.ui.BookmarksActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="书签"
+            android:theme="@style/AppTheme.Toolbar" />
+
+        <activity
+            android:name="com.hippo.ehviewer.ui.HistoryActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="历史记录"
             android:theme="@style/AppTheme.Toolbar" />
 
         <activity
@@ -383,9 +654,120 @@
             android:theme="@style/AppTheme.Toolbar"
             android:exported="false" />
 
+        <!-- 密码管理器活动 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.PasswordManagerActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="密码管理器"
+            android:theme="@style/AppTheme.Toolbar" />
+
+        <!-- 媒体播放器活动 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.MediaPlayerActivity"
+            android:configChanges="screenSize|uiMode|orientation"
+            android:exported="true"
+            android:label="媒体播放器"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="fullSensor">
+
+            <!-- 视频文件支持 -->
+            <intent-filter android:label="EhViewer媒体播放器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="video/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 音频文件支持 -->
+            <intent-filter android:label="EhViewer媒体播放器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="audio/*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 具体视频格式支持 -->
+            <intent-filter android:label="EhViewer视频播放器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="video/mp4" />
+                <data android:mimeType="video/webm" />
+                <data android:mimeType="video/ogg" />
+                <data android:mimeType="video/avi" />
+                <data android:mimeType="video/quicktime" />
+                <data android:mimeType="video/x-ms-wmv" />
+                <data android:mimeType="video/x-flv" />
+                <data android:mimeType="video/x-matroska" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+            <!-- 具体音频格式支持 -->
+            <intent-filter android:label="EhViewer音频播放器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="audio/mpeg" />
+                <data android:mimeType="audio/wav" />
+                <data android:mimeType="audio/ogg" />
+                <data android:mimeType="audio/aac" />
+                <data android:mimeType="audio/mp4" />
+                <data android:mimeType="audio/flac" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- Eh浏览器桌面图标活动 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.EhBrowserActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="Eh浏览器"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
         <service
             android:name="com.hippo.ehviewer.download.DownloadService"
             android:label="@string/download_service_label" />
+
+        <!-- 密码自动填充服务 -->
+        <service
+            android:name="com.hippo.ehviewer.client.PasswordAutofillService"
+            android:exported="true"
+            android:label="EhViewer密码自动填充"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/autofill_service_config" />
+        </service>
 
         <provider
             android:name="com.hippo.content.FileProvider"

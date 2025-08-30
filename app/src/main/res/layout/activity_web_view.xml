@@ -5,68 +5,94 @@
     android:layout_height="match_parent"
     android:background="?android:attr/windowBackground">
 
-    <!-- 紧凑的顶部工具栏 - 固定高度避免空白 -->
+    <!-- 紧凑的顶部工具栏 - 优化布局避免空白 -->
     <LinearLayout
         android:id="@+id/top_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="84dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:background="?attr/colorPrimary"
         android:orientation="vertical"
-        android:elevation="4dp">
+        android:elevation="4dp"
+        android:minHeight="48dp">
 
-        <!-- 地址栏区域 - 优化高度和间距 -->
-        <LinearLayout
+        <!-- 地址栏和标签页整合区域 -->
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="?attr/colorPrimary"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:gravity="center_vertical">
+            android:layout_height="48dp"
+            android:background="?attr/colorPrimary">
 
-            <!-- 地址栏 - 优化圆角和阴影 -->
-            <EditText
-                android:id="@+id/url_input"
-                android:layout_width="0dp"
-                android:layout_height="32dp"
-                android:layout_weight="1"
+            <!-- 地址栏区域 -->
+            <LinearLayout
+                android:id="@+id/address_bar_container"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
                 android:background="@drawable/address_bar_background"
-                android:drawableStart="@drawable/v_magnify_x24"
-                android:drawablePadding="8dp"
-                android:hint="搜索或输入网址"
-                android:imeOptions="actionGo"
-                android:inputType="textUri"
-                android:maxLines="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textColorHint="?android:attr/textColorSecondary"
-                android:textSize="14sp"
-                android:textCursorDrawable="@null" />
+                android:paddingEnd="12dp">
 
-            <!-- 刷新按钮 - 优化大小和间距 -->
-            <ImageButton
-                android:id="@+id/refresh_button"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="刷新"
-                android:src="@drawable/v_refresh_dark_x24"
-                android:tint="?android:attr/textColorPrimary"
-                android:scaleType="centerInside" />
+                <!-- 搜索图标 -->
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/v_magnify_x24"
+                    android:tint="?android:attr/textColorSecondary"
+                    android:scaleType="centerInside" />
 
-        </LinearLayout>
+                <!-- 地址栏输入框 -->
+                <AutoCompleteTextView
+                    android:id="@+id/url_input"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="搜索或输入网址"
+                    android:imeOptions="actionGo"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textColorHint="?android:attr/textColorSecondary"
+                    android:textSize="14sp"
+                    android:textCursorDrawable="@null"
+                    android:completionThreshold="1"
+                    android:dropDownWidth="match_parent"
+                    android:dropDownHeight="wrap_content"
+                    android:dropDownVerticalOffset="4dp"
+                    android:popupBackground="?android:attr/colorBackground" />
 
-        <!-- 标签页容器 - 优化高度和视觉效果 -->
+                <!-- 刷新按钮 -->
+                <ImageButton
+                    android:id="@+id/top_refresh_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="刷新"
+                    android:src="@drawable/v_refresh_dark_x24"
+                    android:tint="?android:attr/textColorPrimary"
+                    android:scaleType="centerInside"
+                    android:padding="6dp" />
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+        <!-- 标签页容器 - 紧凑设计，高度可变 -->
         <HorizontalScrollView
             android:id="@+id/tab_scroll_view"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="32dp"
             android:background="?attr/colorPrimary"
             android:scrollbars="none"
-            android:fadeScrollbars="false">
+            android:fadeScrollbars="false"
+            android:visibility="visible">
 
             <LinearLayout
                 android:id="@+id/tab_container"
@@ -108,73 +134,92 @@
     <LinearLayout
         android:id="@+id/bottom_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
+        android:layout_height="56dp"
         android:layout_alignParentBottom="true"
         android:background="?android:attr/windowBackground"
         android:orientation="horizontal"
         android:elevation="8dp"
-        android:padding="2dp">
+        android:padding="2dp"
+        android:gravity="center_vertical">
 
         <!-- 后退按钮 -->
         <ImageButton
             android:id="@+id/back_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="后退"
             android:src="@drawable/v_arrow_left_dark_x24"
             android:tint="?android:attr/textColorPrimary"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:padding="12dp" />
 
         <!-- 前进按钮 -->
         <ImageButton
             android:id="@+id/forward_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="前进"
             android:src="@drawable/v_arrow_left_dark_x24"
             android:rotation="180"
             android:tint="?android:attr/textColorPrimary"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:padding="12dp" />
+
+        <!-- 刷新/停止按钮 -->
+        <ImageButton
+            android:id="@+id/refresh_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="刷新"
+            android:src="@drawable/v_refresh_dark_x24"
+            android:tint="?android:attr/textColorPrimary"
+            android:scaleType="centerInside"
+            android:padding="12dp" />
 
         <!-- 主页按钮 -->
         <ImageButton
             android:id="@+id/home_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="主页"
             android:src="@drawable/v_homepage_black_x24"
             android:tint="?android:attr/textColorPrimary"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:padding="12dp" />
 
-        <!-- 标签页按钮 -->
+        <!-- 书签按钮 -->
         <ImageButton
-            android:id="@+id/tabs_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:id="@+id/bookmark_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="标签页"
-            android:src="@drawable/ic_baseline_subscriptions_24"
+            android:contentDescription="书签"
+            android:src="@drawable/v_heart_black_x24"
             android:tint="?android:attr/textColorPrimary"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:padding="12dp" />
 
         <!-- 菜单按钮 -->
         <ImageButton
             android:id="@+id/menu_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="菜单"
             android:src="@drawable/v_dots_vertical_secondary_dark_x24"
             android:tint="?android:attr/textColorPrimary"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:padding="12dp" />
 
     </LinearLayout>
 

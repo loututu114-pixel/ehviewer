@@ -65,7 +65,7 @@ class GalleryListSceneDialog(val baseScene: BaseScene) {
             builder.setNegativeButton(
                 R.string.copy_tag
             ) { _: DialogInterface?, _: Int -> copyTag(tagName) }
-                .show()
+            builder.show()
         } else {
             builder.setNeutralButton(
                 R.string.copy_tag
@@ -76,7 +76,7 @@ class GalleryListSceneDialog(val baseScene: BaseScene) {
                 .setPositiveButton(
                     R.string.subscription_hidden
                 ) { _: DialogInterface?, _: Int -> requestTag(tagName, false) }
-                .show()
+            builder.show()
         }
     }
 

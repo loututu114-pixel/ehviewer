@@ -24,35 +24,71 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 
 /**
- * 浏览器启动器Activity
- * 处理来自系统的外部链接跳转请求，并转发给WebViewActivity
+ * EhViewer浏览器启动器
+ * 处理来自系统的外部链接跳转请求，并支持桌面浏览器图标启动
+ * - 从外部链接启动：直接进入浏览器界面
+ * - 从桌面浏览器图标启动：显示浏览器主页
+ * - 正常应用启动：进入主界面
  */
 public class BrowserLauncherActivity extends AppCompatActivity {
 
     private static final String TAG = "BrowserLauncherActivity";
 
+    // 浏览器启动模式
+    public static final String EXTRA_BROWSER_MODE = "browser_mode";
+    public static final String BROWSER_MODE_HOME = "home";         // 浏览器主页
+    public static final String BROWSER_MODE_URL = "url";           // 指定URL
+    public static final String BROWSER_MODE_DEFAULT = "default";   // 默认浏览器行为
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 获取启动intent
-        Intent intent = getIntent();
+        // 立即处理intent，不要显示界面
+        handleBrowserIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleBrowserIntent(intent);
+    }
+
+    /**
+     * 处理浏览器intent
+     */
+    private void handleBrowserIntent(Intent intent) {
         if (intent == null) {
             finish();
             return;
         }
 
         String action = intent.getAction();
+        String browserMode = intent.getStringExtra(EXTRA_BROWSER_MODE);
         Uri data = intent.getData();
 
-        Log.d(TAG, "BrowserLauncherActivity received: action=" + action + ", data=" + data);
+        Log.d(TAG, "BrowserLauncherActivity received: action=" + action +
+                   ", browserMode=" + browserMode + ", data=" + data);
 
-        // 处理不同的intent类型
+        // 检查是否是从桌面浏览器图标启动
+        if (BROWSER_MODE_HOME.equals(browserMode)) {
+            // 从桌面浏览器图标启动，直接进入浏览器主页
+            startBrowserWithHomePage();
+            finish();
+            return;
+        }
+
+        // 处理VIEW action（从外部链接启动）
         if (Intent.ACTION_VIEW.equals(action) && data != null) {
             handleViewIntent(data, intent);
+        } else if (Intent.ACTION_MAIN.equals(action) && BROWSER_MODE_HOME.equals(browserMode)) {
+            // 从桌面图标启动，显示浏览器主页
+            startBrowserWithHomePage();
+            finish();
         } else {
-            // 不支持的intent类型，直接关闭
-            Log.w(TAG, "Unsupported intent action: " + action);
+            // 其他情况，启动主应用
+            Log.d(TAG, "Starting main application for unsupported intent");
+            startMainApplication(intent);
             finish();
         }
     }
@@ -193,6 +229,97 @@ public class BrowserLauncherActivity extends AppCompatActivity {
             startActivity(intentUri);
         } catch (Exception e) {
             Log.e(TAG, "Failed to handle intent URI", e);
+        }
+    }
+
+    /**
+     * 启动浏览器主页
+     */
+    private void startBrowserWithHomePage() {
+        try {
+            Intent browserIntent = new Intent(this, WebViewActivity.class);
+            browserIntent.setAction(Intent.ACTION_VIEW);
+            browserIntent.setData(Uri.parse("https://www.google.com"));
+            browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            // 标记为从浏览器启动
+            browserIntent.putExtra("from_browser_launcher", true);
+            browserIntent.putExtra("browser_mode", true);
+
+            Log.d(TAG, "Starting browser with home page");
+            startActivity(browserIntent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start browser with home page", e);
+        }
+    }
+
+    /**
+     * 启动浏览器并打开指定URL
+     */
+    private void startBrowserWithUrl(String url) {
+        try {
+            Intent browserIntent = new Intent(this, WebViewActivity.class);
+            browserIntent.setAction(Intent.ACTION_VIEW);
+            browserIntent.setData(Uri.parse(url));
+            browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            // 标记为从浏览器启动
+            browserIntent.putExtra("from_browser_launcher", true);
+            browserIntent.putExtra("browser_mode", true);
+
+            Log.d(TAG, "Starting browser with URL: " + url);
+            startActivity(browserIntent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start browser with URL: " + url, e);
+        }
+    }
+
+    /**
+     * 启动主应用程序
+     */
+    private void startMainApplication(Intent originalIntent) {
+        try {
+            Intent mainIntent = new Intent(this, MainActivity.class);
+            if (originalIntent != null) {
+                // 传递原始intent的数据
+                mainIntent.setAction(originalIntent.getAction());
+                mainIntent.setData(originalIntent.getData());
+                mainIntent.putExtras(originalIntent.getExtras());
+            }
+            mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            Log.d(TAG, "Starting main application");
+            startActivity(mainIntent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start main application", e);
+        }
+    }
+
+    /**
+     * 启动EhViewer浏览器（静态方法）
+     */
+    public static void startEhBrowser(android.content.Context context) {
+        try {
+            Intent intent = new Intent(context, BrowserLauncherActivity.class);
+            intent.putExtra(EXTRA_BROWSER_MODE, BROWSER_MODE_HOME);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start EhViewer browser", e);
+        }
+    }
+
+    /**
+     * 处理浏览器URL（静态方法）
+     */
+    public static void handleBrowserUrl(android.content.Context context, String url) {
+        try {
+            Intent intent = new Intent(context, BrowserLauncherActivity.class);
+            intent.setAction(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to handle browser URL: " + url, e);
         }
     }
 

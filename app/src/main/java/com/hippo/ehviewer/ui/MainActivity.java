@@ -347,6 +347,24 @@ public final class MainActivity extends StageActivity
         return false;
     }
 
+    /**
+     * 强化应用的存在感（检查默认浏览器设置）
+     */
+    private void strengthenAppPresence() {
+        try {
+            // 使用Handler延迟执行，避免在应用启动初期影响性能
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                com.hippo.ehviewer.util.DefaultBrowserHelper.strengthenAppPresence(this);
+
+                // 注册浏览器拦截器，确保所有链接都在EhViewer中打开
+                com.hippo.ehviewer.ui.WebViewActivity.registerBrowserInterceptor(this);
+                android.util.Log.d("MainActivity", "Browser interceptor registered at app launch");
+            }, 2000); // 延迟2秒执行
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error strengthening app presence", e);
+        }
+    }
+
     @Override
     protected void onUnrecognizedIntent(@Nullable Intent intent) {
         Class<?> clazz = getTopSceneClass();
@@ -382,6 +400,8 @@ public final class MainActivity extends StageActivity
 
     @Override
     protected void onCreate2(@Nullable Bundle savedInstanceState) {
+        // 检查并强化应用的存在感（默认浏览器设置）
+        strengthenAppPresence();
         Intent intent = getIntent();
         if (intent != null) {
             boolean res = intent.getBooleanExtra(SplashActivity.KEY_RESTART,false);
