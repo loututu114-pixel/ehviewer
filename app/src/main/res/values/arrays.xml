@@ -1,392 +1,402 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright 2016 Hippo Seven
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License");
-  ~ you may not use this file except in compliance with the License.
-  ~ You may obtain a copy of the License at
-  ~
-  ~     http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
-  -->
-
-<resources xmlns:tools="http://schemas.android.com/tools">
-
-    <string-array name="fav_sort">
-        <item>@string/sort_by_fav_time</item>
-        <item>@string/sort_by_pub_time</item>
+<resources>
+    <!-- 搜索引擎选项 -->
+    <string-array name="search_engine_entries">
+        <item>Google</item>
+        <item>Baidu</item>
+        <item>Bing</item>
+        <item>DuckDuckGo</item>
     </string-array>
 
-    <string-array name="top_list_type">
-        <item>@string/gallery_toplists</item>
-        <item>@string/uploader_toplists</item>
-        <item>@string/tagging_toplists</item>
-        <item>@string/hentai_home_toplists</item>
-        <item>@string/ehtracker_toplists</item>
-        <item>@string/cleanup_toplists</item>
-        <item>@string/rating_reviewing_toplists</item>
+    <string-array name="search_engine_values">
+        <item>google</item>
+        <item>baidu</item>
+        <item>bing</item>
+        <item>duckduckgo</item>
     </string-array>
 
-    <string-array name="top_list_history_list_test_data">
-        <item>@string/gallery_toplists</item>
-        <item>@string/uploader_toplists</item>
-        <item>@string/tagging_toplists</item>
-        <item>@string/hentai_home_toplists</item>
-        <item>@string/ehtracker_toplists</item>
-        <item>@string/cleanup_toplists</item>
-        <item>@string/rating_reviewing_toplists</item>
-        <item>@string/rating_reviewing_toplists</item>
-        <item>@string/rating_reviewing_toplists</item>
-        <item>@string/rating_reviewing_toplists</item>
+    <!-- 文字大小选项 -->
+    <string-array name="text_size_entries">
+        <item>最小</item>
+        <item>小</item>
+        <item>正常</item>
+        <item>大</item>
+        <item>最大</item>
     </string-array>
 
-    <string-array name="theme_entries" translatable="false">
-        <item>@string/settings_eh_theme_light</item>
-        <item>@string/settings_eh_theme_dark</item>
-        <item>@string/settings_eh_theme_black</item>
+    <string-array name="text_size_values">
+        <item>smallest</item>
+        <item>small</item>
+        <item>normal</item>
+        <item>large</item>
+        <item>largest</item>
     </string-array>
 
-    <string-array name="theme_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
+    <!-- 书签排序选项 -->
+    <string-array name="bookmark_sort_entries">
+        <item>按添加时间</item>
+        <item>按访问时间</item>
+        <item>按访问次数</item>
+        <item>按字母顺序</item>
     </string-array>
 
-    <string-array name="list_mode_entries" translatable="false">
-        <item>@string/settings_eh_list_mode_detail</item>
-        <item>@string/settings_eh_list_mode_thumb</item>
+    <string-array name="bookmark_sort_values">
+        <item>date_added</item>
+        <item>last_visit</item>
+        <item>visit_count</item>
+        <item>alphabetical</item>
     </string-array>
 
-    <string-array name="list_mode_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
+    <!-- 历史记录排序选项 -->
+    <string-array name="history_sort_entries">
+        <item>按访问时间</item>
+        <item>按访问次数</item>
+        <item>按字母顺序</item>
     </string-array>
 
-    <string-array name="gallery_site_entries" translatable="false">
-        <item>@string/site_e</item>
-        <item>@string/site_ex</item>
+    <string-array name="history_sort_values">
+        <item>last_visit</item>
+        <item>visit_count</item>
+        <item>alphabetical</item>
     </string-array>
 
-    <string-array name="gallery_site_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-    </string-array>
-
-    <string-array name="launch_page_entries" translatable="false">
-        <item>@string/homepage</item>
-        <item>@string/subscription</item>
-        <item>@string/whats_hot</item>
-    </string-array>
-
-    <string-array name="launch_page_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-    </string-array>
-
-    <string-array name="detail_size_entries" translatable="false">
-        <item>@string/settings_eh_detail_size_long</item>
-        <item>@string/settings_eh_detail_size_short</item>
-    </string-array>
-
-    <string-array name="detail_size_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-    </string-array>
-
-    <string-array name="thumb_size_entries" translatable="false">
-        <item>@string/settings_eh_thumb_size_large</item>
-        <item>@string/settings_eh_thumb_size_middle</item>
-        <item>@string/settings_eh_thumb_size_small</item>
-    </string-array>
-
-    <string-array name="thumb_size_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-    </string-array>
-
-    <string-array name="history_info_size_entries" translatable="false">
-        <item>100</item>
-        <item>500</item>
-        <item>1000</item>
-        <item>5000</item>
-        <item>10000</item>
-        <item>20000</item>
-<!--        <item>@string/history_info_unlimited</item>-->
-    </string-array>
-
-    <string-array name="history_info_size_entry_values" translatable="false">
-        <item>100</item>
-        <item>500</item>
-        <item>1000</item>
-        <item>5000</item>
-        <item>10000</item>
-        <item>20000</item>
-<!--        <item>-1</item>-->
-    </string-array>
-
-    <string-array name="download_timeout_entries" translatable="false">
-        <item>@string/download_timeout_unlimited</item>
-        <item>10</item>
-        <item>30</item>
-        <item>50</item>
-        <item>100</item>
-        <item>200</item>
-        <item>300</item>
-    </string-array>
-
-    <string-array name="download_timeout_entries_values" translatable="false">
-        <item>0</item>
-        <item>10</item>
-        <item>30</item>
-        <item>50</item>
-        <item>100</item>
-        <item>200</item>
-        <item>300</item>
-    </string-array>
-
-
-    <string-array name="thumb_resolution_entries" translatable="false">
-        <item>@string/settings_eh_thumb_resolution_auto</item>
-        <item>250x</item>
-        <item>300x</item>
-    </string-array>
-
-    <string-array name="thumb_resolution_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-    </string-array>
-
-    <string-array name="search_min_rating">
-        <item>@string/star_2</item>
-        <item>@string/star_3</item>
-        <item>@string/star_4</item>
-        <item>@string/star_5</item>
-    </string-array>
-
-    <string-array name="multi_thread_download_entries" translatable="false">
-        <item>1</item>
-        <item>3</item>
-        <item>5</item>
-        <item>7</item>
-    </string-array>
-
-    <string-array name="multi_thread_download_entry_values" translatable="false">
-        <item>1</item>
-        <item>3</item>
-        <item>5</item>
-        <item>7</item>
-    </string-array>
-
-    <string-array name="preload_image_entries" translatable="false">
-        <item>3</item>
-        <item>5</item>
-        <item>7</item>
-        <item>11</item>
-        <item>13</item>
-        <item>17</item>
-    </string-array>
-
-    <string-array name="preload_image_entry_values" translatable="false">
-        <item>3</item>
-        <item>5</item>
-        <item>7</item>
-        <item>11</item>
-        <item>13</item>
-        <item>17</item>
-    </string-array>
-
-    <string-array name="image_resolution_entries" translatable="false">
-        <item>@string/settings_download_image_resolution_auto</item>
-        <item>780x</item>
-<!--        <item>980x</item>-->
-        <item>1280x</item>
-        <item>1600x</item>
-        <item>2400x</item>
-    </string-array>
-
-    <string-array name="image_resolution_entry_values" translatable="false">
-        <item>a</item>
-        <item>780</item>
-<!--        <item>980</item>-->
-        <item>1280</item>
-        <item>1600</item>
-        <item>2400</item>
-    </string-array>
-
-    <string-array name="screen_rotation_entries">
-        <item>@string/settings_read_screen_rotation_default</item>
-        <item>@string/settings_read_screen_rotation_portrait</item>
-        <item>@string/settings_read_screen_rotation_landscape</item>
-        <item>@string/settings_read_screen_rotation_sensor</item>
-    </string-array>
-
-    <string-array name="screen_rotation_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-    </string-array>
-
-    <string-array name="reading_direction_entries">
-        <item>@string/settings_read_reading_direction_left_to_right</item>
-        <item>@string/settings_read_reading_direction_right_to_Left</item>
-        <item>@string/settings_read_reading_direction_top_to_bottom</item>
-    </string-array>
-
-    <string-array name="reading_direction_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-    </string-array>
-
-    <string-array name="page_scaling_entries">
-        <item>@string/settings_read_page_scaling_actual_size</item>
-        <item>@string/settings_read_page_scaling_fit_to_width</item>
-        <item>@string/settings_read_page_scaling_fit_to_height</item>
-        <item>@string/settings_read_page_scaling_fit_to_screen</item>
-        <item>@string/settings_read_page_scaling_fixed_scale</item>
-    </string-array>
-
-    <string-array name="page_scaling_entry_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-    </string-array>
-
-    <string-array name="start_position_entries">
-        <item>@string/settings_read_start_position_top_left</item>
-        <item>@string/settings_read_start_position_top_right</item>
-        <item>@string/settings_read_start_position_bottom_left</item>
-        <item>@string/settings_read_start_position_bottom_right</item>
-        <item>@string/settings_read_start_position_center</item>
-    </string-array>
-
-    <string-array name="start_position_values" translatable="false">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-    </string-array>
-
-    <string-array name="read_cache_size_entries" translatable="false">
-        <item>40 MB</item>
-        <item>80 MB</item>
-        <item>160 MB</item>
-        <item>320 MB</item>
-        <item>640 MB</item>
-    </string-array>
-
-    <string-array name="read_cache_size_entry_values" translatable="false">
-        <item>40</item>
-        <item>80</item>
-        <item>160</item>
-        <item>320</item>
-        <item>640</item>
-    </string-array>
-
-    <string-array name="gallery_list_menu_entries">
-        <item>@string/download</item>
-        <item>@string/add_to_favourites</item>
-    </string-array>
-
-    <string-array name="filter_entries">
-        <item>@string/filter_title</item>
-        <item>@string/filter_uploader</item>
-        <item>@string/filter_tag</item>
-        <item>@string/filter_tag_namespace</item>
+    <!-- 其他缺失的数组资源 -->
+    <string-array name="migrate_data_types">
+        <item>downloads</item>
+        <item>favorites</item>
+        <item>history</item>
+        <item>settings</item>
     </string-array>
 
     <string-array name="blacklist_entries">
-        <item>@string/blacklist_id</item>
+        <item>艺术家</item>
+        <item>团体</item>
+        <item>标签</item>
+        <item>评论者</item>
     </string-array>
 
-    <string-array name="tag_menu_entries">
-        <item>@string/show_definition</item>
-        <item>@string/add_filter</item>
+    <string-array name="filter_entries">
+        <item>标题</item>
+        <item>上传者</item>
+        <item>标签</item>
+        <item>评论</item>
     </string-array>
 
+    <string-array name="screen_rotation_entries">
+        <item>自动</item>
+        <item>锁定竖屏</item>
+        <item>锁定横屏</item>
+    </string-array>
+
+    <string-array name="reading_direction_entries">
+        <item>从左到右</item>
+        <item>从右到左</item>
+        <item>从上到下</item>
+    </string-array>
+
+    <string-array name="page_scaling_entries">
+        <item>适应宽度</item>
+        <item>适应高度</item>
+        <item>原始大小</item>
+        <item>适应屏幕</item>
+    </string-array>
+
+    <string-array name="start_position_entries">
+        <item>从头开始</item>
+        <item>从尾开始</item>
+        <item>记住位置</item>
+    </string-array>
+
+    <string-array name="proxy_types">
+        <item>HTTP</item>
+        <item>SOCKS4</item>
+        <item>SOCKS5</item>
+    </string-array>
+
+    <string-array name="top_list_type">
+        <item>日榜</item>
+        <item>周榜</item>
+        <item>月榜</item>
+        <item>年榜</item>
+    </string-array>
+
+    <string-array name="search_min_rating">
+        <item>无限制</item>
+        <item>2星以上</item>
+        <item>3星以上</item>
+        <item>4星以上</item>
+        <item>5星</item>
+    </string-array>
+
+    <!-- 缓存大小选项 -->
+    <string-array name="read_cache_size_entries">
+        <item>32 MB</item>
+        <item>64 MB</item>
+        <item>128 MB</item>
+        <item>256 MB</item>
+        <item>512 MB</item>
+    </string-array>
+
+    <string-array name="read_cache_size_entry_values">
+        <item>32</item>
+        <item>64</item>
+        <item>128</item>
+        <item>256</item>
+        <item>512</item>
+    </string-array>
+
+    <!-- 应用语言选项 -->
     <string-array name="app_language_entries">
-        <item>@string/app_language_system</item>
-        <item>@string/app_language_de</item>
-        <item>@string/app_language_en</item>
-        <item>@string/app_language_es</item>
-        <item>@string/app_language_fr</item>
-        <item>@string/app_language_ja</item>
-        <item>@string/app_language_ko</item>
-        <item>@string/app_language_th</item>
-        <item>@string/app_language_zh_cn</item>
-        <item>@string/app_language_zh_hk</item>
-        <item>@string/app_language_zh_tw</item>
+        <item>跟随系统</item>
+        <item>简体中文</item>
+        <item>繁体中文</item>
+        <item>English</item>
+        <item>日本語</item>
     </string-array>
 
     <string-array name="app_language_entry_values">
         <item>system</item>
-        <item>de</item>
-        <item>en</item>
-        <item>es</item>
-        <item>fr</item>
-        <item>ja</item>
-        <item>ko</item>
-        <item>th</item>
         <item>zh-CN</item>
-        <item>zh-HK</item>
         <item>zh-TW</item>
+        <item>en</item>
+        <item>ja</item>
     </string-array>
 
-    <string-array name="tag_translation_metadata" tools:ignore="InconsistentArrays">
-<!--        <item>tag-translations-zh-rCN.sha1</item>-->
-<!--        <item>https://github.com/Mapaler/EhViewer/tree/tag-translations/tag-translations/tag-translations-zh-rCN.sha1</item>-->
-<!--        <item>tag-translations-zh-rCN</item>-->
-<!--        <item>https://github.com/Mapaler/EhViewer/raw/tag-translations/tag-translations/tag-translations-zh-rCN</item>-->
-        <item>tag-translations-zh-rCN.sha1</item>
-        <item>https://raw.githubusercontent.com/Mapaler/EhViewer/tag-translations/tag-translations/tag-translations-zh-rCN.sha1</item>
-        <item>tag-translations-zh-rCN</item>
-        <item>https://raw.githubusercontent.com/Mapaler/EhViewer/tag-translations/tag-translations/tag-translations-zh-rCN</item>
+    <!-- 多线程下载选项 -->
+    <string-array name="multi_thread_download_entries">
+        <item>单线程</item>
+        <item>2线程</item>
+        <item>3线程</item>
+        <item>4线程</item>
+        <item>5线程</item>
     </string-array>
 
-    <string-array name="proxy_types">
-        <item>@string/proxy_direct</item>
-        <item>@string/proxy_system</item>
-        <item>HTTP</item>
-        <item>SOCKS</item>
+    <string-array name="multi_thread_download_entry_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
     </string-array>
 
-    <array name="socket_colors">
-        <item>@color/socket0</item>
-        <item>@color/socket1</item>
-        <item>@color/socket2</item>
-        <item>@color/socket3</item>
-        <item>@color/socket4</item>
-        <item>@color/socket5</item>
-        <item>@color/socket6</item>
-        <item>@color/socket7</item>
-        <item>@color/socket8</item>
-        <item>@color/socket9</item>
-        <item>@color/socket10</item>
-        <item>@color/socket11</item>
-    </array>
-
-    <string-array name="migrate_data_types">
-        <item>@string/wifi_send_bookmark</item>
-        <item>@string/wifi_send_favorite</item>
-        <item>@string/wifi_send_download</item>
+    <!-- 预加载图片选项 -->
+    <string-array name="preload_image_entries">
+        <item>不预加载</item>
+        <item>预加载1页</item>
+        <item>预加载2页</item>
+        <item>预加载3页</item>
+        <item>预加载5页</item>
     </string-array>
 
+    <string-array name="preload_image_entry_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>5</item>
+    </string-array>
+
+    <!-- 图片分辨率选项 -->
+    <string-array name="image_resolution_entries">
+        <item>自动</item>
+        <item>原图</item>
+        <item>1600x</item>
+        <item>1280x</item>
+        <item>980x</item>
+        <item>780x</item>
+    </string-array>
+
+    <string-array name="image_resolution_entry_values">
+        <item>auto</item>
+        <item>original</item>
+        <item>1600</item>
+        <item>1280</item>
+        <item>980</item>
+        <item>780</item>
+    </string-array>
+
+    <!-- 下载超时选项 -->
+    <string-array name="download_timeout_entries">
+        <item>10秒</item>
+        <item>30秒</item>
+        <item>1分钟</item>
+        <item>2分钟</item>
+        <item>5分钟</item>
+    </string-array>
+
+    <string-array name="download_timeout_entries_values">
+        <item>10</item>
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+        <item>300</item>
+    </string-array>
+
+    <!-- 画廊站点选项 -->
+    <string-array name="gallery_site_entries">
+        <item>ExHentai</item>
+        <item>EHentai</item>
+        <item>LoFi</item>
+    </string-array>
+
+    <string-array name="gallery_site_entry_values">
+        <item>exhentai</item>
+        <item>ehentai</item>
+        <item>lofi</item>
+    </string-array>
+
+    <!-- 主题选项 -->
+    <string-array name="theme_entries">
+        <item>跟随系统</item>
+        <item>浅色主题</item>
+        <item>深色主题</item>
+        <item>黑色主题</item>
+    </string-array>
+
+    <string-array name="theme_entry_values">
+        <item>system</item>
+        <item>light</item>
+        <item>dark</item>
+        <item>black</item>
+    </string-array>
+
+    <!-- 启动页面选项 -->
+    <string-array name="launch_page_entries">
+        <item>收藏列表</item>
+        <item>下载列表</item>
+        <item>订阅列表</item>
+        <item>历史记录</item>
+    </string-array>
+
+    <string-array name="launch_page_entry_values">
+        <item>favorites</item>
+        <item>downloads</item>
+        <item>subscriptions</item>
+        <item>history</item>
+    </string-array>
+
+    <!-- 列表模式选项 -->
+    <string-array name="list_mode_entries">
+        <item>列表视图</item>
+        <item>缩略图视图</item>
+        <item>详细视图</item>
+    </string-array>
+
+    <string-array name="list_mode_entry_values">
+        <item>list</item>
+        <item>thumb</item>
+        <item>detail</item>
+    </string-array>
+
+    <!-- 详情大小选项 -->
+    <string-array name="detail_size_entries">
+        <item>小</item>
+        <item>中</item>
+        <item>大</item>
+    </string-array>
+
+    <string-array name="detail_size_entry_values">
+        <item>small</item>
+        <item>medium</item>
+        <item>large</item>
+    </string-array>
+
+    <!-- 缩略图大小选项 -->
+    <string-array name="thumb_size_entries">
+        <item>64x64</item>
+        <item>128x128</item>
+        <item>160x160</item>
+        <item>192x192</item>
+    </string-array>
+
+    <string-array name="thumb_size_entry_values">
+        <item>64</item>
+        <item>128</item>
+        <item>160</item>
+        <item>192</item>
+    </string-array>
+
+    <!-- 历史信息大小选项 -->
+    <string-array name="history_info_size_entries">
+        <item>10条</item>
+        <item>20条</item>
+        <item>50条</item>
+        <item>100条</item>
+        <item>无限制</item>
+    </string-array>
+
+    <string-array name="history_info_size_entry_values">
+        <item>10</item>
+        <item>20</item>
+        <item>50</item>
+        <item>100</item>
+        <item>-1</item>
+    </string-array>
+
+    <!-- 缩略图分辨率选项 -->
+    <string-array name="thumb_resolution_entries">
+        <item>低分辨率</item>
+        <item>中分辨率</item>
+        <item>高分辨率</item>
+        <item>原图质量</item>
+    </string-array>
+
+    <string-array name="thumb_resolution_entry_values">
+        <item>low</item>
+        <item>medium</item>
+        <item>high</item>
+        <item>original</item>
+    </string-array>
+
+    <!-- 屏幕旋转选项值 -->
+    <string-array name="screen_rotation_entry_values">
+        <item>auto</item>
+        <item>portrait</item>
+        <item>landscape</item>
+    </string-array>
+
+    <!-- 阅读方向选项值 -->
+    <string-array name="reading_direction_entry_values">
+        <item>ltr</item>
+        <item>rtl</item>
+        <item>ttb</item>
+    </string-array>
+
+    <!-- 页面缩放选项值 -->
+    <string-array name="page_scaling_entry_values">
+        <item>width</item>
+        <item>height</item>
+        <item>original</item>
+        <item>fit</item>
+    </string-array>
+
+    <!-- 起始位置选项值 -->
+    <string-array name="start_position_values">
+        <item>start</item>
+        <item>end</item>
+        <item>remember</item>
+    </string-array>
+
+    <!-- 标签翻译元数据 -->
+    <string-array name="tag_translation_metadata">
+        <item></item>
+    </string-array>
+
+    <!-- 收藏排序选项 -->
+    <string-array name="fav_sort">
+        <item>按收藏时间</item>
+        <item>按发布时间</item>
+    </string-array>
+
+    <!-- 标签菜单选项 -->
+    <string-array name="tag_menu_entries">
+        <item>查看标签定义</item>
+        <item>添加为过滤器</item>
+    </string-array>
+
+    <!-- 更新元数据 -->
     <string-array name="update_metadata">
-        <item>update_json</item>
-        <item>https://raw.githubusercontent.com/loututu114-pixel/ehviewer/main/update.json</item>
+        <item>https://github.com/loututu114-pixel/ehviewer/releases/latest</item>
+        <item>EhViewer</item>
     </string-array>
-
-
 </resources>

@@ -49,6 +49,10 @@ public class BookmarksActivity extends AppCompatActivity {
     private BookmarkManager mBookmarkManager;
     private List<BookmarkInfo> mBookmarks;
 
+    // 排序相关
+    private static final String PREF_SORT_ORDER = "bookmark_sort_order";
+    private String mCurrentSortOrder = "date_added"; // 默认按添加时间排序
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +60,10 @@ public class BookmarksActivity extends AppCompatActivity {
 
         try {
             mBookmarkManager = BookmarkManager.getInstance(this);
+
+            // 加载排序偏好
+            android.content.SharedPreferences prefs = getSharedPreferences("bookmarks_prefs", MODE_PRIVATE);
+            mCurrentSortOrder = prefs.getString(PREF_SORT_ORDER, "date_added");
 
             // 设置Toolbar
             Toolbar toolbar = findViewById(R.id.toolbar);
@@ -99,6 +107,18 @@ public class BookmarksActivity extends AppCompatActivity {
         } else if (itemId == R.id.action_clear_all) {
             showClearAllDialog();
             return true;
+        } else if (itemId == R.id.action_sort_date_added) {
+            setSortOrder("date_added");
+            return true;
+        } else if (itemId == R.id.action_sort_last_visit) {
+            setSortOrder("last_visit");
+            return true;
+        } else if (itemId == R.id.action_sort_visit_count) {
+            setSortOrder("visit_count");
+            return true;
+        } else if (itemId == R.id.action_sort_alphabetical) {
+            setSortOrder("alphabetical");
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -108,6 +128,10 @@ public class BookmarksActivity extends AppCompatActivity {
      */
     private void loadBookmarks() {
         mBookmarks = mBookmarkManager.getAllBookmarks();
+
+        // 根据当前排序方式排序书签
+        sortBookmarks();
+
         mAdapter.notifyDataSetChanged();
 
         // 显示空状态
@@ -118,6 +142,52 @@ public class BookmarksActivity extends AppCompatActivity {
         if (mRecyclerView != null) {
             mRecyclerView.setVisibility(mBookmarks.isEmpty() ? View.GONE : View.VISIBLE);
         }
+    }
+
+    /**
+     * 根据当前排序方式排序书签
+     */
+    private void sortBookmarks() {
+        if (mBookmarks == null || mBookmarks.isEmpty()) {
+            return;
+        }
+
+        switch (mCurrentSortOrder) {
+            case "date_added":
+                // 按添加时间排序（最新的在前面）
+                mBookmarks.sort((b1, b2) -> Long.compare(b2.createTime, b1.createTime));
+                break;
+            case "last_visit":
+                // 按最后访问时间排序
+                mBookmarks.sort((b1, b2) -> Long.compare(b2.lastVisitTime, b1.lastVisitTime));
+                break;
+            case "visit_count":
+                // 按访问次数排序
+                mBookmarks.sort((b1, b2) -> Integer.compare(b2.visitCount, b1.visitCount));
+                break;
+            case "alphabetical":
+                // 按字母顺序排序
+                mBookmarks.sort((b1, b2) -> {
+                    String title1 = b1.title != null ? b1.title : "";
+                    String title2 = b2.title != null ? b2.title : "";
+                    return title1.compareToIgnoreCase(title2);
+                });
+                break;
+        }
+    }
+
+    /**
+     * 设置排序方式
+     */
+    private void setSortOrder(String sortOrder) {
+        mCurrentSortOrder = sortOrder;
+
+        // 保存排序偏好
+        android.content.SharedPreferences prefs = getSharedPreferences("bookmarks_prefs", MODE_PRIVATE);
+        prefs.edit().putString(PREF_SORT_ORDER, sortOrder).apply();
+
+        // 重新加载书签
+        loadBookmarks();
     }
 
     /**

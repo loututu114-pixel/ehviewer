@@ -53,6 +53,10 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
     private List<HistoryInfo> mFilteredHistory;
     private SearchView mSearchView;
 
+    // 排序相关
+    private static final String PREF_SORT_ORDER = "history_sort_order";
+    private String mCurrentSortOrder = "last_visit"; // 默认按访问时间排序
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,6 +64,10 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
 
         try {
             mHistoryManager = HistoryManager.getInstance(this);
+
+            // 加载排序偏好
+            android.content.SharedPreferences prefs = getSharedPreferences("history_prefs", MODE_PRIVATE);
+            mCurrentSortOrder = prefs.getString(PREF_SORT_ORDER, "last_visit");
 
             // 设置Toolbar
             Toolbar toolbar = findViewById(R.id.toolbar);
@@ -109,6 +117,15 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
         if (itemId == R.id.action_clear_all) {
             showClearAllDialog();
             return true;
+        } else if (itemId == R.id.action_sort_last_visit) {
+            setSortOrder("last_visit");
+            return true;
+        } else if (itemId == R.id.action_sort_visit_count) {
+            setSortOrder("visit_count");
+            return true;
+        } else if (itemId == R.id.action_sort_alphabetical) {
+            setSortOrder("alphabetical");
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -130,11 +147,57 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
      */
     private void loadHistory() {
         mAllHistory = mHistoryManager.getAllHistory();
+
+        // 根据当前排序方式排序历史记录
+        sortHistory();
+
         mFilteredHistory = new ArrayList<>(mAllHistory);
         mAdapter.notifyDataSetChanged();
 
         // 显示空状态
         updateEmptyState();
+    }
+
+    /**
+     * 根据当前排序方式排序历史记录
+     */
+    private void sortHistory() {
+        if (mAllHistory == null || mAllHistory.isEmpty()) {
+            return;
+        }
+
+        switch (mCurrentSortOrder) {
+            case "last_visit":
+                // 按访问时间排序（最新的在前面）
+                mAllHistory.sort((h1, h2) -> Long.compare(h2.visitTime, h1.visitTime));
+                break;
+            case "visit_count":
+                // 按访问次数排序
+                mAllHistory.sort((h1, h2) -> Integer.compare(h2.visitCount, h1.visitCount));
+                break;
+            case "alphabetical":
+                // 按字母顺序排序
+                mAllHistory.sort((h1, h2) -> {
+                    String title1 = h1.title != null ? h1.title : "";
+                    String title2 = h2.title != null ? h2.title : "";
+                    return title1.compareToIgnoreCase(title2);
+                });
+                break;
+        }
+    }
+
+    /**
+     * 设置排序方式
+     */
+    private void setSortOrder(String sortOrder) {
+        mCurrentSortOrder = sortOrder;
+
+        // 保存排序偏好
+        android.content.SharedPreferences prefs = getSharedPreferences("history_prefs", MODE_PRIVATE);
+        prefs.edit().putString(PREF_SORT_ORDER, sortOrder).apply();
+
+        // 重新加载历史记录
+        loadHistory();
     }
 
     /**

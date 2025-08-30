@@ -16,47 +16,31 @@
 
 package com.hippo.ehviewer.ui;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-/**
- * 浏览器设置Activity - 简化版本
- * 暂时禁用复杂功能以确保构建成功
- */
-public class BrowserSettingsActivity extends AppCompatActivity {
+import com.hippo.ehviewer.R;
 
-    private static final String TAG = "BrowserSettingsActivity";
+/**
+ * 密码设置活动
+ */
+public class PasswordSettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_password_settings);
 
-        // 设置ActionBar
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("浏览器设置");
+            getSupportActionBar().setTitle("密码设置");
         }
 
-        // 显示简单的设置界面
-        showSimpleSettings();
-    }
-
-    private void showSimpleSettings() {
-        // 暂时显示一个Toast消息
-        Toast.makeText(this, "浏览器设置功能正在开发中...", Toast.LENGTH_LONG).show();
-
-        // 直接打开系统默认浏览器设置
-        try {
-            Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "无法打开系统设置", Toast.LENGTH_SHORT).show();
-        }
-
-        finish(); // 关闭Activity
+        // 简单的设置界面提示
+        Toast.makeText(this, "密码设置功能正在开发中", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -65,4 +49,3 @@ public class BrowserSettingsActivity extends AppCompatActivity {
         return true;
     }
 }
-

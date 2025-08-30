@@ -44,10 +44,12 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.hippo.ehviewer.R;
+import com.hippo.ehviewer.util.AppLauncher;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,6 +64,8 @@ public class EnhancedWebViewManager {
     private WebView mWebView;
     private WebViewClient mWebViewClient;
     private WebChromeClient mWebChromeClient;
+    private HistoryManager mHistoryManager;
+    private PasswordManager mPasswordManager;
 
     // 文件选择回调
     private ValueCallback<Uri[]> mFilePathCallback;
@@ -100,8 +104,13 @@ public class EnhancedWebViewManager {
     }
 
     public EnhancedWebViewManager(Context context, WebView webView) {
+        this(context, webView, null);
+    }
+
+    public EnhancedWebViewManager(Context context, WebView webView, HistoryManager historyManager) {
         this.mContext = context;
         this.mWebView = webView;
+        this.mHistoryManager = historyManager;
 
         // 添加null检查
         if (mWebView == null) {
@@ -195,8 +204,11 @@ public class EnhancedWebViewManager {
         // 启用媒体播放
         webSettings.setMediaPlaybackRequiresUserGesture(false);
 
-        // 添加JavaScript接口
+            // 添加JavaScript接口
         mWebView.addJavascriptInterface(new JavaScriptInterface(), "EhViewer");
+
+        // 设置密码管理器引用
+        mPasswordManager = PasswordManager.getInstance(mContext);
     }
 
     /**
@@ -219,6 +231,9 @@ public class EnhancedWebViewManager {
                 if (mProgressCallback != null) {
                     mProgressCallback.onPageFinished(url, view.getTitle());
                 }
+
+                // 保存历史记录
+                saveHistoryRecord(url, view.getTitle());
 
                 // 注入增强功能脚本
                 injectEnhancedScripts(view);
@@ -332,33 +347,8 @@ public class EnhancedWebViewManager {
      * 处理URL重定向
      */
     private boolean handleUrlOverride(WebView view, String url) {
-        if (url.startsWith("tel:")) {
-            // 打电话
-            Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse(url));
-            mContext.startActivity(intent);
-            return true;
-        } else if (url.startsWith("mailto:")) {
-            // 发邮件
-            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse(url));
-            mContext.startActivity(intent);
-            return true;
-        } else if (url.startsWith("sms:")) {
-            // 发短信
-            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse(url));
-            mContext.startActivity(intent);
-            return true;
-        } else if (url.startsWith("intent://")) {
-            // 处理intent协议
-            try {
-                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                mContext.startActivity(intent);
-                return true;
-            } catch (Exception e) {
-                android.util.Log.e(TAG, "Failed to handle intent URL: " + url, e);
-            }
-        }
-
-        return false; // 让WebView自己处理
+        // 使用AppLauncher处理各种URL scheme
+        return AppLauncher.handleUniversalUrl(mContext, url);
     }
 
     /**
@@ -450,8 +440,87 @@ public class EnhancedWebViewManager {
      * 注入增强功能脚本
      */
     private void injectEnhancedScripts(WebView view) {
+        // 获取当前域名用于密码管理
+        String currentUrl = view.getUrl();
+        String domain = extractDomainFromUrl(currentUrl);
+
         String script = "(function() {" +
             "console.log('EhViewer enhanced scripts loaded');" +
+            "" +
+            "// 密码表单检测和自动填充功能" +
+            "var passwordForms = [];" +
+            "var passwordFields = document.querySelectorAll('input[type=\"password\"]');" +
+            "" +
+            "function detectPasswordForms() {" +
+            "    passwordForms = [];" +
+            "    passwordFields = document.querySelectorAll('input[type=\"password\"]');" +
+            "    " +
+            "    for (var i = 0; i < passwordFields.length; i++) {" +
+            "        var passwordField = passwordFields[i];" +
+            "        var form = passwordField.form;" +
+            "        if (form && passwordForms.indexOf(form) === -1) {" +
+            "            passwordForms.push(form);" +
+            "            setupPasswordForm(form, passwordField);" +
+            "        }" +
+            "    }" +
+            "}" +
+            "" +
+            "function setupPasswordForm(form, passwordField) {" +
+            "    // 查找对应的用户名字段" +
+            "    var usernameField = findUsernameField(form, passwordField);" +
+            "    if (usernameField) {" +
+            "        setupAutoFill(usernameField, passwordField);" +
+            "        setupPasswordSave(form, usernameField, passwordField);" +
+            "    }" +
+            "}" +
+            "" +
+            "function findUsernameField(form, passwordField) {" +
+            "    // 查找可能的用户名字段" +
+            "    var inputs = form.querySelectorAll('input[type=\"text\"], input[type=\"email\"], input:not([type])');" +
+            "    for (var i = 0; i < inputs.length; i++) {" +
+            "        var input = inputs[i];" +
+            "        var name = (input.name || '').toLowerCase();" +
+            "        var id = (input.id || '').toLowerCase();" +
+            "        var placeholder = (input.placeholder || '').toLowerCase();" +
+            "        " +
+            "        if (name.indexOf('user') !== -1 || name.indexOf('email') !== -1 || " +
+            "            id.indexOf('user') !== -1 || id.indexOf('email') !== -1 || " +
+            "            placeholder.indexOf('user') !== -1 || placeholder.indexOf('email') !== -1) {" +
+            "            return input;" +
+            "        }" +
+            "    }" +
+            "    // 如果没找到特定的，返回第一个文本输入框" +
+            "    return inputs.length > 0 ? inputs[0] : null;" +
+            "}" +
+            "" +
+            "function setupAutoFill(usernameField, passwordField) {" +
+            "    // 为用户名字段添加自动填充提示" +
+            "    usernameField.setAttribute('autocomplete', 'username');" +
+            "    passwordField.setAttribute('autocomplete', 'current-password');" +
+            "    " +
+            "    // 添加输入事件监听" +
+            "    usernameField.addEventListener('focus', function() {" +
+            "        if (window.EhViewer && window.EhViewer.onUsernameFocus) {" +
+            "            window.EhViewer.onUsernameFocus('" + domain + "', usernameField.value);" +
+            "        }" +
+            "    });" +
+            "}" +
+            "" +
+            "function setupPasswordSave(form, usernameField, passwordField) {" +
+            "    // 监听表单提交事件" +
+            "    form.addEventListener('submit', function(e) {" +
+            "        if (window.EhViewer && window.EhViewer.onPasswordSubmit) {" +
+            "            var username = usernameField.value;" +
+            "            var password = passwordField.value;" +
+            "            if (username && password) {" +
+            "                window.EhViewer.onPasswordSubmit('" + domain + "', username, password);" +
+            "            }" +
+            "        }" +
+            "    });" +
+            "}" +
+            "" +
+            "// 初始化密码表单检测" +
+            "detectPasswordForms();" +
             "" +
             "// 增强图片点击放大功能" +
             "var images = document.getElementsByTagName('img');" +
@@ -494,6 +563,23 @@ public class EnhancedWebViewManager {
             "})();";
 
         view.evaluateJavascript(script, null);
+    }
+
+    /**
+     * 从URL中提取域名
+     */
+    private String extractDomainFromUrl(String url) {
+        if (url == null) return null;
+
+        try {
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                java.net.URL parsedUrl = new java.net.URL(url);
+                return parsedUrl.getHost();
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "Failed to parse domain from URL: " + url, e);
+        }
+        return url;
     }
 
     /**
@@ -615,6 +701,67 @@ public class EnhancedWebViewManager {
 
             // 可以在这里实现自动加载更多内容等功能
         }
+
+        @JavascriptInterface
+        public void onUsernameFocus(String domain, String currentValue) {
+            // 处理用户名字段获得焦点事件
+            android.util.Log.d(TAG, "Username field focused for domain: " + domain);
+
+            if (mPasswordManager != null && mPasswordManager.isUnlocked()) {
+                // 可以在这里显示自动填充建议
+                List<String> suggestions = mPasswordManager.getSuggestedUsernames(domain);
+                if (!suggestions.isEmpty()) {
+                    android.util.Log.d(TAG, "Available usernames: " + suggestions.size());
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public void onPasswordSubmit(String domain, String username, String password) {
+            // 处理密码提交事件（自动保存密码）
+            android.util.Log.d(TAG, "Password submitted for domain: " + domain);
+
+            if (mPasswordManager != null && mPasswordManager.isUnlocked()) {
+                // 检查是否应该保存密码
+                PasswordManager.PasswordEntry existing = mPasswordManager.getPassword(domain, username);
+                if (existing == null || !existing.password.equals(password)) {
+                    // 保存新密码或更新现有密码
+                    boolean saved = mPasswordManager.savePassword(domain, username, password);
+                    if (saved) {
+                        android.util.Log.d(TAG, "Password saved automatically for " + domain);
+                        Toast.makeText(mContext, "密码已自动保存", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public void fillPassword(String domain, String username) {
+            // 填充密码到当前页面
+            if (mPasswordManager != null && mPasswordManager.isUnlocked()) {
+                PasswordManager.PasswordEntry entry = mPasswordManager.getPassword(domain, username);
+                if (entry != null) {
+                    // 使用JavaScript填充密码字段
+                    String fillScript = "(function() {" +
+                        "var passwordFields = document.querySelectorAll('input[type=\"password\"]');" +
+                        "var usernameFields = document.querySelectorAll('input[type=\"text\"], input[type=\"email\"]');" +
+                        "" +
+                        "if (passwordFields.length > 0) {" +
+                        "    passwordFields[0].value = '" + entry.password.replace("'", "\\'") + "';" +
+                        "}" +
+                        "" +
+                        "if (usernameFields.length > 0) {" +
+                        "    usernameFields[0].value = '" + entry.username.replace("'", "\\'") + "';" +
+                        "}" +
+                        "})();";
+
+                    if (mWebView != null) {
+                        mWebView.evaluateJavascript(fillScript, null);
+                        Toast.makeText(mContext, "密码已自动填充", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -630,6 +777,24 @@ public class EnhancedWebViewManager {
 
     public void setDownloadCallback(DownloadCallback callback) {
         this.mDownloadCallback = callback;
+    }
+
+    /**
+     * 保存历史记录
+     */
+    private void saveHistoryRecord(String url, String title) {
+        try {
+            if (mHistoryManager != null && url != null && !url.isEmpty()) {
+                // 检查是否是有效的URL（不是about:blank等）
+                if (!url.startsWith("about:") && !url.startsWith("chrome://") && !url.startsWith("data:")) {
+                    String pageTitle = title != null && !title.isEmpty() ? title : url;
+                    mHistoryManager.addHistory(pageTitle, url);
+                    android.util.Log.d(TAG, "History saved: " + pageTitle + " - " + url);
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error saving history record", e);
+        }
     }
 
     /**

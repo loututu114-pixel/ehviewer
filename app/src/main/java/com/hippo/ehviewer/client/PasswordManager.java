@@ -61,7 +61,6 @@ public class PasswordManager {
     private static final String KEYSTORE_ALIAS = "EhViewerPasswordKey";
     private static final String PREFS_NAME = "password_manager_prefs";
     private static final String PREF_ENCRYPTED_DATA = "encrypted_passwords";
-    private static final String PREF_IV = "encryption_iv";
 
     private static PasswordManager sInstance;
 
@@ -320,13 +319,14 @@ public class PasswordManager {
             // 加密数据
             byte[] encryptedData = encryptData(jsonData.getBytes(StandardCharsets.UTF_8));
 
-            // 保存加密数据和IV
-            String encryptedBase64 = Base64.encodeToString(encryptedData, Base64.DEFAULT);
-            String ivBase64 = Base64.encodeToString(getIVFromCipher(), Base64.DEFAULT);
+            // 获取加密后的数据（包含IV）
+            byte[] encryptedWithIv = getCipherTextWithIv(encryptedData);
+
+            // 保存加密数据
+            String encryptedBase64 = Base64.encodeToString(encryptedWithIv, Base64.DEFAULT);
 
             mPreferences.edit()
                     .putString(PREF_ENCRYPTED_DATA, encryptedBase64)
-                    .putString(PREF_IV, ivBase64)
                     .apply();
 
         } catch (Exception e) {
@@ -340,14 +340,12 @@ public class PasswordManager {
     private void loadPasswordsFromStorage() {
         try {
             String encryptedBase64 = mPreferences.getString(PREF_ENCRYPTED_DATA, null);
-            String ivBase64 = mPreferences.getString(PREF_IV, null);
 
-            if (encryptedBase64 != null && ivBase64 != null) {
+            if (encryptedBase64 != null) {
                 byte[] encryptedData = Base64.decode(encryptedBase64, Base64.DEFAULT);
-                byte[] iv = Base64.decode(ivBase64, Base64.DEFAULT);
 
                 // 解密数据
-                byte[] decryptedData = decryptData(encryptedData, iv);
+                byte[] decryptedData = decryptData(encryptedData);
 
                 // 反序列化密码数据
                 deserializePasswords(new String(decryptedData, StandardCharsets.UTF_8));
@@ -437,38 +435,57 @@ public class PasswordManager {
         return null;
     }
 
+    // 加密相关的成员变量
+    private Cipher mEncryptCipher;
+    private Cipher mDecryptCipher;
+    private byte[] mLastIv;
+
     /**
      * 加密数据
      */
     private byte[] encryptData(byte[] data) throws Exception {
         SecretKey key = (SecretKey) mKeyStore.getKey(KEYSTORE_ALIAS, null);
 
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, key);
+        mEncryptCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        mEncryptCipher.init(Cipher.ENCRYPT_MODE, key);
+        mLastIv = mEncryptCipher.getIV();
 
-        return cipher.doFinal(data);
+        return mEncryptCipher.doFinal(data);
     }
 
     /**
      * 解密数据
      */
-    private byte[] decryptData(byte[] encryptedData, byte[] iv) throws Exception {
+    private byte[] decryptData(byte[] encryptedData) throws Exception {
         SecretKey key = (SecretKey) mKeyStore.getKey(KEYSTORE_ALIAS, null);
 
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
-        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        // 从加密数据中提取IV（GCM模式下，IV存储在数据的前12字节）
+        byte[] iv = new byte[12];
+        byte[] actualEncryptedData = new byte[encryptedData.length - 12];
 
-        return cipher.doFinal(encryptedData);
+        System.arraycopy(encryptedData, 0, iv, 0, 12);
+        System.arraycopy(encryptedData, 12, actualEncryptedData, 0, actualEncryptedData.length);
+
+        mDecryptCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+        mDecryptCipher.init(Cipher.DECRYPT_MODE, key, spec);
+
+        return mDecryptCipher.doFinal(actualEncryptedData);
     }
 
     /**
-     * 获取IV
+     * 获取包含IV的密文
      */
-    private byte[] getIVFromCipher() {
-        // 这个方法需要根据实际的Cipher实现来获取IV
-        // 这里返回一个简化的实现
-        return new byte[12]; // GCM模式的IV长度
+    private byte[] getCipherTextWithIv(byte[] encryptedData) {
+        if (mLastIv != null && encryptedData != null) {
+            byte[] result = new byte[mLastIv.length + encryptedData.length];
+
+            System.arraycopy(mLastIv, 0, result, 0, mLastIv.length);
+            System.arraycopy(encryptedData, 0, result, mLastIv.length, encryptedData.length);
+
+            return result;
+        }
+        return new byte[0];
     }
 
     /**
@@ -513,5 +530,199 @@ public class PasswordManager {
         public int getUniqueDomains() {
             return domains.size();
         }
+    }
+
+    /**
+     * 自动填充密码
+     */
+    public boolean autoFillPassword(String domain, String username, AutoFillCallback callback) {
+        if (!mIsUnlocked) {
+            callback.onAutoFillError("密码管理器未解锁");
+            return false;
+        }
+
+        PasswordEntry entry = getPassword(domain, username);
+        if (entry != null) {
+            callback.onAutoFillSuccess(entry.username, entry.password);
+            updateLastUsedTime(domain, username);
+            return true;
+        } else {
+            callback.onAutoFillError("未找到匹配的密码");
+            return false;
+        }
+    }
+
+    /**
+     * 获取域名建议的用户名列表
+     */
+    public List<String> getSuggestedUsernames(String domain) {
+        if (!mIsUnlocked) {
+            return new ArrayList<>();
+        }
+
+        List<String> usernames = new ArrayList<>();
+        for (PasswordEntry entry : mPasswordCache.values()) {
+            if (entry.domain.equals(domain)) {
+                usernames.add(entry.username);
+            }
+        }
+        return usernames;
+    }
+
+    /**
+     * 生成强密码
+     */
+    public String generateStrongPassword(int length) {
+        String upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        String numbers = "0123456789";
+        String specialChars = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+        String allChars = upperCase + lowerCase + numbers + specialChars;
+        StringBuilder password = new StringBuilder();
+
+        java.security.SecureRandom random = new java.security.SecureRandom();
+
+        // 确保至少包含每种字符类型
+        password.append(upperCase.charAt(random.nextInt(upperCase.length())));
+        password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
+        password.append(numbers.charAt(random.nextInt(numbers.length())));
+        password.append(specialChars.charAt(random.nextInt(specialChars.length())));
+
+        // 填充剩余长度
+        for (int i = 4; i < length; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+
+        // 随机打乱顺序
+        char[] passwordArray = password.toString().toCharArray();
+        for (int i = passwordArray.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = passwordArray[i];
+            passwordArray[i] = passwordArray[j];
+            passwordArray[j] = temp;
+        }
+
+        return new String(passwordArray);
+    }
+
+    /**
+     * 检查密码强度
+     */
+    public PasswordStrength checkPasswordStrength(String password) {
+        if (password == null || password.isEmpty()) {
+            return PasswordStrength.VERY_WEAK;
+        }
+
+        int score = 0;
+        int length = password.length();
+
+        // 长度评分
+        if (length >= 8) score += 2;
+        else if (length >= 6) score += 1;
+
+        // 字符类型评分
+        if (password.matches(".*[A-Z].*")) score += 1;
+        if (password.matches(".*[a-z].*")) score += 1;
+        if (password.matches(".*[0-9].*")) score += 1;
+        if (password.matches(".*[!@#$%^&*()_\\-+\\[\\]{}|;:,.<>?].*")) score += 1;
+
+        // 复杂度评分
+        if (length >= 12) score += 1;
+        if (password.matches(".*(?=.{8,})(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_\\-+\\[\\]{}|;:,.<>?]).*")) score += 2;
+
+        if (score >= 8) return PasswordStrength.VERY_STRONG;
+        else if (score >= 6) return PasswordStrength.STRONG;
+        else if (score >= 4) return PasswordStrength.MEDIUM;
+        else if (score >= 2) return PasswordStrength.WEAK;
+        else return PasswordStrength.VERY_WEAK;
+    }
+
+    /**
+     * 密码强度枚举
+     */
+    public enum PasswordStrength {
+        VERY_WEAK("非常弱"),
+        WEAK("弱"),
+        MEDIUM("中等"),
+        STRONG("强"),
+        VERY_STRONG("非常强");
+
+        private final String description;
+
+        PasswordStrength(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
+
+    /**
+     * 自动填充回调接口
+     */
+    public interface AutoFillCallback {
+        void onAutoFillSuccess(String username, String password);
+        void onAutoFillError(String error);
+    }
+
+    /**
+     * 导出密码数据（用于备份）
+     */
+    public String exportPasswords() {
+        if (!mIsUnlocked) {
+            return null;
+        }
+
+        try {
+            String jsonData = serializePasswords();
+            // 这里可以添加额外的加密层用于导出
+            return Base64.encodeToString(jsonData.getBytes(StandardCharsets.UTF_8), Base64.DEFAULT);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to export passwords", e);
+            return null;
+        }
+    }
+
+    /**
+     * 导入密码数据
+     */
+    public boolean importPasswords(String exportedData) {
+        if (!mIsUnlocked) {
+            return false;
+        }
+
+        try {
+            byte[] jsonBytes = Base64.decode(exportedData, Base64.DEFAULT);
+            String jsonData = new String(jsonBytes, StandardCharsets.UTF_8);
+            deserializePasswords(jsonData);
+            savePasswordsToStorage();
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to import passwords", e);
+            return false;
+        }
+    }
+
+    /**
+     * 搜索密码
+     */
+    public List<PasswordEntry> searchPasswords(String query) {
+        if (!mIsUnlocked || query == null || query.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<PasswordEntry> results = new ArrayList<>();
+        String lowerQuery = query.toLowerCase();
+
+        for (PasswordEntry entry : mPasswordCache.values()) {
+            if (entry.domain.toLowerCase().contains(lowerQuery) ||
+                entry.username.toLowerCase().contains(lowerQuery)) {
+                results.add(entry);
+            }
+        }
+
+        return results;
     }
 }
