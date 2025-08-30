@@ -81,7 +81,7 @@ import com.hippo.ehviewer.ui.scene.gallery.list.GalleryListScene;
 import com.hippo.ehviewer.ui.scene.GalleryPreviewsScene;
 import com.hippo.ehviewer.ui.scene.gallery.list.SubscriptionsScene;
 import com.hippo.ehviewer.ui.scene.topList.EhTopListScene;
-import com.hippo.ehviewer.ui.scene.history.HistoryScene;
+
 import com.hippo.ehviewer.ui.scene.ProgressScene;
 import com.hippo.ehviewer.ui.scene.gallery.list.QuickSearchScene;
 import com.hippo.ehviewer.ui.scene.SecurityScene;
@@ -183,7 +183,7 @@ public final class MainActivity extends StageActivity
         registerLaunchMode(DownloadsScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
         registerLaunchMode(DownloadLabelsScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
         registerLaunchMode(FavoritesScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
-        registerLaunchMode(HistoryScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TOP);
+
         registerLaunchMode(ProgressScene.class, SceneFragment.LAUNCH_MODE_STANDARD);
     }
 
@@ -897,7 +897,7 @@ public final class MainActivity extends StageActivity
         } else if (itemId == R.id.nav_favourite) {
             startScene(new Announcer(FavoritesScene.class));
         } else if (itemId == R.id.nav_history) {
-            startScene(new Announcer(HistoryScene.class));
+            com.hippo.ehviewer.ui.HistoryActivity.startHistory(this);
         } else if (itemId == R.id.nav_downloads) {
             startScene(new Announcer(DownloadsScene.class));
         } else if (itemId == R.id.nav_settings) {

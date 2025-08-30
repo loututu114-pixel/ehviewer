@@ -1012,4 +1012,36 @@
     <string name="download_started">Download started</string>
     <string name="download_failed">Download failed</string>
 
+    <!-- 书签功能 -->
+    <string name="bookmarks">Bookmarks</string>
+    <string name="add_bookmark">Add Bookmark</string>
+    <string name="bookmark_added">Bookmark added successfully</string>
+    <string name="bookmark_add_failed">Failed to add bookmark</string>
+    <string name="bookmark_exists">This page is already bookmarked</string>
+    <string name="bookmark_title">Bookmark Title</string>
+    <string name="bookmark_url">URL</string>
+    <string name="edit_bookmark">Edit Bookmark</string>
+    <string name="delete_bookmark">Delete Bookmark</string>
+    <string name="clear_all_bookmarks">Clear All Bookmarks</string>
+    <string name="no_bookmarks">No bookmarks yet</string>
+    <string name="no_bookmarks_hint">Tap the add button to add bookmarks</string>
+    <string name="bookmark_deleted">Bookmark deleted</string>
+
+    <!-- 历史记录功能 -->
+    <string name="browser_history">Browser History</string>
+    <string name="search_browser_history">Search browser history</string>
+    <string name="delete_browser_history">Delete Browser History</string>
+    <string name="no_browser_history">No browsing history yet</string>
+    <string name="no_browser_history_hint">Your browsing history will appear here</string>
+    <string name="browser_history_deleted">Browser history deleted</string>
+
+    <!-- 隐私保护功能 -->
+    <string name="privacy_protection">Privacy Protection</string>
+    <string name="ad_blocking">Ad Blocking</string>
+    <string name="ad_block_enabled">Ad blocking enabled</string>
+    <string name="ad_block_disabled">Ad blocking disabled</string>
+    <string name="clear_browsing_data">Clear Browsing Data</string>
+    <string name="browsing_data_cleared">Browsing data cleared</string>
+    <string name="clear_data_confirm">This will clear all cache, cookies and browsing data for all tabs. Continue?</string>
+
 </resources>

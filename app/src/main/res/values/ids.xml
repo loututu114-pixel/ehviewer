@@ -32,4 +32,6 @@
     <item name="fab_translation_y" type="id"/>
     <item name="fab_translation_y_animator" type="id"/>
 
+    <item name="x5_webview_tag" type="id"/>
+
 </resources>

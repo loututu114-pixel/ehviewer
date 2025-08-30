@@ -16,6 +16,25 @@
         app:popupTheme="?attr/toolbarPopupTheme"
         android:elevation="4dp" />
 
+    <!-- 标签页容器 -->
+    <HorizontalScrollView
+        android:id="@+id/tab_scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="?android:attr/windowBackground"
+        android:scrollbars="none"
+        android:elevation="2dp">
+
+        <LinearLayout
+            android:id="@+id/tab_container"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+
+    </HorizontalScrollView>
+
     <!-- 地址栏区域 -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -67,12 +86,19 @@
         android:progressTint="?android:attr/colorAccent"
         android:visibility="gone" />
 
-    <!-- WebView -->
-    <WebView
-        android:id="@+id/web_view"
+    <!-- WebView容器 -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <WebView
+            android:id="@+id/web_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- 底部工具栏 -->
     <LinearLayout

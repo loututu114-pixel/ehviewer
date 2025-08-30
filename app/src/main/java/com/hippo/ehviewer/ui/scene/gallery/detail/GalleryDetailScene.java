@@ -103,7 +103,7 @@ import com.hippo.ehviewer.ui.scene.GalleryCommentsScene;
 import com.hippo.ehviewer.ui.scene.GalleryInfoScene;
 import com.hippo.ehviewer.ui.scene.GalleryPreviewsScene;
 import com.hippo.ehviewer.ui.scene.gallery.list.GalleryListSceneDialog;
-import com.hippo.ehviewer.ui.scene.history.HistoryScene;
+
 import com.hippo.ehviewer.ui.scene.TransitionNameFactory;
 import com.hippo.ehviewer.ui.scene.gallery.list.GalleryListScene;
 import com.hippo.ehviewer.util.ClipboardUtil;
@@ -2007,7 +2007,7 @@ public class GalleryDetailScene extends BaseScene implements View.OnClickListene
         public boolean onTransition(Context context,
                                     FragmentTransaction transaction, Fragment exit, Fragment enter) {
             if (!(enter instanceof GalleryListScene) && !(enter instanceof DownloadsScene) &&
-                    !(enter instanceof FavoritesScene) && !(enter instanceof HistoryScene)) {
+                    !(enter instanceof FavoritesScene)) {
                 return false;
             }
 

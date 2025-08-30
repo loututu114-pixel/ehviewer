@@ -156,6 +156,9 @@ dependencies {
 
     // WebView
     runtimeOnly("androidx.webkit:webkit:1.13.0")
+
+    // Tencent X5 Browser SDK
+    implementation("com.tencent.tbs:tbssdk:44286")
 }
 
 configurations.configureEach {

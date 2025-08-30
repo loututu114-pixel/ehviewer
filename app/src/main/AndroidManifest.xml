@@ -23,6 +23,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- 浏览器相关权限 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Android 10 (API 29) 及以上版本，可能需要添加 -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
@@ -31,7 +36,6 @@
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.INTERNET" />
     <!--  用于获取wifi状态  -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!--  使用系统自带下载器  -->
@@ -205,9 +209,82 @@
         </activity>
 
         <activity
+            android:name="com.hippo.ehviewer.ui.BrowserLauncherActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+
+            <!-- 浏览器启动器intent-filter：作为备用浏览器 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="*" />
+            </intent-filter>
+
+        </activity>
+
+        <activity
             android:name="com.hippo.ehviewer.ui.WebViewActivity"
             android:configChanges="screenSize|uiMode"
-            android:theme="@style/AppTheme.Toolbar" />
+            android:exported="true"
+            android:theme="@style/AppTheme.Toolbar">
+
+            <!-- 浏览器intent-filter：处理所有HTTP/HTTPS链接 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="*" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理tel:链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tel" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理mailto:链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mailto" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理geo:链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理market:链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="market" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理intent:链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="intent" />
+            </intent-filter>
+
+        </activity>
 
         <activity
             android:name="com.hippo.ehviewer.ui.SettingsActivity"
@@ -248,6 +325,18 @@
             android:name="com.hippo.ehviewer.ui.SetSecurityActivity"
             android:configChanges="screenSize|uiMode"
             android:label="@string/set_pattern_protection"
+            android:theme="@style/AppTheme.Toolbar" />
+
+        <activity
+            android:name="com.hippo.ehviewer.ui.BrowserSettingsActivity"
+            android:configChanges="screenSize|uiMode"
+            android:label="浏览器设置"
+            android:theme="@style/AppTheme.Toolbar" />
+
+        <activity
+            android:name="com.hippo.ehviewer.ui.ReadingModeSettingsActivity"
+            android:configChanges="screenSize|uiMode"
+            android:label="阅读模式设置"
             android:theme="@style/AppTheme.Toolbar" />
 
         <activity

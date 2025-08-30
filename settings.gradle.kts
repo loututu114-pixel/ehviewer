@@ -17,6 +17,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://jitpack.io")
+        // Tencent X5 SDK repository
+        maven("https://dl.bintray.com/thelasterstar/maven/")
     }
 }
 
