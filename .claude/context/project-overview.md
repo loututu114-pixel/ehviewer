@@ -1,7 +1,7 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-08-30T16:08:18Z
-version: 1.1
+last_updated: 2025-08-30T16:34:38Z
+version: 1.2
 author: Claude Code PM System
 ---
 
@@ -188,6 +188,12 @@ Full support for 8 languages:
 - **Localization**: Complete for 8 languages
 
 ### Recent Improvements
+- Smart URL processing and suggestions
+- Enhanced video player with custom controls
+- YouTube compatibility improvements
+- Browser registration as default handler
+- Comprehensive browser settings
+- WebView error handling
 - Tencent X5 browser engine integration
 - WebView pooling for memory efficiency
 - Password manager with encryption
