@@ -44,6 +44,8 @@
     <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_MANAGER" />
     <!--  自动安装apk  -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 浏览器角色权限 (Android 10+) -->
+    <uses-permission android:name="com.android.permission.REQUEST_ROLE" />
 
     <uses-feature
         android:glEsVersion="0x00020000"
@@ -329,6 +331,38 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="intent" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理about:链接 -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="about" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理javascript:链接 -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="javascript" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理data:链接 -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="data" />
+            </intent-filter>
+
+            <!-- 浏览器intent-filter：处理blob:链接 -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="blob" />
             </intent-filter>
 
             <!-- 文件查看器intent-filter：文档文件 -->

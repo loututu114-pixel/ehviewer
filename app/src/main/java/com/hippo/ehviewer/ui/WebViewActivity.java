@@ -49,6 +49,11 @@ import com.hippo.ehviewer.client.WebViewCacheManager;
 import com.hippo.ehviewer.client.WebViewPoolManager;
 import com.hippo.ehviewer.client.X5WebViewManager;
 import com.hippo.ehviewer.util.DomainSuggestionManager;
+import com.hippo.ehviewer.util.YouTubeCompatibilityManager;
+import com.hippo.ehviewer.util.WebViewErrorHandler;
+import com.hippo.ehviewer.util.VideoPlayerEnhancer;
+import com.hippo.ehviewer.util.SmartUrlProcessor;
+import com.hippo.ehviewer.util.UserAgentManager;
 import com.hippo.util.ExceptionUtils;
 
 import java.util.ArrayList;
@@ -99,6 +104,12 @@ public class WebViewActivity extends AppCompatActivity {
 
     // 域名补全管理器
     private UrlSuggestionAdapter mUrlSuggestionAdapter;
+
+    // 错误处理器和视频增强器
+    private WebViewErrorHandler mErrorHandler;
+    private VideoPlayerEnhancer mVideoEnhancer;
+    private SmartUrlProcessor mSmartUrlProcessor;
+    private UserAgentManager mUserAgentManager;
 
     // 静态数据类
     private static class TabData {
@@ -232,6 +243,118 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     /**
+     * 设置URL自动补全
+     */
+    private void setupUrlAutoComplete() {
+        if (mUrlInput != null) {
+            // 创建URL建议适配器
+            mUrlSuggestionAdapter = new UrlSuggestionAdapter(this);
+            mUrlInput.setAdapter(mUrlSuggestionAdapter);
+
+            // 设置补全选择监听器
+            mUrlInput.setOnItemClickListener((parent, view, position, id) -> {
+                try {
+                    DomainSuggestionManager.SuggestionItem selectedItem =
+                        mUrlSuggestionAdapter.getItem(position);
+
+                    if (selectedItem != null) {
+                        String selectedUrl = selectedItem.url;
+
+                        // 隐藏键盘
+                        android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                        if (imm != null) {
+                            imm.hideSoftInputFromWindow(mUrlInput.getWindowToken(), 0);
+                        }
+
+                        // 加载选中的URL
+                        loadUrlInCurrentTab(selectedUrl);
+
+                        // 更新域名使用频率
+                        String domain = extractDomainFromUrl(selectedUrl);
+                        if (domain != null) {
+                            mUrlSuggestionAdapter.mSuggestionManager.increaseDomainPopularity(domain);
+                        }
+
+                        // 失去焦点
+                        mUrlInput.clearFocus();
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e(TAG, "Error handling URL suggestion selection", e);
+                }
+            });
+
+            // 设置点击监听器 - 处理about:blank的特殊情况
+            mUrlInput.setOnClickListener(v -> {
+                String currentText = mUrlInput.getText().toString().trim();
+                boolean isAboutBlank = "about:blank".equals(currentText);
+
+                if (isAboutBlank && !mUrlInput.hasFocus()) {
+                    // 如果是about:blank且还没有焦点，清空文本
+                    mUrlInput.setText("");
+                    mUrlInput.requestFocus();
+                }
+            });
+
+            // 设置下拉列表显示时的监听器
+            mUrlInput.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    // 检查当前文本是否是about:blank
+                    String currentText = mUrlInput.getText().toString().trim();
+                    boolean isAboutBlank = "about:blank".equals(currentText);
+
+                    if (isAboutBlank) {
+                        // 对于about:blank，清空文本让用户直接输入
+                        mUrlInput.setText("");
+                    } else if (!currentText.isEmpty()) {
+                        // 只有在有内容且不是about:blank时才全选文本
+                        mUrlInput.selectAll();
+                    }
+
+                    // 添加轻微的缩放动画效果
+                    v.animate()
+                     .scaleX(1.02f)
+                     .scaleY(1.02f)
+                     .setDuration(150)
+                     .start();
+                } else {
+                    // 失去焦点时恢复原始大小
+                    v.animate()
+                     .scaleX(1.0f)
+                     .scaleY(1.0f)
+                     .setDuration(150)
+                     .start();
+                }
+            });
+        }
+    }
+
+    /**
+     * 提取URL中的域名
+     */
+    private String extractDomainFromUrl(String url) {
+        if (url == null) return null;
+
+        try {
+            if (url.startsWith("http://")) {
+                url = url.substring(7);
+            } else if (url.startsWith("https://")) {
+                url = url.substring(8);
+            }
+
+            int slashIndex = url.indexOf('/');
+            if (slashIndex > 0) {
+                url = url.substring(0, slashIndex);
+            }
+
+            return url;
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error extracting domain from URL", e);
+            return null;
+        }
+    }
+
+    /**
      * 设置UI控件监听器
      */
     private void setupUIListeners() {
@@ -260,25 +383,6 @@ public class WebViewActivity extends AppCompatActivity {
                 mUrlInput.setOnLongClickListener(v -> {
                     showQuickAccessMenu();
                     return true;
-                });
-
-                mUrlInput.setOnFocusChangeListener((v, hasFocus) -> {
-                    if (hasFocus) {
-                        mUrlInput.selectAll();
-                    // 添加轻微的缩放动画效果
-                    v.animate()
-                     .scaleX(1.02f)
-                     .scaleY(1.02f)
-                     .setDuration(150)
-                     .start();
-                } else {
-                    // 恢复原始大小
-                    v.animate()
-                     .scaleX(1.0f)
-                     .scaleY(1.0f)
-                     .setDuration(150)
-                     .start();
-                    }
                 });
             }
 
@@ -492,11 +596,18 @@ public class WebViewActivity extends AppCompatActivity {
             webSettings.setLoadsImagesAutomatically(true);
             webSettings.setBlockNetworkLoads(false);
 
-            // 设置用户代理
+            // 设置用户代理（稍后会根据网站类型动态调整）
             webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36");
 
             // 设置编码
             webSettings.setDefaultTextEncodingName("UTF-8");
+
+            // 初始化所有管理器
+            mErrorHandler = new WebViewErrorHandler(this, webView);
+            mVideoEnhancer = new VideoPlayerEnhancer(this);
+            mVideoEnhancer.enhanceWebView(webView);
+            mSmartUrlProcessor = new SmartUrlProcessor(this);
+            mUserAgentManager = new UserAgentManager(this);
 
             // 设置WebViewClient来处理历史记录
             webView.setWebViewClient(new WebViewClient() {
@@ -517,11 +628,30 @@ public class WebViewActivity extends AppCompatActivity {
 
                     // 更新UI标题
                     updateTitle(view.getTitle());
+
+                    // 页面加载完成后，如果地址栏还是空的且当前页面不是about:blank，更新地址栏
+                    if (mUrlInput != null && mUrlInput.getText().toString().trim().isEmpty()) {
+                        String currentUrl = view.getUrl();
+                        if (currentUrl != null && !"about:blank".equals(currentUrl)) {
+                            mUrlInput.setText(currentUrl);
+                        }
+                    }
                 }
 
                 @Override
                 public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                     super.onPageStarted(view, url, favicon);
+
+                    // 检查是否为特殊网站，如果是则应用兼容性设置
+                    if (YouTubeCompatibilityManager.isSpecialSite(url)) {
+                        YouTubeCompatibilityManager.applyYouTubeCompatibility(view, url, mUserAgentManager);
+                        android.util.Log.d("WebViewActivity", "Applied YouTube compatibility for: " + url);
+                    } else {
+                        // 为普通网站也设置智能UA
+                        if (mUserAgentManager != null) {
+                            mUserAgentManager.setSmartUserAgent(view, url);
+                        }
+                    }
 
                     // 更新进度条
                     if (mProgressBar != null) {
@@ -530,7 +660,13 @@ public class WebViewActivity extends AppCompatActivity {
 
                     // 更新地址栏
                     if (mUrlInput != null) {
-                        mUrlInput.setText(url);
+                        // 如果是有效的URL（不是about:blank），则更新地址栏
+                        if (url != null && !"about:blank".equals(url)) {
+                            mUrlInput.setText(url);
+                        } else if ("about:blank".equals(url)) {
+                            // 对于about:blank，保持地址栏为空，方便用户输入
+                            mUrlInput.setText("");
+                        }
                     }
                 }
 
@@ -544,6 +680,16 @@ public class WebViewActivity extends AppCompatActivity {
                         android.content.Intent intent = getIntent();
                         if (intent != null && android.content.Intent.ACTION_VIEW.equals(intent.getAction())) {
                             android.util.Log.d("WebViewActivity", "External link detected, handling internally");
+                        }
+
+                        // 检查是否是YouTube的重定向循环
+                        String currentUrl = view.getUrl();
+                        if (currentUrl != null && isYouTubeRedirectLoop(currentUrl, url)) {
+                            android.util.Log.w("WebViewActivity", "YouTube redirect loop detected: " + currentUrl + " -> " + url);
+                            // 强制使用桌面版UA来打破循环
+                            if (mUserAgentManager != null) {
+                                mUserAgentManager.setSmartUserAgent(view, url);
+                            }
                         }
 
                         // 在当前WebView中加载，不允许外部浏览器接管
@@ -573,25 +719,33 @@ public class WebViewActivity extends AppCompatActivity {
                 public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                     super.onReceivedError(view, errorCode, description, failingUrl);
 
-                    android.util.Log.e("WebViewActivity", "WebView error: " + errorCode + " - " + description + " - " + failingUrl);
-
-                    // 处理错误代码6（连接超时等网络错误）
-                    if (errorCode == 6) {
-                        // 网络错误，尝试搜索页面
-                        handleNetworkError(failingUrl);
-                    } else {
-                        // 显示错误页面
-                        showErrorPage(errorCode, description, failingUrl);
+                    // 使用增强的错误处理器
+                    if (mErrorHandler != null) {
+                        boolean handled = mErrorHandler.handleError(errorCode, description, failingUrl);
+                        if (handled) {
+                            return; // 错误已被处理
+                        }
                     }
+
+                    // 回退到旧的处理方式
+                    android.util.Log.e("WebViewActivity", "WebView error (fallback): " + errorCode + " - " + description + " - " + failingUrl);
+                    showErrorPage(errorCode, description, failingUrl);
                 }
 
                 @Override
                 public void onReceivedHttpError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceResponse errorResponse) {
                     super.onReceivedHttpError(view, request, errorResponse);
 
-                    android.util.Log.e("WebViewActivity", "HTTP error: " + errorResponse.getStatusCode() + " - " + request.getUrl());
+                    // 使用增强的错误处理器
+                    if (mErrorHandler != null) {
+                        boolean handled = mErrorHandler.handleHttpError(request, errorResponse);
+                        if (handled) {
+                            return; // 错误已被处理
+                        }
+                    }
 
-                    // 处理HTTP错误
+                    // 回退到旧的处理方式
+                    android.util.Log.e("WebViewActivity", "HTTP error (fallback): " + errorResponse.getStatusCode() + " - " + request.getUrl());
                     showErrorPage(errorResponse.getStatusCode(), "HTTP Error", request.getUrl().toString());
                 }
             });
@@ -612,6 +766,80 @@ public class WebViewActivity extends AppCompatActivity {
             }
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error updating title", e);
+        }
+    }
+
+    /**
+     * 退出视频全屏（供JavaScript调用）
+     */
+    public void exitVideoFullscreen() {
+        if (mVideoEnhancer != null && mVideoEnhancer.isFullscreen()) {
+            // 这里可以添加退出全屏的逻辑
+            android.util.Log.d(TAG, "Exiting video fullscreen");
+        }
+    }
+
+    /**
+     * 处理403错误（YouTube等特殊网站）
+     */
+    private void handle403Error(WebView view, String failingUrl) {
+        try {
+            android.util.Log.d("WebViewActivity", "Handling 403 error for: " + failingUrl);
+
+            // 尝试不同的User-Agent策略
+            YouTubeCompatibilityManager.tryDifferentUserAgents(view, failingUrl);
+
+            // 延迟重新加载页面，给User-Agent设置一点时间生效
+            view.postDelayed(() -> {
+                try {
+                    view.reload();
+                    android.util.Log.d("WebViewActivity", "Retrying load after User-Agent change");
+                } catch (Exception e) {
+                    android.util.Log.e("WebViewActivity", "Error retrying load", e);
+                }
+            }, 500);
+
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error handling 403 error", e);
+            // 如果处理失败，显示错误页面
+            showErrorPage(403, "访问被拒绝，请检查网络或稍后重试", failingUrl);
+        }
+    }
+
+    /**
+     * 检测YouTube重定向循环
+     * YouTube经常在 youtube.com -> m.youtube.com -> youtube.com 之间循环
+     */
+    private boolean isYouTubeRedirectLoop(String currentUrl, String newUrl) {
+        if (currentUrl == null || newUrl == null) return false;
+
+        try {
+            // 提取域名
+            String currentDomain = extractDomainFromUrl(currentUrl);
+            String newDomain = extractDomainFromUrl(newUrl);
+
+            // 检查是否都是YouTube相关域名
+            boolean isYouTubeRelated = (currentDomain.contains("youtube.com") || currentDomain.contains("youtu.be")) &&
+                                      (newDomain.contains("youtube.com") || newDomain.contains("youtu.be"));
+
+            if (!isYouTubeRelated) return false;
+
+            // 检查是否在不同版本之间跳转
+            boolean currentIsMobile = currentDomain.startsWith("m.youtube.com");
+            boolean newIsMobile = newDomain.startsWith("m.youtube.com");
+
+            // 如果从桌面版跳转到移动版，或者从移动版跳转到桌面版，可能形成循环
+            if (currentIsMobile != newIsMobile) {
+                android.util.Log.d(TAG, "YouTube version switch detected: " +
+                    currentDomain + " -> " + newDomain);
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error checking YouTube redirect loop", e);
+            return false;
         }
     }
 
@@ -976,14 +1204,28 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     private String processUrl(String url) {
-        if (TextUtils.isEmpty(url)) return "https://www.google.com";
+        if (TextUtils.isEmpty(url)) {
+            // 使用智能URL处理器获取默认主页
+            return mSmartUrlProcessor != null ? mSmartUrlProcessor.getDefaultHomePage() : "https://www.google.com";
+        }
 
+        // 使用智能URL处理器处理输入
+        if (mSmartUrlProcessor != null) {
+            String processedUrl = mSmartUrlProcessor.processInput(url);
+
+            // 记录处理结果用于调试
+            String inputType = mSmartUrlProcessor.getInputTypeDescription(url);
+            android.util.Log.d(TAG, "URL Processing: '" + url + "' -> '" + processedUrl + "' (" + inputType + ")");
+
+            return processedUrl;
+        }
+
+        // 回退到原有的处理逻辑
         if (url.startsWith("http://") || url.startsWith("https://")) {
             return url;
         } else if (url.contains(".")) {
             return "https://" + url;
         } else {
-            // 使用智能搜索引擎
             return getSmartSearchUrl(url);
         }
     }

@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.hippo.ehviewer.client.BookmarkManager;
 import com.hippo.ehviewer.client.HistoryManager;
+import com.hippo.ehviewer.client.data.HistoryInfo;
 import com.hippo.ehviewer.client.data.BookmarkInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -269,9 +270,9 @@ public class DomainSuggestionManager {
     private List<String> getHistorySuggestions(String input) {
         List<String> suggestions = new ArrayList<>();
         try {
-            List<HistoryManager.HistoryItem> historyItems = mHistoryManager.getAllHistory();
+            List<HistoryInfo> historyItems = mHistoryManager.getAllHistory();
 
-            for (HistoryManager.HistoryItem item : historyItems) {
+            for (HistoryInfo item : historyItems) {
                 if (item.url != null && item.url.toLowerCase().contains(input.toLowerCase())) {
                     suggestions.add(item.url);
                     if (suggestions.size() >= 5) break; // 限制数量
