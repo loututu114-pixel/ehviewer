@@ -20,7 +20,7 @@ import java.util.List;
  */
 public class UrlSuggestionAdapter extends ArrayAdapter<DomainSuggestionManager.SuggestionItem> {
     private final LayoutInflater mInflater;
-    private final DomainSuggestionManager mSuggestionManager;
+    public final DomainSuggestionManager mSuggestionManager;
     private final List<DomainSuggestionManager.SuggestionItem> mSuggestions = new ArrayList<>();
     private final List<DomainSuggestionManager.SuggestionItem> mFilteredSuggestions = new ArrayList<>();
     private final UrlFilter mFilter = new UrlFilter();

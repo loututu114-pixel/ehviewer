@@ -1,7 +1,7 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-08-30T04:26:53Z
-version: 1.0
+last_updated: 2025-08-30T16:23:24Z
+version: 1.2
 author: Claude Code PM System
 ---
 
@@ -31,25 +31,74 @@ app/
 │   │   │   │   │   ├── data/    # Data models
 │   │   │   │   │   ├── AdBlockManager.java
 │   │   │   │   │   ├── BookmarkManager.java
+│   │   │   │   │   ├── CloudSyncManager.java
+│   │   │   │   │   ├── EnhancedWebViewManager.java
 │   │   │   │   │   ├── HistoryManager.java
+│   │   │   │   │   ├── ImageLazyLoader.java
+│   │   │   │   │   ├── JavaScriptOptimizer.java
+│   │   │   │   │   ├── MemoryManager.java
+│   │   │   │   │   ├── NetworkDetector.java
+│   │   │   │   │   ├── PasswordAutofillService.java
+│   │   │   │   │   ├── PasswordManager.java
+│   │   │   │   │   ├── ReadingModeManager.java
+│   │   │   │   │   ├── SearchEngineManager.java
+│   │   │   │   │   ├── WebViewCacheManager.java
+│   │   │   │   │   ├── WebViewPoolManager.java
 │   │   │   │   │   └── X5WebViewManager.java
 │   │   │   │   ├── ui/          # User interface components
 │   │   │   │   │   ├── scene/   # App scenes/screens
 │   │   │   │   │   ├── wifi/    # WiFi features
-│   │   │   │   │   ├── MainActivity.java
-│   │   │   │   │   ├── WebViewActivity.java
+│   │   │   │   │   ├── AddPasswordDialog.java
 │   │   │   │   │   ├── BookmarksActivity.java
-│   │   │   │   │   └── HistoryActivity.java
+│   │   │   │   │   ├── BrowserLauncherActivity.java
+│   │   │   │   │   ├── BrowserSettingsActivity.java
+│   │   │   │   │   ├── BrowserTestActivity.java
+│   │   │   │   │   ├── DownloadManagerActivity.java
+│   │   │   │   │   ├── EhBrowserActivity.java
+│   │   │   │   │   ├── FileOpenerSettingsActivity.java
+│   │   │   │   │   ├── FileViewerActivity.java
+│   │   │   │   │   ├── HistoryActivity.java
+│   │   │   │   │   ├── MainActivity.java
+│   │   │   │   │   ├── MediaPlayerActivity.java
+│   │   │   │   │   ├── PasswordActionsDialog.java
+│   │   │   │   │   ├── PasswordAdapter.java
+│   │   │   │   │   ├── PasswordDetailsDialog.java
+│   │   │   │   │   ├── PasswordGeneratorDialog.java
+│   │   │   │   │   ├── PasswordManagerActivity.java
+│   │   │   │   │   ├── PasswordSettingsActivity.java
+│   │   │   │   │   ├── ReadingModeSettingsActivity.java
+│   │   │   │   │   ├── UrlSuggestionAdapter.java
+│   │   │   │   │   ├── VideoControlView.java
+│   │   │   │   │   └── WebViewActivity.java (2000+ lines)
+│   │   │   │   ├── util/        # Utility classes
+│   │   │   │   │   ├── AppLauncher.java
+│   │   │   │   │   ├── BrowserRegistrationManager.java
+│   │   │   │   │   ├── DefaultBrowserHelper.java
+│   │   │   │   │   ├── DomainSuggestionManager.java
+│   │   │   │   │   ├── SmartUrlProcessor.java
+│   │   │   │   │   ├── SmartUrlProcessorTest.java
+│   │   │   │   │   ├── UniversalFileOpener.java
+│   │   │   │   │   ├── UrlSuggestionTest.java
+│   │   │   │   │   ├── VideoPlayerEnhancer.java
+│   │   │   │   │   ├── WebViewErrorHandler.java
+│   │   │   │   │   └── YouTubeCompatibilityManager.java
 │   │   │   │   └── widget/      # Custom UI widgets
 │   │   │   │       └── UnifiedWebView.java
 │   │   │   └── database/        # Database utilities
 │   │   ├── res/
-│   │   │   ├── layout/          # XML layouts
+│   │   │   ├── layout/          # XML layouts (40+ new layouts)
 │   │   │   ├── values/          # Strings, IDs, styles
-│   │   │   ├── drawable/        # Images and drawables
-│   │   │   └── menu/            # Menu resources
+│   │   │   ├── drawable/        # Images and drawables (10+ new icons)
+│   │   │   ├── menu/            # Menu resources
+│   │   │   └── xml/             # XML configurations
 │   │   └── AndroidManifest.xml
-│   └── test/                    # Unit tests
+│   ├── test/                    # Unit tests
+│   └── androidTest/             # Instrumented tests
+│       └── java/com/hippo/ehviewer/
+│           ├── BrowserCompatibilityTest.java
+│           ├── BrowserMonkeyTest.java
+│           ├── BrowserPerformanceTest.java
+│           └── BrowserStabilityTest.java
 ├── build.gradle.kts             # Module build configuration
 └── google-services.json         # Firebase configuration
 ```
@@ -57,20 +106,41 @@ app/
 ## Key Directories
 
 ### Client Layer (`client/`)
-- **Purpose**: Handles data management and network operations
-- **Components**:
-  - `AdBlockManager`: Advertisement blocking logic
-  - `BookmarkManager`: Bookmark storage and retrieval
-  - `HistoryManager`: Browsing history tracking
-  - `X5WebViewManager`: Advanced WebView management
-  - `data/`: Data models (BookmarkInfo, HistoryInfo)
+- **Purpose**: Handles data management, network operations, and browser infrastructure
+- **Core Managers**:
+  - `EnhancedWebViewManager`: Advanced tab and extension management
+  - `PasswordManager`: Secure credential storage with encryption
+  - `CloudSyncManager`: Data synchronization across devices
+  - `WebViewPoolManager`: WebView instance recycling
+  - `WebViewCacheManager`: Cache optimization
+  - `MemoryManager`: Memory usage optimization
+  - `JavaScriptOptimizer`: JS performance enhancement
+- **User Data**:
+  - `BookmarkManager`: Bookmark storage with cloud sync
+  - `HistoryManager`: Browsing history with search
+  - `PasswordAutofillService`: System-level autofill
+- **Performance**:
+  - `ImageLazyLoader`: Efficient image loading
+  - `NetworkDetector`: Connection monitoring
+  - `SearchEngineManager`: Custom search providers
+  - `ReadingModeManager`: Reading experience optimization
+- **Data Models**: BookmarkInfo, HistoryInfo, PasswordInfo
 
 ### UI Layer (`ui/`)
 - **Purpose**: User interface components and activities
+- **Major Activities**:
+  - `WebViewActivity`: Full-featured browser (2000+ lines)
+  - `PasswordManagerActivity`: Credential management
+  - `BrowserSettingsActivity`: Browser configuration
+  - `DownloadManagerActivity`: Download management
+  - `MediaPlayerActivity`: Media playback
+- **Dialogs & Adapters**:
+  - Password dialogs (Add, Details, Generator, Actions)
+  - `PasswordAdapter`: List adapter for passwords
 - **Organization**:
-  - Root level: Core activities
-  - `scene/`: Complex UI scenes (gallery, history)
-  - `wifi/`: WiFi-related features (server, client)
+  - Root level: Core activities (20+ activities)
+  - `scene/`: Complex UI scenes (gallery, downloads, etc.)
+  - `wifi/`: WiFi-related features
   - `widget/`: Reusable UI components
 
 ### Resources (`res/`)

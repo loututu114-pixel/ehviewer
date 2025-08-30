@@ -348,13 +348,17 @@ public final class MainActivity extends StageActivity
     }
 
     /**
-     * 强化应用的存在感（检查默认浏览器设置）
+     * 强化应用的存在感（检查默认浏览器设置和注册状态）
      */
     private void strengthenAppPresence() {
         try {
             // 使用Handler延迟执行，避免在应用启动初期影响性能
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                // 检查和强化默认浏览器设置
                 com.hippo.ehviewer.util.DefaultBrowserHelper.strengthenAppPresence(this);
+
+                // 检查浏览器注册状态，如果有问题则尝试修复
+                checkBrowserRegistration();
 
                 // 注册浏览器拦截器，确保所有链接都在EhViewer中打开
                 com.hippo.ehviewer.ui.WebViewActivity.registerBrowserInterceptor(this);
@@ -362,6 +366,34 @@ public final class MainActivity extends StageActivity
             }, 2000); // 延迟2秒执行
         } catch (Exception e) {
             android.util.Log.e("MainActivity", "Error strengthening app presence", e);
+        }
+    }
+
+    /**
+     * 检查浏览器注册状态
+     */
+    private void checkBrowserRegistration() {
+        try {
+            com.hippo.ehviewer.util.BrowserRegistrationManager registrationManager =
+                new com.hippo.ehviewer.util.BrowserRegistrationManager(this);
+
+            boolean isVisible = registrationManager.isBrowserVisible();
+
+            if (!isVisible) {
+                android.util.Log.w("MainActivity", "EhViewer not visible in browser list, attempting to fix");
+                // 如果不在浏览器列表中，尝试修复注册
+                boolean fixed = registrationManager.fixBrowserRegistration();
+                if (fixed) {
+                    android.util.Log.d("MainActivity", "Browser registration fixed successfully");
+                } else {
+                    android.util.Log.w("MainActivity", "Failed to fix browser registration");
+                }
+            } else {
+                android.util.Log.d("MainActivity", "EhViewer is properly registered as browser");
+            }
+
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error checking browser registration", e);
         }
     }
 

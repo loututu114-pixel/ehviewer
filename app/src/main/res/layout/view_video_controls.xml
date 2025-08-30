@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_video_controls"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <!-- 顶部控制栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <!-- 全屏按钮 -->
+        <ImageButton
+            android:id="@+id/fullscreen_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="全屏"
+            android:padding="12dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_fullscreen" />
+
+        <!-- 方向切换按钮 -->
+        <ImageButton
+            android:id="@+id/orientation_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="旋转屏幕"
+            android:padding="12dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_screen_rotation" />
+
+        <!-- 占位空间 -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- 音量控制组 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- 音量减少 -->
+            <ImageButton
+                android:id="@+id/volume_down_button"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="音量减少"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_volume_down" />
+
+            <!-- 静音按钮 -->
+            <ImageButton
+                android:id="@+id/mute_button"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="静音"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_volume_up" />
+
+            <!-- 音量增加 -->
+            <ImageButton
+                android:id="@+id/volume_up_button"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="音量增加"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_volume_up" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 音量滑块区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_volume_control"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="音量:"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="14sp"
+            android:layout_marginEnd="8dp" />
+
+        <SeekBar
+            android:id="@+id/volume_seekbar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="15"
+            android:progress="7"
+            android:progressTint="?android:attr/colorAccent"
+            android:thumbTint="?android:attr/colorAccent" />
+
+        <TextView
+            android:id="@+id/volume_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="7/15"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="12sp"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+</LinearLayout>
