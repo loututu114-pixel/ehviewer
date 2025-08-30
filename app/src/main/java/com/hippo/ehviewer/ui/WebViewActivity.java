@@ -32,6 +32,7 @@ import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebStorage;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -40,6 +41,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.ImageView;
+import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -56,6 +58,7 @@ import com.hippo.ehviewer.client.WebViewCacheManager;
 import com.hippo.ehviewer.client.ImageLazyLoader;
 import com.hippo.ehviewer.client.MemoryManager;
 import com.hippo.ehviewer.client.ReadingModeManager;
+import com.hippo.ehviewer.client.EnhancedWebViewManager;
 import com.hippo.ehviewer.client.data.BookmarkInfo;
 import com.hippo.ehviewer.widget.UnifiedWebView;
 import com.hippo.util.ExceptionUtils;
@@ -87,6 +90,72 @@ public class WebViewActivity extends AppCompatActivity {
             this.url = url;
             this.title = title;
             this.isActive = false;
+        }
+    }
+
+    /**
+     * 智能选择主页URL（根据GFW状态）
+     */
+    private String getSmartHomeUrl() {
+        return getSmartSearchUrl(""); // 空字符串返回主页
+    }
+
+    /**
+     * 显示错误页面
+     */
+    private void showErrorPage(WebView view, int errorCode, String description, String failingUrl) {
+        String errorHtml = "<html><head><meta charset=\"UTF-8\"></head><body style=\"font-family: Arial, sans-serif; text-align: center; padding: 50px;\">" +
+                "<h1 style=\"color: #e74c3c;\">无法访问页面</h1>" +
+                "<p style=\"color: #666; font-size: 16px;\">错误代码: " + errorCode + "</p>" +
+                "<p style=\"color: #666; font-size: 14px;\">描述: " + description + "</p>" +
+                "<p style=\"color: #666; font-size: 14px;\">URL: " + failingUrl + "</p>" +
+                "<br>" +
+                "<button onclick=\"location.reload()\" style=\"padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;\">重新加载</button>" +
+                "<br><br>" +
+                "<button onclick=\"window.location.href='https://www.baidu.com'\" style=\"padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer;\">访问百度</button>" +
+                "</body></html>";
+
+        view.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null);
+    }
+
+    /**
+     * 智能选择搜索URL（根据GFW状态）
+     */
+    private String getSmartSearchUrl(String query) {
+        try {
+            // 尝试检测Google访问性
+            java.net.URL testUrl = new java.net.URL("https://www.google.com");
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) testUrl.openConnection();
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
+            connection.setRequestMethod("HEAD");
+
+            int responseCode = connection.getResponseCode();
+            connection.disconnect();
+
+            if (responseCode >= 200 && responseCode < 400) {
+                // Google可访问
+                if (query.isEmpty()) {
+                    return "https://www.google.com";
+                } else {
+                    return "https://www.google.com/search?q=" + android.net.Uri.encode(query);
+                }
+            } else {
+                // Google不可访问，可能是GFW，使用百度
+                if (query.isEmpty()) {
+                    return "https://www.baidu.com";
+                } else {
+                    return "https://www.baidu.com/s?wd=" + android.net.Uri.encode(query);
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "Network detection failed, using Baidu as fallback", e);
+            // 网络检测失败，使用百度作为备选
+            if (query.isEmpty()) {
+                return "https://www.baidu.com";
+            } else {
+                return "https://www.baidu.com/s?wd=" + android.net.Uri.encode(query);
+            }
         }
     }
 
@@ -131,6 +200,7 @@ public class WebViewActivity extends AppCompatActivity {
     private ImageLazyLoader mImageLazyLoader;
     private MemoryManager mMemoryManager;
     private ReadingModeManager mReadingModeManager;
+    private EnhancedWebViewManager mEnhancedWebViewManager;
 
     // 性能监控
     private long mPageLoadStartTime;
@@ -176,13 +246,15 @@ public class WebViewActivity extends AppCompatActivity {
             mMemoryManager = MemoryManager.getInstance(this);
             mReadingModeManager = ReadingModeManager.getInstance(this);
 
+            // 注意：WebView现在通过动态方式添加到容器中，不再使用静态定义
+            // 初始化增强WebView管理器（暂时设为null，会在创建标签页时设置）
+            mEnhancedWebViewManager = null;
+
             // 预热WebView池
             mWebViewPoolManager.warmUpPool();
 
             // 注册内存监听器
             setupMemoryListeners();
-
-            mWebView = findViewById(R.id.web_view);
             mSwipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
             mProgressBar = findViewById(R.id.progress_bar);
             mToolbar = findViewById(R.id.toolbar);
@@ -194,23 +266,31 @@ public class WebViewActivity extends AppCompatActivity {
             mTabsButton = findViewById(R.id.tabs_button);
             mMenuButton = findViewById(R.id.menu_button);
 
-            // 设置Toolbar
-            if (mToolbar != null) {
-                setSupportActionBar(mToolbar);
-                if (getSupportActionBar() != null) {
-                    getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-                    getSupportActionBar().setTitle(R.string.browser);
-                }
-                mToolbar.setNavigationOnClickListener(v -> finish());
+            // 紧凑布局：隐藏默认ActionBar，直接使用布局中的组件
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().hide();
             }
 
-            // 设置地址栏
+            // 设置返回按钮（如果布局中有的话）
+            if (mBackButton != null) {
+                mBackButton.setOnClickListener(v -> finish());
+            }
+
+            // 设置地址栏 - 增强交互体验
             if (mUrlInput != null) {
                 mUrlInput.setOnEditorActionListener((v, actionId, event) -> {
                     if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO) {
                         String url = mUrlInput.getText().toString().trim();
                         if (!url.isEmpty()) {
                             loadUrlInCurrentTab(url);
+                            // 隐藏键盘
+                            android.view.inputmethod.InputMethodManager imm =
+                                (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                            if (imm != null) {
+                                imm.hideSoftInputFromWindow(mUrlInput.getWindowToken(), 0);
+                            }
+                            // 失去焦点
+                            mUrlInput.clearFocus();
                         }
                         return true;
                     }
@@ -220,13 +300,28 @@ public class WebViewActivity extends AppCompatActivity {
                 mUrlInput.setOnFocusChangeListener((v, hasFocus) -> {
                     if (hasFocus) {
                         mUrlInput.selectAll();
+                        // 添加轻微的缩放动画效果
+                        v.animate()
+                         .scaleX(1.02f)
+                         .scaleY(1.02f)
+                         .setDuration(150)
+                         .start();
+                    } else {
+                        // 恢复原始大小
+                        v.animate()
+                         .scaleX(1.0f)
+                         .scaleY(1.0f)
+                         .setDuration(150)
+                         .start();
                     }
                 });
             }
 
-            // 设置按钮监听器
+            // 设置按钮监听器 - 添加现代化的点击效果
             if (mRefreshButton != null) {
                 mRefreshButton.setOnClickListener(v -> {
+                    // 点击动画效果
+                    animateButtonClick(v);
                     TabData currentTab = getCurrentTab();
                     if (currentTab != null && currentTab.webView != null) {
                         currentTab.webView.reload();
@@ -236,6 +331,7 @@ public class WebViewActivity extends AppCompatActivity {
 
             if (mBackButton != null) {
                 mBackButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
                     TabData currentTab = getCurrentTab();
                     if (currentTab != null && currentTab.webView != null && currentTab.webView.canGoBack()) {
                         currentTab.webView.goBack();
@@ -245,6 +341,7 @@ public class WebViewActivity extends AppCompatActivity {
 
             if (mForwardButton != null) {
                 mForwardButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
                     TabData currentTab = getCurrentTab();
                     if (currentTab != null && currentTab.webView != null && currentTab.webView.canGoForward()) {
                         currentTab.webView.goForward();
@@ -254,21 +351,26 @@ public class WebViewActivity extends AppCompatActivity {
 
             if (mHomeButton != null) {
                 mHomeButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
                     TabData currentTab = getCurrentTab();
                     if (currentTab != null && currentTab.webView != null) {
-                        loadUrlInCurrentTab("https://www.google.com");
+                        // 智能选择主页搜索引擎
+                        String homeUrl = getSmartHomeUrl();
+                        loadUrlInCurrentTab(homeUrl);
                     }
                 });
             }
 
             if (mTabsButton != null) {
                 mTabsButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
                     showTabsDialog();
                 });
             }
 
             if (mMenuButton != null) {
                 mMenuButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
                     showMenuDialog();
                 });
             }
@@ -292,11 +394,52 @@ public class WebViewActivity extends AppCompatActivity {
                     android.R.color.holo_blue_bright
                 );
 
-                // 设置偏移量，避免与Toolbar重叠
-                if (mToolbar != null) {
-                    int toolbarHeight = mToolbar.getLayoutParams().height;
-                    mSwipeRefreshLayout.setProgressViewOffset(false, 0, toolbarHeight + 100);
-                }
+                            // 设置下拉刷新偏移量（优化顶部布局高度）
+            // 顶部工具栏总高度84dp，进度条2dp，总共86dp
+            mSwipeRefreshLayout.setProgressViewOffset(false, 0, 88);
+
+            // 优化下拉刷新颜色
+            mSwipeRefreshLayout.setColorSchemeResources(
+                android.R.color.holo_blue_bright,
+                android.R.color.holo_green_light,
+                android.R.color.holo_orange_light,
+                android.R.color.holo_red_light
+            );
+        }
+
+        // 设置返回按钮（如果布局中有的话）
+        if (mBackButton != null) {
+            mBackButton.setOnClickListener(v -> finish());
+        }
+    }
+
+    /**
+     * 按钮点击动画效果
+     */
+    private void animateButtonClick(android.view.View view) {
+        if (view != null) {
+            // 创建缩放动画
+            view.animate()
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .setDuration(100)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    // 恢复原始大小
+                    view.animate()
+                        .scaleX(1.0f)
+                        .scaleY(1.0f)
+                        .setDuration(100)
+                        .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                        .start();
+                })
+                .start();
+        }
+    }
+
+    /**
+     * 智能选择主页URL（根据GFW状态）
+     */
             }
 
             Intent intent = getIntent();
@@ -330,8 +473,10 @@ public class WebViewActivity extends AppCompatActivity {
                     // 创建第一个标签页
                     createNewTab(url);
                 } else {
-                    // 创建默认标签页
-                    createNewTab("https://www.google.com");
+                    // 创建默认标签页（使用智能搜索引擎选择）
+                    String defaultUrl = getSmartHomeUrl();
+                    android.util.Log.d("WebViewActivity", "Using smart default URL: " + defaultUrl);
+                    createNewTab(defaultUrl);
                 }
             }
 
@@ -606,8 +751,8 @@ public class WebViewActivity extends AppCompatActivity {
         if (!url.contains("://")) {
             // 检查是否是搜索关键词
             if (url.contains(" ") || !url.contains(".")) {
-                // 认为是搜索关键词，使用Google搜索
-                url = "https://www.google.com/search?q=" + android.net.Uri.encode(url);
+                        // 认为是搜索关键词，使用智能搜索引擎
+        url = getSmartSearchUrl(url);
             } else {
                 // 认为是网址，添加https协议
                 url = "https://" + url;
@@ -718,6 +863,22 @@ public class WebViewActivity extends AppCompatActivity {
                         startActivity(android.content.Intent.createChooser(shareIntent, "分享网页"));
                     }
                 }
+                return true;
+            } else if (itemId == R.id.menu_screenshot) {
+                // 页面截图
+                takeScreenshot();
+                return true;
+            } else if (itemId == R.id.menu_desktop_mode) {
+                // 桌面模式切换
+                toggleDesktopMode();
+                return true;
+            } else if (itemId == R.id.menu_clear_cache) {
+                // 清除缓存
+                clearWebViewCache();
+                return true;
+            } else if (itemId == R.id.menu_ad_block) {
+                // 广告拦截设置
+                toggleAdBlock();
                 return true;
             }
             return false;
@@ -910,8 +1071,25 @@ public class WebViewActivity extends AppCompatActivity {
         // 使用UnifiedWebView（自动选择X5或系统WebView）
         com.hippo.ehviewer.widget.UnifiedWebView webView = new com.hippo.ehviewer.widget.UnifiedWebView(this);
         setupWebViewForTab(webView);
+
+        // 初始化增强WebView管理器（如果还没有初始化）
+        if (mEnhancedWebViewManager == null) {
+            mEnhancedWebViewManager = new EnhancedWebViewManager(this, webView);
+            setupEnhancedWebViewCallbacks();
+        }
+
         TabData tabData = new TabData(webView, url, "新标签页");
         mTabs.add(tabData);
+
+        // 如果是第一个标签页，立即显示
+        if (mTabs.size() == 1) {
+            switchToTab(0);
+        }
+
+        // 立即加载URL
+        if (url != null && !url.isEmpty()) {
+            loadUrlInTab(tabData, url);
+        }
 
         // 如果URL适合阅读模式，自动启用阅读模式
         if (mReadingModeManager.isSuitableForReadingMode(url, "新标签页")) {
@@ -968,11 +1146,22 @@ public class WebViewActivity extends AppCompatActivity {
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
 
-        // 其他设置
+        // 网络和安全设置
         webSettings.setLoadsImagesAutomatically(true);
         webSettings.setBlockNetworkLoads(false);
-        webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36");
+        webSettings.setBlockNetworkImage(false);
+        webSettings.setAllowFileAccess(false);
+        webSettings.setAllowFileAccessFromFileURLs(false);
+        webSettings.setAllowUniversalAccessFromFileURLs(false);
+
+        // 设置User Agent
+        webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android " + android.os.Build.VERSION.RELEASE +
+                "; " + android.os.Build.MODEL + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36");
+
+        // 编码设置
         webSettings.setDefaultTextEncodingName("UTF-8");
+        webSettings.setDefaultFontSize(16);
+        webSettings.setMinimumFontSize(8);
 
         // 夜间模式支持
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -1070,6 +1259,30 @@ public class WebViewActivity extends AppCompatActivity {
                         }
                     }
                 }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                android.util.Log.e(TAG, "WebView error: " + errorCode + " - " + description + " - URL: " + failingUrl);
+
+                TabData tab = findTabByWebView(view);
+                if (tab != null && tab.isActive) {
+                    // 显示错误提示
+                    showErrorPage(view, errorCode, description, failingUrl);
+
+                    // 停止下拉刷新动画
+                    if (mSwipeRefreshLayout != null) {
+                        mSwipeRefreshLayout.setRefreshing(false);
+                    }
+                }
+            }
+
+            @Override
+            public void onReceivedHttpError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceResponse errorResponse) {
+                super.onReceivedHttpError(view, request, errorResponse);
+                android.util.Log.e(TAG, "HTTP error: " + errorResponse.getStatusCode() + " - " + errorResponse.getReasonPhrase() +
+                        " - URL: " + request.getUrl().toString());
             }
 
             @Override
@@ -1255,6 +1468,11 @@ public class WebViewActivity extends AppCompatActivity {
             TabData oldTab = mTabs.get(mCurrentTabIndex);
             oldTab.isActive = false;
             updateTabView(oldTab);
+
+            // 隐藏当前WebView
+            if (oldTab.webView != null && oldTab.webView.getParent() != null) {
+                ((android.view.ViewGroup) oldTab.webView.getParent()).removeView(oldTab.webView);
+            }
         }
 
         // 激活新标签页
@@ -1262,6 +1480,20 @@ public class WebViewActivity extends AppCompatActivity {
         TabData newTab = mTabs.get(index);
         newTab.isActive = true;
         updateTabView(newTab);
+
+        // 显示新WebView
+        if (newTab.webView != null && mSwipeRefreshLayout != null) {
+            // 确保WebView没有父视图
+            if (newTab.webView.getParent() != null) {
+                ((android.view.ViewGroup) newTab.webView.getParent()).removeView(newTab.webView);
+            }
+
+            // 添加到SwipeRefreshLayout
+            mSwipeRefreshLayout.addView(newTab.webView, 0, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+            android.util.Log.d(TAG, "Switched to tab: " + index + ", URL: " + newTab.url);
+        }
 
         // 更新UI
         updateUIForCurrentTab();
@@ -1348,16 +1580,34 @@ public class WebViewActivity extends AppCompatActivity {
 
         String url = input.trim();
 
-        // 如果不包含协议，添加https://
+        // 如果不包含协议，智能处理
         if (!url.contains("://")) {
             if (url.contains(" ") || !url.contains(".")) {
-                url = "https://www.google.com/search?q=" + android.net.Uri.encode(url);
+                // 认为是搜索关键词，使用智能搜索引擎
+                url = getSmartSearchUrl(url);
             } else {
+                // 认为是网址，添加https协议
                 url = "https://" + url;
             }
         }
 
-        tab.webView.loadUrl(url);
+        android.util.Log.d(TAG, "Loading URL in tab: " + url);
+        try {
+            tab.webView.loadUrl(url);
+            android.util.Log.d(TAG, "URL loaded successfully: " + url);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Failed to load URL: " + url, e);
+            // 如果加载失败，尝试备用的加载方式
+            try {
+                if (url.startsWith("https://")) {
+                    String httpUrl = url.replace("https://", "http://");
+                    tab.webView.loadUrl(httpUrl);
+                    android.util.Log.d(TAG, "Fallback to HTTP URL: " + httpUrl);
+                }
+            } catch (Exception e2) {
+                android.util.Log.e(TAG, "Fallback loading also failed", e2);
+            }
+        }
     }
 
     /**
@@ -1595,5 +1845,225 @@ public class WebViewActivity extends AppCompatActivity {
             }
         }
         fileOrDirectory.delete();
+    }
+
+    /**
+     * 设置增强WebView回调
+     */
+    private void setupEnhancedWebViewCallbacks() {
+        // 设置进度回调
+        mEnhancedWebViewManager.setProgressCallback(new EnhancedWebViewManager.ProgressCallback() {
+            @Override
+            public void onProgressChanged(int progress) {
+                if (mProgressBar != null) {
+                    mProgressBar.setProgress(progress);
+                    mProgressBar.setVisibility(progress < 100 ? View.VISIBLE : View.GONE);
+                }
+            }
+
+            @Override
+            public void onPageStarted(String url) {
+                if (mIsMonitoringPerformance) {
+                    mPageLoadStartTime = System.currentTimeMillis();
+                }
+            }
+
+            @Override
+            public void onPageFinished(String url, String title) {
+                if (mIsMonitoringPerformance && mPageLoadStartTime > 0) {
+                    long loadTime = System.currentTimeMillis() - mPageLoadStartTime;
+                    android.util.Log.d(TAG, "页面加载完成: " + url + " - 用时: " + loadTime + "ms");
+                }
+
+                // 更新标题
+                if (title != null && !title.isEmpty()) {
+                    updateTabTitle(url, title);
+                }
+            }
+
+            @Override
+            public void onReceivedTitle(String title) {
+                // 更新当前标签页标题
+                TabData currentTab = getCurrentTab();
+                if (currentTab != null) {
+                    currentTab.title = title;
+                    updateTabView(currentTab);
+                    updateUIForCurrentTab();
+                }
+            }
+
+            @Override
+            public void onReceivedFavicon(Bitmap favicon) {
+                // 更新favicon
+                TabData currentTab = getCurrentTab();
+                if (currentTab != null) {
+                    currentTab.favicon = favicon;
+                    updateTabView(currentTab);
+                }
+            }
+        });
+
+        // 设置错误回调
+        mEnhancedWebViewManager.setErrorCallback(new EnhancedWebViewManager.ErrorCallback() {
+            @Override
+            public void onReceivedError(int errorCode, String description, String failingUrl) {
+                android.util.Log.e(TAG, "WebView错误: " + errorCode + " - " + description + " - " + failingUrl);
+
+                // 显示用户友好的错误提示
+                runOnUiThread(() -> {
+                    String errorMessage = "加载失败 (" + errorCode + "): " + description;
+                    Toast.makeText(WebViewActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+                });
+            }
+
+            @Override
+            public void onReceivedHttpError(int statusCode, String reasonPhrase, String url) {
+                android.util.Log.e(TAG, "HTTP错误: " + statusCode + " - " + reasonPhrase + " - " + url);
+
+                runOnUiThread(() -> {
+                    String errorMessage = "网络错误 " + statusCode + ": " + reasonPhrase;
+                    Toast.makeText(WebViewActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+
+        // 设置下载回调
+        mEnhancedWebViewManager.setDownloadCallback(new EnhancedWebViewManager.DownloadCallback() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition,
+                                       String mimetype, long contentLength) {
+                android.util.Log.d(TAG, "开始下载: " + url + " - 类型: " + mimetype);
+
+                runOnUiThread(() -> {
+                    String fileName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype);
+                    Toast.makeText(WebViewActivity.this, "开始下载: " + fileName, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    /**
+     * 更新标签页标题
+     */
+    private void updateTabTitle(String url, String title) {
+        TabData tab = findTabByUrl(url);
+        if (tab != null) {
+            tab.title = title;
+            updateTabView(tab);
+        }
+    }
+
+    /**
+     * 根据URL查找标签页
+     */
+    private TabData findTabByUrl(String url) {
+        for (TabData tab : mTabs) {
+            if (url.equals(tab.url)) {
+                return tab;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 截图功能
+     */
+    private void takeScreenshot() {
+        if (mEnhancedWebViewManager != null) {
+            TabData currentTab = getCurrentTab();
+            if (currentTab != null && currentTab.title != null) {
+                String fileName = currentTab.title.replaceAll("[^a-zA-Z0-9]", "_") + "_" +
+                    System.currentTimeMillis();
+                boolean success = mEnhancedWebViewManager.saveScreenshot(fileName);
+                if (success) {
+                    Toast.makeText(this, "截图已保存", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "截图保存失败", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(this, "无法截图：页面未加载完成", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "截图功能不可用", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 切换桌面模式
+     */
+    private void toggleDesktopMode() {
+        if (mWebView != null) {
+            WebSettings webSettings = mWebView.getSettings();
+            String currentUA = webSettings.getUserAgentString();
+
+            if (currentUA != null && currentUA.contains("Mobile")) {
+                // 切换到桌面模式
+                String desktopUA = currentUA.replace("Mobile", "Desktop");
+                webSettings.setUserAgentString(desktopUA);
+                webSettings.setUseWideViewPort(true);
+                webSettings.setLoadWithOverviewMode(true);
+                Toast.makeText(this, "已切换到桌面模式", Toast.LENGTH_SHORT).show();
+            } else {
+                // 切换到移动模式
+                String mobileUA = "Mozilla/5.0 (Linux; Android " + android.os.Build.VERSION.RELEASE +
+                    "; " + android.os.Build.MODEL + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36";
+                webSettings.setUserAgentString(mobileUA);
+                webSettings.setUseWideViewPort(false);
+                webSettings.setLoadWithOverviewMode(false);
+                Toast.makeText(this, "已切换到移动模式", Toast.LENGTH_SHORT).show();
+            }
+
+            // 刷新页面
+            mWebView.reload();
+        }
+    }
+
+    /**
+     * 清除WebView缓存
+     */
+    private void clearWebViewCache() {
+        if (mWebView != null) {
+            mWebView.clearCache(true);
+            mWebView.clearHistory();
+            WebStorage.getInstance().deleteAllData();
+
+            // 清除Cookie
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.removeAllCookies(null);
+
+            Toast.makeText(this, "缓存已清除", Toast.LENGTH_SHORT).show();
+
+            // 刷新当前页面
+            mWebView.reload();
+        }
+    }
+
+    /**
+     * 切换广告拦截
+     */
+    private void toggleAdBlock() {
+        boolean isEnabled = mAdBlockManager.isAdBlockEnabled();
+        mAdBlockManager.setAdBlockEnabled(!isEnabled);
+
+        String message = !isEnabled ? "广告拦截已开启" : "广告拦截已关闭";
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+
+        // 刷新页面以应用设置
+        if (mWebView != null) {
+            mWebView.reload();
+        }
+    }
+
+    /**
+     * 处理Activity结果（用于文件选择）
+     */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // 处理增强WebView管理器的Activity结果
+        if (mEnhancedWebViewManager != null) {
+            mEnhancedWebViewManager.onActivityResult(requestCode, resultCode, data);
+        }
     }
 }

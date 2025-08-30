@@ -376,6 +376,13 @@
             android:label="@string/wifi_client"
             android:theme="@style/AppTheme.Toolbar" />
 
+        <activity
+            android:name="com.hippo.ehviewer.ui.FileViewerActivity"
+            android:configChanges="screenSize|uiMode|orientation|keyboardHidden"
+            android:label="文件查看器"
+            android:theme="@style/AppTheme.Toolbar"
+            android:exported="false" />
+
         <service
             android:name="com.hippo.ehviewer.download.DownloadService"
             android:label="@string/download_service_label" />
