@@ -49,6 +49,8 @@ import com.hippo.ehviewer.client.EhClient;
 import com.hippo.ehviewer.client.EhCookieStore;
 import com.hippo.ehviewer.client.EhHosts;
 import com.hippo.ehviewer.client.EhEngine;
+import com.hippo.ehviewer.client.X5WebViewManager;
+import com.hippo.ehviewer.client.MemoryManager;
 import com.hippo.ehviewer.client.data.EhNewsDetail;
 import com.hippo.ehviewer.client.data.GalleryDetail;
 import com.hippo.ehviewer.client.data.userTag.UserTagList;
@@ -184,6 +186,12 @@ public class EhApplication extends RecordingApplication {
         BitmapUtils.initialize(this);
         Image.initialize(this);
         Native.initialize();
+
+        // 初始化腾讯X5浏览器
+        X5WebViewManager.getInstance().initX5(this);
+
+        // 初始化内存管理器
+        MemoryManager.getInstance(this);
         // 实际作用不确定，但是与64位应用有冲突
 //        A7Zip.loadLibrary(A7ZipExtractLite.LIBRARY, libname -> ReLinker.loadLibrary(EhApplication.this, libname));
         // 64位适配

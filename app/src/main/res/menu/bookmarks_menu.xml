@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_add_bookmark"
+        android:title="添加书签"
+        android:icon="@drawable/v_plus_dark_x24"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/action_clear_all"
+        android:title="清空所有"
+        android:icon="@drawable/v_delete_red_x24"
+        app:showAsAction="never" />
+
+</menu>
