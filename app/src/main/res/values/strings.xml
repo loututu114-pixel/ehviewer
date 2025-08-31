@@ -1044,4 +1044,17 @@
     <string name="browsing_data_cleared">Browsing data cleared</string>
     <string name="clear_data_confirm">This will clear all cache, cookies and browsing data for all tabs. Continue?</string>
 
+    <!-- Gallery History -->
+    <string name="gallery_history">EhViewer图库历史</string>
+    <string name="no_gallery_history">暂无浏览历史</string>
+    <string name="no_gallery_history_hint">您浏览的EhViewer图库将显示在这里</string>
+    <string name="clear_all_gallery_history">清空所有图库历史</string>
+    <string name="delete_gallery_history">删除图库历史</string>
+    <string name="gallery_categories" translatable="false">Doujinshi|Manga|Artist CG|Game CG|Western|Non-H|Image Set|Cosplay|Asian Porn|Misc</string>
+
+    <!-- Bottom Navigation Mode Settings -->
+    <string name="settings_eh_bottom_nav_mode">底部导航栏模式</string>
+    <string name="bottom_nav_mode_browser">浏览器模式</string>
+    <string name="bottom_nav_mode_gallery">EhViewer图库模式</string>
+
 </resources>

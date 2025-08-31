@@ -28,6 +28,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.ViewGroup;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -86,7 +87,7 @@ public class WebViewActivity extends AppCompatActivity {
     private ImageButton mMenuButton;
     private ImageButton mBookmarkButton;
     private FrameLayout mTabsButtonContainer;
-    private ImageButton mTabsButton;
+    private ImageView mTabsButton;
     private TextView mTabsCount;
     private android.widget.HorizontalScrollView mTabScrollView;
     private android.widget.LinearLayout mTabContainer;
@@ -121,6 +122,11 @@ public class WebViewActivity extends AppCompatActivity {
     private SmartUrlProcessor mSmartUrlProcessor;
     private UserAgentManager mUserAgentManager;
     private ContentPurifierManager mContentPurifier;
+    
+    // 视频全屏相关
+    private FrameLayout mVideoFullscreenContainer;
+    private View mCustomVideoView;
+    private boolean mIsVideoFullscreen = false;
 
     // 静态数据类
     private static class TabData {
@@ -1131,6 +1137,24 @@ public class WebViewActivity extends AppCompatActivity {
             });
             */
 
+            // 设置视频播放回调
+            manager.setVideoPlaybackCallback(new EnhancedWebViewManager.VideoPlaybackCallback() {
+                @Override
+                public void onShowVideoFullscreen(View view, android.webkit.WebChromeClient.CustomViewCallback callback) {
+                    runOnUiThread(() -> showVideoFullscreen(view, callback));
+                }
+
+                @Override
+                public void onHideVideoFullscreen() {
+                    runOnUiThread(() -> hideVideoFullscreen());
+                }
+
+                @Override
+                public boolean isVideoFullscreen() {
+                    return mIsVideoFullscreen;
+                }
+            });
+
             // 设置下载回调
             manager.setDownloadCallback((url, userAgent, contentDisposition, mimetype, contentLength) -> {
                 runOnUiThread(() -> {
@@ -1529,6 +1553,13 @@ public class WebViewActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        // 如果处于视频全屏模式，先退出全屏
+        if (mIsVideoFullscreen) {
+            hideVideoFullscreen();
+            return;
+        }
+        
+        // 检查WebView是否可以后退
         TabData currentTab = getCurrentTab();
         if (currentTab != null && currentTab.webView != null && currentTab.webView.canGoBack()) {
             currentTab.webView.goBack();
@@ -2224,6 +2255,118 @@ public class WebViewActivity extends AppCompatActivity {
     public static void startWebViewActivity(Context context, String url) {
         startWebView(context, url);
     }
+
+    /**
+     * 显示视频全屏模式
+     */
+    private void showVideoFullscreen(View view, android.webkit.WebChromeClient.CustomViewCallback callback) {
+        if (mIsVideoFullscreen) return;
+        
+        try {
+            mIsVideoFullscreen = true;
+            mCustomVideoView = view;
+            
+            // 获取根视图容器
+            ViewGroup rootView = (ViewGroup) findViewById(android.R.id.content);
+            if (rootView == null) return;
+            
+            // 创建全屏视频容器
+            if (mVideoFullscreenContainer == null) {
+                mVideoFullscreenContainer = new FrameLayout(this);
+                mVideoFullscreenContainer.setBackgroundColor(0xFF000000);
+                mVideoFullscreenContainer.setLayoutParams(new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT));
+                    
+                // 添加退出按钮
+                android.widget.ImageButton exitButton = new android.widget.ImageButton(this);
+                exitButton.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+                exitButton.setBackgroundColor(0x80000000);
+                FrameLayout.LayoutParams exitParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT);
+                exitParams.gravity = android.view.Gravity.TOP | android.view.Gravity.RIGHT;
+                exitParams.setMargins(0, 100, 50, 0);
+                exitButton.setLayoutParams(exitParams);
+                exitButton.setOnClickListener(v -> {
+                    hideVideoFullscreen();
+                    if (callback != null) {
+                        callback.onCustomViewHidden();
+                    }
+                });
+                mVideoFullscreenContainer.addView(exitButton);
+            }
+            
+            // 设置视频只横屏播放
+            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            
+            // 隐藏系统UI实现沉浸式体验
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+                
+            // 保持屏幕常亮
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            
+            // 将视频视图添加到全屏容器
+            mVideoFullscreenContainer.addView(view, 0, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                android.view.Gravity.CENTER));
+                
+            // 将全屏容器添加到根视图
+            rootView.addView(mVideoFullscreenContainer);
+            
+            android.util.Log.d("WebViewActivity", "Video entered fullscreen mode");
+            
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing video fullscreen", e);
+        }
+    }
+    
+    /**
+     * 隐藏视频全屏模式
+     */
+    private void hideVideoFullscreen() {
+        if (!mIsVideoFullscreen) return;
+        
+        try {
+            mIsVideoFullscreen = false;
+            
+            // 恢复屏幕方向为自动
+            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            
+            // 恢复系统UI
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+            
+            // 取消保持屏幕常亮
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            
+            // 从根视图中移除全屏容器
+            if (mVideoFullscreenContainer != null) {
+                ViewGroup rootView = (ViewGroup) findViewById(android.R.id.content);
+                if (rootView != null) {
+                    rootView.removeView(mVideoFullscreenContainer);
+                }
+                
+                // 清理全屏容器
+                if (mCustomVideoView != null) {
+                    mVideoFullscreenContainer.removeView(mCustomVideoView);
+                }
+                mVideoFullscreenContainer.removeAllViews();
+            }
+            
+            // 清理引用
+            mCustomVideoView = null;
+            
+            android.util.Log.d("WebViewActivity", "Video exited fullscreen mode");
+            
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error hiding video fullscreen", e);
+        }
+    }
+    
 
     public static void startWebViewActivityWithHtml(Context context, String htmlContent, String title) {
         try {

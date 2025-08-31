@@ -29,6 +29,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -75,6 +77,12 @@ public class EnhancedWebViewManager {
     private ProgressCallback mProgressCallback;
     private ErrorCallback mErrorCallback;
     private DownloadCallback mDownloadCallback;
+    
+    // 视频播放相关
+    private VideoPlaybackCallback mVideoPlaybackCallback;
+    private View mCustomVideoView;
+    private WebChromeClient.CustomViewCallback mCustomViewCallback;
+    private boolean mIsVideoFullscreen = false;
 
     /**
      * 进度回调接口
@@ -101,6 +109,15 @@ public class EnhancedWebViewManager {
     public interface DownloadCallback {
         void onDownloadStart(String url, String userAgent, String contentDisposition,
                            String mimetype, long contentLength);
+    }
+    
+    /**
+     * 视频播放回调接口
+     */
+    public interface VideoPlaybackCallback {
+        void onShowVideoFullscreen(View view, WebChromeClient.CustomViewCallback callback);
+        void onHideVideoFullscreen();
+        boolean isVideoFullscreen();
     }
 
     public EnhancedWebViewManager(Context context, WebView webView) {
@@ -169,13 +186,13 @@ public class EnhancedWebViewManager {
         webSettings.setBlockNetworkLoads(false);
         webSettings.setBlockNetworkImage(false);
 
-        // 文件访问设置
-        webSettings.setAllowFileAccess(false);
-        webSettings.setAllowFileAccessFromFileURLs(false);
-        webSettings.setAllowUniversalAccessFromFileURLs(false);
+        // 文件访问设置 - 适度放宽以支持视频播放
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
 
-        // 安全设置
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        // 安全设置 - 允许混合内容以支持更多视频网站
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
         // 性能优化
         webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
@@ -183,29 +200,62 @@ public class EnhancedWebViewManager {
             webSettings.setLoadsImagesAutomatically(true);
         }
 
-        // User Agent设置
-        String userAgent = "Mozilla/5.0 (Linux; Android " + Build.VERSION.RELEASE +
-                "; " + Build.MODEL + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 EhViewer";
+        // User Agent设置 - 使用桌面版UA以提高兼容性
+        String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 EhViewer/2.0";
         webSettings.setUserAgentString(userAgent);
 
         // 编码设置
         webSettings.setDefaultTextEncodingName("UTF-8");
         webSettings.setDefaultFontSize(16);
 
-        // 硬件加速
+        // 硬件加速 - 对视频播放至关重要
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            mWebView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+            mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+            // 启用调试模式
+            WebView.setWebContentsDebuggingEnabled(true);
+        } else {
+            // 低版本使用软件渲染
+            mWebView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+        
+        // 设置WebView支持视频
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                mWebView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "Failed to set mixed content mode", e);
         }
 
         // 启用地理位置
         webSettings.setGeolocationEnabled(true);
         webSettings.setGeolocationDatabasePath(mContext.getFilesDir().getPath());
 
-        // 启用媒体播放
+        // 启用媒体播放 - 关键设置
         webSettings.setMediaPlaybackRequiresUserGesture(false);
+        
+        // 视频播放相关设置
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            webSettings.setMediaPlaybackRequiresUserGesture(false);
+        }
+        
+        // 启用HTML5视频播放
+        webSettings.setPluginState(WebSettings.PluginState.ON);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
+        
+        // 视频缓存设置
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        
+        // 允许通过网络加载资源
+        webSettings.setBlockNetworkLoads(false);
+        webSettings.setBlockNetworkImage(false);
 
             // 添加JavaScript接口
         mWebView.addJavascriptInterface(new JavaScriptInterface(), "EhViewer");
+        
+        // 添加Android接口供VideoPlayerEnhancer使用
+        mWebView.addJavascriptInterface(new VideoJavaScriptInterface(), "Android");
 
         // 设置密码管理器引用
         mPasswordManager = PasswordManager.getInstance(mContext);
@@ -216,6 +266,22 @@ public class EnhancedWebViewManager {
      */
     private void setupWebViewClient() {
         mWebViewClient = new WebViewClient() {
+
+@Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                // 只记录Ajax请求，不拦截，让JavaScript层处理
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    String url = request.getUrl().toString();
+                    if (isAjaxRequest(url, request)) {
+                        android.util.Log.d(TAG, "Detected Ajax request (not intercepting): " + url);
+                        Map<String, String> headers = request.getRequestHeaders();
+                        for (Map.Entry<String, String> header : headers.entrySet()) {
+                            android.util.Log.v(TAG, "Request header: " + header.getKey() + " = " + header.getValue());
+                        }
+                    }
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -237,6 +303,9 @@ public class EnhancedWebViewManager {
 
                 // 注入增强功能脚本
                 injectEnhancedScripts(view);
+                
+                // 注入Ajax兼容性脚本
+                injectAjaxCompatibilityScript(view);
             }
 
             @Override
@@ -316,7 +385,7 @@ public class EnhancedWebViewManager {
                 callback.invoke(origin, true, false);
             }
 
-            @Override
+@Override
             public void onPermissionRequest(android.webkit.PermissionRequest request) {
                 // 处理权限请求
                 String[] resources = request.getResources();
@@ -327,6 +396,53 @@ public class EnhancedWebViewManager {
                         break;
                     }
                 }
+            }
+            
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                // 处理视频全屏播放
+                handleVideoFullscreen(view, callback);
+            }
+            
+            @Override
+            public void onHideCustomView() {
+                // 退出视频全屏播放
+                hideVideoFullscreen();
+            }
+            
+            @Override
+            public View getVideoLoadingProgressView() {
+                // 返回视频加载进度视图
+                return createVideoLoadingView();
+            }
+
+            @Override
+            public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
+                // 捕获JavaScript控制台消息
+                String message = consoleMessage.message();
+                String source = consoleMessage.sourceId();
+                int line = consoleMessage.lineNumber();
+                android.webkit.ConsoleMessage.MessageLevel level = consoleMessage.messageLevel();
+                
+                String logTag = TAG + "_Console";
+                String logMessage = "[" + level + "] " + source + ":" + line + " " + message;
+                
+                switch (level) {
+                    case ERROR:
+                        android.util.Log.e(logTag, logMessage);
+                        break;
+                    case WARNING:
+                        android.util.Log.w(logTag, logMessage);
+                        break;
+                    case LOG:
+                    case DEBUG:
+                    case TIP:
+                    default:
+                        android.util.Log.d(logTag, logMessage);
+                        break;
+                }
+                
+                return true; // 返回true表示我们已经处理了这个消息
             }
         };
 
@@ -341,6 +457,156 @@ public class EnhancedWebViewManager {
                 handleDownload(url, userAgent, contentDisposition, mimetype, contentLength);
             }
         });
+    }
+
+/**
+     * 检查是否是Ajax请求
+     */
+    private boolean isAjaxRequest(String url, WebResourceRequest request) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Map<String, String> headers = request.getRequestHeaders();
+            
+            // 更广泛的Ajax请求检测
+            boolean hasAjaxPath = url.contains("/ajax/") || 
+                                 url.contains("/api/") ||
+                                 url.contains("/touch/ajax/") ||
+                                 url.contains("comment/illust") || // pixiv评论接口
+                                 url.contains("/rpc/") ||
+                                 url.contains("?format=json") ||
+                                 url.contains("&format=json");
+            
+            boolean hasAjaxHeaders = headers.containsValue("application/json") ||
+                                   headers.containsValue("XMLHttpRequest") ||
+                                   headers.containsKey("X-Requested-With");
+            
+            // pixiv特殊检测 - 查询参数中包含特定关键词
+            boolean isPixivAjax = url.contains("pixiv.net") && 
+                                (url.contains("work_id=") || 
+                                 url.contains("illust_id=") || 
+                                 url.contains("page=") || 
+                                 url.contains("lang=") ||
+                                 url.contains("version="));
+            
+            return hasAjaxPath || hasAjaxHeaders || isPixivAjax;
+        }
+        return false;
+    }
+    
+    /**
+     * 使用增强的请求头重新发起请求
+     */
+    private WebResourceResponse makeEnhancedRequest(String url, String method, Map<String, String> originalHeaders) {
+        try {
+            java.net.URL requestUrl = new java.net.URL(url);
+            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) requestUrl.openConnection();
+            
+            // 设置请求方法
+            connection.setRequestMethod(method);
+            
+            // 复制原始请求头
+            for (Map.Entry<String, String> header : originalHeaders.entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
+            
+            // 添加增强的请求头
+            connection.setRequestProperty("X-Requested-With", "XMLHttpRequest");
+            connection.setRequestProperty("Accept", "application/json, text/javascript, */*; q=0.01");
+            
+            // pixiv特殊处理
+            if (url.contains("pixiv.net")) {
+                connection.setRequestProperty("Accept", "application/json");
+                connection.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7");
+                connection.setRequestProperty("Cache-Control", "no-cache");
+                connection.setRequestProperty("Pragma", "no-cache");
+                connection.setRequestProperty("Sec-Fetch-Dest", "empty");
+                connection.setRequestProperty("Sec-Fetch-Mode", "cors");
+                connection.setRequestProperty("Sec-Fetch-Site", "same-origin");
+                
+                // 设置正确的Referer - 非常重要
+                if (mWebView != null && mWebView.getUrl() != null) {
+                    String currentUrl = mWebView.getUrl();
+                    connection.setRequestProperty("Referer", currentUrl);
+                    connection.setRequestProperty("Origin", "https://www.pixiv.net");
+                    android.util.Log.d(TAG, "Setting Referer: " + currentUrl + " for request: " + url);
+                }
+                
+                // 设置正确的User-Agent
+                connection.setRequestProperty("User-Agent", 
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            }
+            
+            // 设置连接超时
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            
+            // 获取响应
+            int responseCode = connection.getResponseCode();
+            String responseMessage = connection.getResponseMessage();
+            android.util.Log.d(TAG, "Ajax request response: " + responseCode + " (" + responseMessage + ") for " + url);
+            
+            // 输出响应头供调试
+            Map<String, java.util.List<String>> responseHeaders = connection.getHeaderFields();
+            for (Map.Entry<String, java.util.List<String>> header : responseHeaders.entrySet()) {
+                android.util.Log.v(TAG, "Response header: " + header.getKey() + " = " + header.getValue());
+            }
+            
+            if (responseCode >= 200 && responseCode < 300) {
+                // 成功响应
+                String mimeType = connection.getContentType();
+                if (mimeType == null) {
+                    mimeType = "application/json";
+                }
+                
+                // 提取MIME类型和编码
+                String[] parts = mimeType.split(";");
+                String actualMimeType = parts[0].trim();
+                String encoding = "UTF-8";
+                
+                for (String part : parts) {
+                    if (part.trim().startsWith("charset=")) {
+                        encoding = part.trim().substring(8);
+                        break;
+                    }
+                }
+                
+                return new WebResourceResponse(actualMimeType, encoding, connection.getInputStream());
+            } else {
+                // 错误响应 - 读取错误信息
+                android.util.Log.w(TAG, "Ajax request failed with code: " + responseCode + " (" + responseMessage + ") for " + url);
+                
+                // 读取错误响应内容
+                java.io.InputStream errorStream = connection.getErrorStream();
+                if (errorStream != null) {
+                    try {
+                        java.util.Scanner scanner = new java.util.Scanner(errorStream).useDelimiter("\\A");
+                        String errorBody = scanner.hasNext() ? scanner.next() : "";
+                        android.util.Log.w(TAG, "Error response body: " + errorBody);
+                        
+                        // 将错误内容返回给WebView
+                        java.io.ByteArrayInputStream errorInputStream = 
+                            new java.io.ByteArrayInputStream(errorBody.getBytes("UTF-8"));
+                        
+                        // 转换响应头格式
+                        Map<String, String> errorResponseHeaders = new HashMap<>();
+                        for (Map.Entry<String, java.util.List<String>> header : connection.getHeaderFields().entrySet()) {
+                            if (header.getKey() != null && header.getValue() != null && !header.getValue().isEmpty()) {
+                                errorResponseHeaders.put(header.getKey(), header.getValue().get(0));
+                            }
+                        }
+                        
+                        return new WebResourceResponse("application/json", "UTF-8", responseCode, responseMessage, 
+                            errorResponseHeaders, errorInputStream);
+                    } catch (Exception e) {
+                        android.util.Log.e(TAG, "Failed to read error stream", e);
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Failed to make enhanced request for: " + url, e);
+        }
+        
+        return null;
     }
 
     /**
@@ -446,6 +712,93 @@ public class EnhancedWebViewManager {
 
         String script = "(function() {" +
             "console.log('EhViewer enhanced scripts loaded');" +
+            "" +
+            "// 增强视频播放功能" +
+            "function enhanceVideoPlayers() {" +
+            "    console.log('Enhancing video players...');" +
+            "    var videos = document.querySelectorAll('video');" +
+            "    console.log('Found ' + videos.length + ' video elements');" +
+            "    " +
+            "    for (var i = 0; i < videos.length; i++) {" +
+            "        var video = videos[i];" +
+            "        " +
+            "        // 确保视频可以播放" +
+            "        video.setAttribute('playsinline', 'true');" +
+            "        video.setAttribute('webkit-playsinline', 'true');" +
+            "        video.setAttribute('controls', 'true');" +
+            "        video.setAttribute('preload', 'metadata');" +
+            "        " +
+            "        // 设置视频样式确保正确显示" +
+            "        video.style.width = '100%';" +
+            "        video.style.height = 'auto';" +
+            "        video.style.maxWidth = '100%';" +
+            "        video.style.display = 'block';" +
+            "        " +
+            "        // 添加全屏双击事件" +
+            "        video.addEventListener('dblclick', function(e) {" +
+            "            console.log('Video double-clicked for fullscreen');" +
+            "            if (this.requestFullscreen) {" +
+            "                this.requestFullscreen();" +
+            "            } else if (this.webkitRequestFullscreen) {" +
+            "                this.webkitRequestFullscreen();" +
+            "            } else if (this.mozRequestFullScreen) {" +
+            "                this.mozRequestFullScreen();" +
+            "            } else if (window.Android && window.Android.requestFullscreen) {" +
+            "                window.Android.requestFullscreen();" +
+            "            }" +
+            "        });" +
+            "        " +
+            "        // 添加点击播放事件" +
+            "        video.addEventListener('click', function(e) {" +
+            "            console.log('Video clicked');" +
+            "            if (this.paused) {" +
+            "                this.play().catch(function(error) {" +
+            "                    console.error('Video play failed:', error);" +
+            "                });" +
+            "            } else {" +
+            "                this.pause();" +
+            "            }" +
+            "        });" +
+            "        " +
+            "        // 添加加载事件监听" +
+            "        video.addEventListener('loadstart', function() {" +
+            "            console.log('Video loading started');" +
+            "        });" +
+            "        " +
+            "        video.addEventListener('canplay', function() {" +
+            "            console.log('Video can start playing');" +
+            "        });" +
+            "        " +
+            "        video.addEventListener('error', function(e) {" +
+            "            console.error('Video error:', e);" +
+            "        });" +
+            "    }" +
+            "}" +
+            "" +
+            "// 页面加载完成后增强视频" +
+            "setTimeout(enhanceVideoPlayers, 1000);" +
+            "// 监听DOM变化，处理动态加载的视频" +
+            "if (typeof MutationObserver !== 'undefined') {" +
+            "    var observer = new MutationObserver(function(mutations) {" +
+            "        var hasNewVideos = false;" +
+            "        mutations.forEach(function(mutation) {" +
+            "            if (mutation.addedNodes) {" +
+            "                for (var i = 0; i < mutation.addedNodes.length; i++) {" +
+            "                    var node = mutation.addedNodes[i];" +
+            "                    if (node.tagName === 'VIDEO' || (node.querySelectorAll && node.querySelectorAll('video').length > 0)) {" +
+            "                        hasNewVideos = true;" +
+            "                        break;" +
+            "                    }" +
+            "                }" +
+            "            }" +
+            "        });" +
+            "        if (hasNewVideos) {" +
+            "            setTimeout(enhanceVideoPlayers, 500);" +
+            "        }" +
+            "    });" +
+            "    observer.observe(document.body, { childList: true, subtree: true });" +
+            "}" +
+            "" +
             "" +
             "// 密码表单检测和自动填充功能" +
             "var passwordForms = [];" +
@@ -778,6 +1131,10 @@ public class EnhancedWebViewManager {
     public void setDownloadCallback(DownloadCallback callback) {
         this.mDownloadCallback = callback;
     }
+    
+    public void setVideoPlaybackCallback(VideoPlaybackCallback callback) {
+        this.mVideoPlaybackCallback = callback;
+    }
 
     /**
      * 保存历史记录
@@ -798,9 +1155,324 @@ public class EnhancedWebViewManager {
     }
 
     /**
+     * 注入Ajax兼容性脚本
+     */
+    private void injectAjaxCompatibilityScript(WebView view) {
+        String ajaxScript = "(function() {" +
+            "console.log('Injecting Ajax compatibility enhancements for pixiv...');" +
+            "" +
+            "// 添加全局错误监听" +
+            "window.addEventListener('error', function(e) {" +
+            "    console.error('Global error:', e.error, e.filename, e.lineno);" +
+            "});" +
+            "" +
+            "// 监听未处理的Promise拒绝" +
+            "window.addEventListener('unhandledrejection', function(e) {" +
+            "    console.error('Unhandled promise rejection:', e.reason);" +
+            "});" +
+            "" +
+            "// 保存原始XMLHttpRequest" +
+            "var originalXHR = window.XMLHttpRequest;" +
+            "" +
+            "// 创建增强的XMLHttpRequest" +
+            "function EnhancedXMLHttpRequest() {" +
+            "    var xhr = new originalXHR();" +
+            "    var originalOpen = xhr.open;" +
+            "    var originalSend = xhr.send;" +
+            "    var originalSetRequestHeader = xhr.setRequestHeader;" +
+            "    " +
+            "    xhr.open = function(method, url, async, user, password) {" +
+            "        // 记录请求信息" +
+            "        this._method = method;" +
+            "        this._url = url;" +
+            "        console.log('XHR Request:', method, url);" +
+            "        " +
+            "        return originalOpen.apply(this, arguments);" +
+            "    };" +
+            "    " +
+            "    xhr.setRequestHeader = function(header, value) {" +
+            "        // 确保必要的请求头被设置" +
+            "        if (!this._headers) this._headers = {};" +
+            "        this._headers[header] = value;" +
+            "        " +
+            "        return originalSetRequestHeader.apply(this, arguments);" +
+            "    };" +
+            "    " +
+            "    xhr.send = function(data) {" +
+            "        console.log('XHR send called for:', this._url);" +
+            "        " +
+            "        // 为Ajax请求自动添加必要的请求头" +
+            "        if (this._url && (this._url.indexOf('/ajax/') !== -1 || this._url.indexOf('/api/') !== -1 || this._url.indexOf('/touch/ajax/') !== -1)) {" +
+            "            console.log('Processing Ajax request:', this._url);" +
+            "            " +
+            "            // 基本请求头" +
+            "            if (!this._headers || !this._headers['X-Requested-With']) {" +
+            "                try {" +
+            "                    originalSetRequestHeader.call(this, 'X-Requested-With', 'XMLHttpRequest');" +
+            "                    console.log('Added X-Requested-With header');" +
+            "                } catch (e) { console.error('Failed to set X-Requested-With:', e); }" +
+            "            }" +
+            "            " +
+            "            if (!this._headers || !this._headers['Accept']) {" +
+            "                try {" +
+            "                    originalSetRequestHeader.call(this, 'Accept', 'application/json, text/javascript, */*; q=0.01');" +
+            "                    console.log('Added Accept header');" +
+            "                } catch (e) { console.error('Failed to set Accept:', e); }" +
+            "            }" +
+            "            " +
+            "            // pixiv特殊处理" +
+            "            if (this._url.indexOf('pixiv.net') !== -1) {" +
+            "                console.log('Applying pixiv-specific headers');" +
+            "                try {" +
+            "                    originalSetRequestHeader.call(this, 'Accept', 'application/json');" +
+            "                    originalSetRequestHeader.call(this, 'Accept-Language', 'zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7');" +
+            "                    originalSetRequestHeader.call(this, 'Cache-Control', 'no-cache');" +
+            "                    originalSetRequestHeader.call(this, 'Pragma', 'no-cache');" +
+            "                    originalSetRequestHeader.call(this, 'Sec-Fetch-Dest', 'empty');" +
+            "                    originalSetRequestHeader.call(this, 'Sec-Fetch-Mode', 'cors');" +
+            "                    originalSetRequestHeader.call(this, 'Sec-Fetch-Site', 'same-origin');" +
+            "                    " +
+            "                    if (window.location.href && !this._headers['Referer']) {" +
+            "                        originalSetRequestHeader.call(this, 'Referer', window.location.href);" +
+            "                        console.log('Set Referer to:', window.location.href);" +
+            "                    }" +
+            "                    " +
+            "                    if (!this._headers['Origin']) {" +
+            "                        originalSetRequestHeader.call(this, 'Origin', 'https://www.pixiv.net');" +
+            "                        console.log('Set Origin to: https://www.pixiv.net');" +
+            "                    }" +
+            "                    " +
+            "                    console.log('Applied pixiv headers successfully');" +
+            "                } catch (e) { " +
+            "                    console.error('Failed to set pixiv headers:', e); " +
+            "                }" +
+            "            }" +
+            "        }" +
+            "        " +
+            "        // 添加错误处理" +
+            "        var originalOnError = this.onerror;" +
+            "        this.onerror = function() {" +
+            "            console.error('XHR Error for:', xhr._url, 'Status:', xhr.status, 'StatusText:', xhr.statusText);" +
+            "            if (originalOnError) originalOnError.apply(this, arguments);" +
+            "        };" +
+            "        " +
+            "        var originalOnLoad = this.onload;" +
+            "        this.onload = function() {" +
+            "            console.log('XHR Success for:', xhr._url, 'Status:', xhr.status);" +
+            "            if (originalOnLoad) originalOnLoad.apply(this, arguments);" +
+            "        };" +
+            "        " +
+            "        return originalSend.apply(this, arguments);" +
+            "    };" +
+            "    " +
+            "    return xhr;" +
+            "}" +
+            "" +
+            "// 替换全局XMLHttpRequest" +
+            "window.XMLHttpRequest = EnhancedXMLHttpRequest;" +
+            "" +
+            "// 增强fetch API" +
+            "if (window.fetch) {" +
+            "    var originalFetch = window.fetch;" +
+            "    window.fetch = function(url, options) {" +
+            "        options = options || {};" +
+            "        options.headers = options.headers || {};" +
+            "        " +
+            "        // 检查是否是Ajax/API请求" +
+            "        if (typeof url === 'string' && (url.indexOf('/ajax/') !== -1 || url.indexOf('/api/') !== -1 || url.indexOf('/touch/ajax/') !== -1)) {" +
+            "            console.log('Processing fetch request:', url);" +
+            "            " +
+            "            // 添加必要的请求头" +
+            "            if (!options.headers['X-Requested-With']) {" +
+            "                options.headers['X-Requested-With'] = 'XMLHttpRequest';" +
+            "            }" +
+            "            " +
+            "            if (!options.headers['Accept']) {" +
+            "                options.headers['Accept'] = 'application/json, text/javascript, */*; q=0.01';" +
+            "            }" +
+            "            " +
+            "            // pixiv特殊处理" +
+            "            if (url.indexOf('pixiv.net') !== -1) {" +
+            "                console.log('Applying pixiv-specific fetch headers');" +
+            "                options.headers['Accept'] = 'application/json';" +
+            "                options.headers['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7';" +
+            "                options.headers['Cache-Control'] = 'no-cache';" +
+            "                options.headers['Pragma'] = 'no-cache';" +
+            "                options.headers['Sec-Fetch-Dest'] = 'empty';" +
+            "                options.headers['Sec-Fetch-Mode'] = 'cors';" +
+            "                options.headers['Sec-Fetch-Site'] = 'same-origin';" +
+            "                " +
+            "                if (window.location.href && !options.headers['Referer']) {" +
+            "                    options.headers['Referer'] = window.location.href;" +
+            "                }" +
+            "                " +
+            "                if (!options.headers['Origin']) {" +
+            "                    options.headers['Origin'] = 'https://www.pixiv.net';" +
+            "                }" +
+            "            }" +
+            "            " +
+            "            console.log('Enhanced fetch request:', url, options.headers);" +
+            "        }" +
+            "        " +
+            "        // 添加错误处理" +
+            "        return originalFetch.apply(this, arguments).then(function(response) {" +
+            "            console.log('Fetch response for:', url, 'Status:', response.status, response.statusText);" +
+            "            if (!response.ok) {" +
+            "                console.error('Fetch error:', url, response.status, response.statusText);" +
+            "            }" +
+            "            return response;" +
+            "        }).catch(function(error) {" +
+            "            console.error('Fetch failed:', url, error);" +
+            "            throw error;" +
+            "        });" +
+            "        } else {" +
+            "            // 非-Ajax请求直接返回" +
+            "            return originalFetch.apply(this, arguments);" +
+            "        }" +
+            "    };" +
+            "}" +
+            "" +
+            "// 监听所有网络错误" +
+            "window.addEventListener('online', function() { console.log('Network online'); });" +
+            "window.addEventListener('offline', function() { console.log('Network offline'); });" +
+            "" +
+            "console.log('Ajax compatibility enhancements loaded successfully');" +
+            "})();";
+
+        view.evaluateJavascript(ajaxScript, null);
+    }
+
+    /**
+     * 处理视频全屏播放
+     */
+    private void handleVideoFullscreen(View view, WebChromeClient.CustomViewCallback callback) {
+        if (mCustomVideoView != null) {
+            // 如果已经有全屏视频，先隐藏
+            callback.onCustomViewHidden();
+            return;
+        }
+        
+        mCustomVideoView = view;
+        mCustomViewCallback = callback;
+        mIsVideoFullscreen = true;
+        
+        android.util.Log.d(TAG, "Video entering fullscreen mode");
+        
+        if (mVideoPlaybackCallback != null) {
+            mVideoPlaybackCallback.onShowVideoFullscreen(view, callback);
+        } else {
+            // 启动独立的视频播放Activity
+            startVideoPlayerActivity(view);
+        }
+    }
+    
+    /**
+     * 隐藏视频全屏播放
+     */
+    private void hideVideoFullscreen() {
+        if (mCustomVideoView == null) return;
+        
+        android.util.Log.d(TAG, "Video exiting fullscreen mode");
+        
+        if (mVideoPlaybackCallback != null) {
+            mVideoPlaybackCallback.onHideVideoFullscreen();
+        }
+        
+        mCustomVideoView = null;
+        if (mCustomViewCallback != null) {
+            mCustomViewCallback.onCustomViewHidden();
+            mCustomViewCallback = null;
+        }
+        mIsVideoFullscreen = false;
+    }
+    
+    /**
+     * 启动视频播放Activity
+     */
+    private void startVideoPlayerActivity(View videoView) {
+        try {
+            // 这里可以提取视频URL并启动MediaPlayerActivity
+            // 由于这是一个自定义视图，我们需要通过JavaScript获取视频信息
+            String script = "(function() {" +
+                "var videos = document.querySelectorAll('video');" +
+                "if (videos.length > 0) {" +
+                "    var video = videos[0];" +
+                "    return {" +
+                "        src: video.currentSrc || video.src," +
+                "        title: document.title," +
+                "        currentTime: video.currentTime" +
+                "    };" +
+                "}" +
+                "return null;" +
+                "})();";
+                
+            mWebView.evaluateJavascript(script, result -> {
+                android.util.Log.d(TAG, "Video info result: " + result);
+                // 这里可以解析result并启动MediaPlayerActivity
+                // 但由于复杂性，我们暂时使用回调方式
+            });
+            
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Failed to start video player", e);
+        }
+    }
+    
+    /**
+     * 创建视频加载视图
+     */
+    private View createVideoLoadingView() {
+        // 创建一个简单的加载视图
+        android.widget.ProgressBar progressBar = new android.widget.ProgressBar(mContext);
+        progressBar.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.CENTER));
+        return progressBar;
+    }
+    
+    /**
+     * 检查是否处于视频全屏模式
+     */
+    public boolean isVideoFullscreen() {
+        return mIsVideoFullscreen;
+    }
+    
+    /**
+     * 退出视频全屏模式
+     */
+    public void exitVideoFullscreen() {
+        if (mIsVideoFullscreen) {
+            hideVideoFullscreen();
+        }
+    }
+
+    /**
+     * 视频相关的JavaScript接口
+     */
+    private class VideoJavaScriptInterface {
+        
+        @JavascriptInterface
+        public void requestFullscreen() {
+            android.util.Log.d(TAG, "Video fullscreen requested from JavaScript");
+            if (mVideoPlaybackCallback != null) {
+                // 这里需要获取视频元素，暂时使用null
+                mVideoPlaybackCallback.onShowVideoFullscreen(null, null);
+            }
+        }
+        
+        @JavascriptInterface
+        public void log(String message) {
+            android.util.Log.d(TAG + "_JS", message);
+        }
+    }
+
+    /**
      * 清理资源
      */
     public void destroy() {
+        if (mIsVideoFullscreen) {
+            exitVideoFullscreen();
+        }
         if (mWebView != null) {
             mWebView.destroy();
         }

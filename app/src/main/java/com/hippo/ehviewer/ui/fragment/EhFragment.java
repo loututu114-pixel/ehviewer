@@ -47,6 +47,7 @@ public class EhFragment extends BasePreferenceFragmentCompat
         Preference showTagTranslations = findPreference(Settings.KEY_SHOW_TAG_TRANSLATIONS);
         Preference showGalleryComment = findPreference(Settings.KEY_SHOW_GALLERY_COMMENT);
         Preference tagTranslationsSource = findPreference("tag_translations_source");
+        Preference bottomNavMode = findPreference(Settings.KEY_BOTTOM_NAV_MODE);
 
         theme.setOnPreferenceChangeListener(this);
         applyNavBarThemeColor.setOnPreferenceChangeListener(this);
