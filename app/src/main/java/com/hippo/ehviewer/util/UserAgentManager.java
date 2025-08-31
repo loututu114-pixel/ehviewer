@@ -34,18 +34,18 @@ public class UserAgentManager {
         put("youtu.be", UA_CHROME_DESKTOP);
         put("m.youtube.com", UA_CHROME_DESKTOP);
 
-        // Facebook - 桌面版更好
-        put("facebook.com", UA_CHROME_DESKTOP);
-        put("fb.com", UA_CHROME_DESKTOP);
-        put("m.facebook.com", UA_CHROME_DESKTOP);
+        // Facebook - 移动版触控体验更好
+        put("facebook.com", UA_CHROME_MOBILE);
+        put("fb.com", UA_CHROME_MOBILE);
+        put("m.facebook.com", UA_CHROME_MOBILE);
 
-        // Twitter - 桌面版体验更好
-        put("twitter.com", UA_CHROME_DESKTOP);
-        put("x.com", UA_CHROME_DESKTOP);
-        put("mobile.twitter.com", UA_CHROME_DESKTOP);
+        // Twitter - 移动版针对触控优化
+        put("twitter.com", UA_CHROME_MOBILE);
+        put("x.com", UA_CHROME_MOBILE);
+        put("mobile.twitter.com", UA_CHROME_MOBILE);
 
-        // Instagram - 桌面版
-        put("instagram.com", UA_CHROME_DESKTOP);
+        // Instagram - 移动优先平台
+        put("instagram.com", UA_CHROME_MOBILE);
 
         // LinkedIn - 桌面版
         put("linkedin.com", UA_CHROME_DESKTOP);
@@ -62,17 +62,16 @@ public class UserAgentManager {
         // Wikipedia - 桌面版
         put("wikipedia.org", UA_CHROME_DESKTOP);
 
-        // 新闻网站 - 桌面版
-        put("bbc.com", UA_CHROME_DESKTOP);
-        put("cnn.com", UA_CHROME_DESKTOP);
-        put("nytimes.com", UA_CHROME_DESKTOP);
-        put("reuters.com", UA_CHROME_DESKTOP);
+        // 新闻网站 - 移动版阅读体验更佳
+        put("bbc.com", UA_CHROME_MOBILE);
+        put("cnn.com", UA_CHROME_MOBILE);
+        put("nytimes.com", UA_CHROME_MOBILE);
+        put("reuters.com", UA_CHROME_MOBILE);
 
-        // 电商网站
-        put("amazon.com", UA_CHROME_DESKTOP);
-        put("ebay.com", UA_CHROME_DESKTOP);
-        put("alibaba.com", UA_CHROME_DESKTOP);
-        put("taobao.com", UA_CHROME_DESKTOP);
+        // 电商网站 - 移动版购物体验优化
+        put("amazon.com", UA_CHROME_MOBILE);
+        put("ebay.com", UA_CHROME_MOBILE);
+        put("alibaba.com", UA_CHROME_MOBILE);
 
         // 视频网站 - 需要桌面版避免移动版重定向
         put("vimeo.com", UA_CHROME_DESKTOP);
@@ -168,10 +167,84 @@ public class UserAgentManager {
         settings.setUserAgentString(userAgent);
 
         Log.d(TAG, "Set UA for " + domain + ": " + userAgent.substring(0, 50) + "...");
+        Log.d(TAG, "Full UA for " + domain + ": " + userAgent);
+        
+        // 验证UA是否设置成功
+        String actualUA = settings.getUserAgentString();
+        if (actualUA != null && actualUA.equals(userAgent)) {
+            Log.d(TAG, "✓ UA successfully set for " + domain);
+        } else {
+            Log.w(TAG, "✗ UA setting failed for " + domain + ". Expected: " + userAgent + ", Actual: " + actualUA);
+        }
+        
+        // 为移动端优化设置额外的WebView参数
+        if (userAgent.equals(UA_CHROME_MOBILE)) {
+            optimizeForMobile(settings);
+        } else {
+            optimizeForDesktop(settings);
+        }
     }
+    
+    /**
+     * 简单的UA切换（仅在必要时使用，不自动重试）
+     */
+    public boolean switchUserAgentSimple(WebView webView, String url) {
+        if (webView == null || url == null) return false;
+        
+        String domain = extractDomain(url);
+        String currentUA = webView.getSettings().getUserAgentString();
+        
+        // 只做简单的Mobile/Desktop切换，不自动重新加载页面
+        if (currentUA != null && currentUA.contains("Mobile")) {
+            webView.getSettings().setUserAgentString(UA_CHROME_DESKTOP);
+            Log.d(TAG, "Switched to desktop UA for: " + domain);
+            return true;
+        } else {
+            webView.getSettings().setUserAgentString(UA_CHROME_MOBILE);
+            Log.d(TAG, "Switched to mobile UA for: " + domain);
+            return true;
+        }
+    }
+    
+    /**
+     * 移动端优化设置
+     */
+    private void optimizeForMobile(WebSettings settings) {
+        // 移动端优化：启用缩放，优化文字大小
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        
+        // 移动端通常需要更高的文字缩放
+        settings.setTextZoom(110);
+        
+        // 启用自适应布局
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+    }
+    
+    /**
+     * 桌面端优化设置  
+     */
+    private void optimizeForDesktop(WebSettings settings) {
+        // 桌面端优化：更宽的视口
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        
+        // 桌面端保持标准文字大小
+        settings.setTextZoom(100);
+        
+        // 使用标准布局算法
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+    }
+    
 
     /**
-     * 获取最优的User-Agent
+     * 获取最优的User-Agent (简化版)
      */
     public String getOptimalUserAgent(String domain) {
         if (domain == null || domain.isEmpty()) {
@@ -181,19 +254,24 @@ public class UserAgentManager {
         // 解析域名别名
         String resolvedDomain = resolveDomainAlias(domain);
 
-        // 检查是否有网站特定的UA
+        // 只做精确匹配，不做复杂的子域名匹配
+        // 这样避免干扰网站自身的跳转机制（如 www.taobao.com -> m.taobao.com）
         String siteSpecificUA = siteSpecificUAs.get(resolvedDomain);
         if (siteSpecificUA != null) {
             return siteSpecificUA;
         }
 
-        // 根据域名后缀判断地区
-        if (isChineseDomain(resolvedDomain)) {
-            return UA_CHROME_MOBILE; // 中国网站默认移动版
+        // 简单的www子域名处理
+        if (resolvedDomain.startsWith("www.")) {
+            String mainDomain = resolvedDomain.substring(4);
+            siteSpecificUA = siteSpecificUAs.get(mainDomain);
+            if (siteSpecificUA != null) {
+                return siteSpecificUA;
+            }
         }
 
-        // 默认使用桌面版（更好的体验）
-        return UA_CHROME_DESKTOP;
+        // 默认使用移动版UA，让网站自己决定是否需要跳转
+        return UA_CHROME_MOBILE;
     }
 
     /**
@@ -364,6 +442,18 @@ public class UserAgentManager {
      */
     public boolean isSiteSupported(String domain) {
         return siteSpecificUAs.containsKey(domain.toLowerCase());
+    }
+    
+    /**
+     * 测试域名匹配（调试用）
+     */
+    public String testDomainMatching(String url) {
+        String domain = extractDomain(url);
+        String ua = getOptimalUserAgent(domain);
+        String type = ua.contains("Mobile") ? "MOBILE" : "DESKTOP";
+        
+        Log.d(TAG, "TEST: " + url + " -> domain: " + domain + " -> UA: " + type);
+        return domain + " -> " + type;
     }
 
     /**

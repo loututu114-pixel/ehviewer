@@ -37,8 +37,21 @@
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp">
 
+                <!-- 无痕模式图标 -->
+                <ImageView
+                    android:id="@+id/incognito_icon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_lock"
+                    android:tint="@color/incognito_color"
+                    android:scaleType="centerInside"
+                    android:visibility="gone"
+                    android:contentDescription="无痕模式" />
+
                 <!-- 搜索图标 -->
                 <ImageView
+                    android:id="@+id/search_icon"
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_marginEnd="8dp"
@@ -208,6 +221,44 @@
             android:tint="?android:attr/textColorPrimary"
             android:scaleType="centerInside"
             android:padding="12dp" />
+
+        <!-- 多标签按钮 -->
+        <FrameLayout
+            android:id="@+id/tabs_button_container"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless">
+            
+            <!-- 标签图标 -->
+            <ImageButton
+                android:id="@+id/tabs_button"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:contentDescription="多标签"
+                android:src="@drawable/ic_tabs"
+                android:tint="?android:attr/textColorPrimary"
+                android:scaleType="centerInside"
+                android:padding="12dp" />
+            
+            <!-- 标签数量显示 -->
+            <TextView
+                android:id="@+id/tabs_count"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="6dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/tab_count_background"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:text="1"
+                android:visibility="visible" />
+            
+        </FrameLayout>
 
         <!-- 菜单按钮 -->
         <ImageButton

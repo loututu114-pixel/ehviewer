@@ -22,8 +22,11 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -54,6 +57,7 @@ import com.hippo.ehviewer.util.WebViewErrorHandler;
 import com.hippo.ehviewer.util.VideoPlayerEnhancer;
 import com.hippo.ehviewer.util.SmartUrlProcessor;
 import com.hippo.ehviewer.util.UserAgentManager;
+import com.hippo.ehviewer.util.ContentPurifierManager;
 import com.hippo.util.ExceptionUtils;
 
 import java.util.ArrayList;
@@ -66,11 +70,14 @@ public class WebViewActivity extends AppCompatActivity {
     private static final String EXTRA_IS_PREVIEW = "is_preview";
     private static final String EXTRA_FROM_BROWSER_LAUNCHER = "from_browser_launcher";
     private static final String EXTRA_BROWSER_MODE = "browser_mode";
+    private static final int REQUEST_CODE_TABS_MANAGER = 1001;
 
     // UI控件
     private AutoCompleteTextView mUrlInput;
     private ProgressBar mProgressBar;
     private SwipeRefreshLayout mSwipeRefreshLayout;
+    private ImageView mIncognitoIcon;
+    private ImageView mSearchIcon;
     private ImageButton mBackButton;
     private ImageButton mForwardButton;
     private ImageButton mHomeButton;
@@ -78,6 +85,9 @@ public class WebViewActivity extends AppCompatActivity {
     private ImageButton mTopRefreshButton;
     private ImageButton mMenuButton;
     private ImageButton mBookmarkButton;
+    private FrameLayout mTabsButtonContainer;
+    private ImageButton mTabsButton;
+    private TextView mTabsCount;
     private android.widget.HorizontalScrollView mTabScrollView;
     private android.widget.LinearLayout mTabContainer;
 
@@ -110,6 +120,7 @@ public class WebViewActivity extends AppCompatActivity {
     private VideoPlayerEnhancer mVideoEnhancer;
     private SmartUrlProcessor mSmartUrlProcessor;
     private UserAgentManager mUserAgentManager;
+    private ContentPurifierManager mContentPurifier;
 
     // 静态数据类
     private static class TabData {
@@ -117,10 +128,13 @@ public class WebViewActivity extends AppCompatActivity {
         EnhancedWebViewManager enhancedWebViewManager;
         String title;
         String url;
+        boolean isIncognito = false;
+        int tabId;
 
         TabData(WebView webView, EnhancedWebViewManager manager) {
             this.webView = webView;
             this.enhancedWebViewManager = manager;
+            this.tabId = (int) (System.currentTimeMillis() % 10000); // 简单的ID生成
         }
     }
 
@@ -225,6 +239,8 @@ public class WebViewActivity extends AppCompatActivity {
     private void initializeViews() {
         // 初始化UI控件
         mUrlInput = findViewById(R.id.url_input);
+        mIncognitoIcon = findViewById(R.id.incognito_icon);
+        mSearchIcon = findViewById(R.id.search_icon);
 
         // 初始化URL补全适配器
         setupUrlAutoComplete();
@@ -237,6 +253,11 @@ public class WebViewActivity extends AppCompatActivity {
             mTopRefreshButton = findViewById(R.id.top_refresh_button);
             mMenuButton = findViewById(R.id.menu_button);
             mBookmarkButton = findViewById(R.id.bookmark_button);
+            
+            // 多标签按钮
+            mTabsButtonContainer = findViewById(R.id.tabs_button_container);
+            mTabsButton = findViewById(R.id.tabs_button);
+            mTabsCount = findViewById(R.id.tabs_count);
 
         // 设置UI控件监听器
         setupUIListeners();
@@ -469,6 +490,23 @@ public class WebViewActivity extends AppCompatActivity {
             } else {
                 android.util.Log.e("WebViewActivity", "Bookmark button is null!");
             }
+            
+            // 多标签按钮监听器
+            if (mTabsButtonContainer != null) {
+                mTabsButtonContainer.setOnClickListener(v -> {
+                    animateButtonClick(v);
+                    android.util.Log.d("WebViewActivity", "Tabs button clicked");
+                    openTabsManager();
+                });
+                mTabsButtonContainer.setVisibility(View.VISIBLE);
+                mTabsButtonContainer.setEnabled(true);
+                android.util.Log.d("WebViewActivity", "Tabs button initialized successfully");
+                
+                // 更新标签数量显示
+                updateTabsCount();
+            } else {
+                android.util.Log.e("WebViewActivity", "Tabs button container is null!");
+            }
 
         // 设置下拉刷新
         if (mSwipeRefreshLayout != null) {
@@ -613,10 +651,15 @@ public class WebViewActivity extends AppCompatActivity {
             if (mUserAgentManager == null) {
                 mUserAgentManager = new UserAgentManager(this);
             }
+            if (mContentPurifier == null) {
+                mContentPurifier = ContentPurifierManager.getInstance(this);
+            }
 
-            // 设置正确的移动版用户代理
-            String mobileUserAgent = mUserAgentManager.getMobileUserAgent();
-            webSettings.setUserAgentString(mobileUserAgent);
+            // 设置默认的移动版UA，让网站自己决定是否跳转
+            if (mUserAgentManager != null) {
+                webSettings.setUserAgentString(mUserAgentManager.getMobileUserAgent());
+                android.util.Log.d("WebViewActivity", "Set default mobile UA for new WebView");
+            }
 
             // 设置WebViewClient来处理历史记录
             webView.setWebViewClient(new WebViewClient() {
@@ -645,6 +688,21 @@ public class WebViewActivity extends AppCompatActivity {
                             mUrlInput.setText(currentUrl);
                         }
                     }
+                    
+                    // 应用内容净化（视频和小说网站）
+                    if (mContentPurifier != null) {
+                        view.postDelayed(() -> {
+                            mContentPurifier.applyContentPurification(view, url);
+                        }, 2000); // 等待2秒让页面完全加载
+                    }
+                    
+                    // 隐藏进度条
+                    if (mProgressBar != null) {
+                        mProgressBar.setVisibility(View.GONE);
+                    }
+                    if (mSwipeRefreshLayout != null) {
+                        mSwipeRefreshLayout.setRefreshing(false);
+                    }
                 }
 
                 @Override
@@ -655,12 +713,8 @@ public class WebViewActivity extends AppCompatActivity {
                     if (YouTubeCompatibilityManager.isSpecialSite(url)) {
                         YouTubeCompatibilityManager.applyYouTubeCompatibility(view, url, mUserAgentManager);
                         android.util.Log.d("WebViewActivity", "Applied YouTube compatibility for: " + url);
-                    } else {
-                        // 为普通网站也设置智能UA
-                        if (mUserAgentManager != null) {
-                            mUserAgentManager.setSmartUserAgent(view, url);
-                        }
                     }
+                    // 注意：不在onPageStarted中重复设置UA，避免干扰网站自身的跳转机制
 
                     // 更新进度条
                     if (mProgressBar != null) {
@@ -727,6 +781,12 @@ public class WebViewActivity extends AppCompatActivity {
                 @Override
                 public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                     super.onReceivedError(view, errorCode, description, failingUrl);
+
+                    // 对于403错误，可以尝试简单的UA切换（仅限特殊情况）
+                    if (errorCode == WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME && 
+                        mUserAgentManager != null && failingUrl != null) {
+                        android.util.Log.d("WebViewActivity", "Auth error, may try different UA for: " + failingUrl);
+                    }
 
                     // 使用增强的错误处理器
                     if (mErrorHandler != null) {
@@ -966,6 +1026,7 @@ public class WebViewActivity extends AppCompatActivity {
             if (mCurrentTabIndex >= 0 && mCurrentTabIndex < mTabs.size()) {
                 TabData currentTab = mTabs.get(mCurrentTabIndex);
                 if (currentTab != null && currentTab.webView != null) {
+                    // 直接使用当前WebView的设置加载URL，不重复设置UA
                     currentTab.webView.loadUrl(url);
                 }
             }
@@ -1106,6 +1167,16 @@ public class WebViewActivity extends AppCompatActivity {
         try {
             String processedUrl = processUrl(url);
             android.util.Log.d("WebViewActivity", "Loading URL in tab: " + processedUrl);
+            
+            // 只为特定网站设置特殊UA，其他使用默认移动版UA
+            if (mUserAgentManager != null) {
+                String domain = mUserAgentManager.extractDomain(processedUrl);
+                String optimalUA = mUserAgentManager.getOptimalUserAgent(domain);
+                tabData.webView.getSettings().setUserAgentString(optimalUA);
+                android.util.Log.d("WebViewActivity", "Set optimal UA for " + domain + ": " + 
+                    (optimalUA.contains("Mobile") ? "Mobile" : "Desktop"));
+            }
+            
             tabData.webView.loadUrl(processedUrl);
             tabData.url = processedUrl;
         } catch (Exception e) {
@@ -1376,6 +1447,8 @@ public class WebViewActivity extends AppCompatActivity {
                 "📸 网页截图",
                 "💻 桌面/移动模式",
                 "📖 阅读模式",
+                "🎬 视频净化模式",
+                "📚 小说净化模式",
                 "🔄 刷新页面",
                 "🏠 返回主页",
                 "🔐 进入私密模式",
@@ -1410,19 +1483,27 @@ public class WebViewActivity extends AppCompatActivity {
                             android.util.Log.d("WebViewActivity", "Toggling reading mode");
                             toggleReadingMode();
                             break;
-                        case 6: // 刷新页面
+                        case 6: // 视频净化模式
+                            android.util.Log.d("WebViewActivity", "Toggling video purification mode");
+                            toggleVideoPurificationMode();
+                            break;
+                        case 7: // 小说净化模式
+                            android.util.Log.d("WebViewActivity", "Toggling novel purification mode");
+                            toggleNovelPurificationMode();
+                            break;
+                        case 8: // 刷新页面
                             android.util.Log.d("WebViewActivity", "Refreshing page");
                             refreshCurrentPage();
                             break;
-                        case 7: // 返回主页
+                        case 9: // 返回主页
                             android.util.Log.d("WebViewActivity", "Going to homepage");
                             goToHomepage();
                             break;
-                        case 8: // 进入私密模式
+                        case 10: // 进入私密模式
                             android.util.Log.d("WebViewActivity", "Entering private mode");
                             enterPrivateMode();
                             break;
-                        case 9: // 浏览器设置
+                        case 11: // 浏览器设置
                             android.util.Log.d("WebViewActivity", "Starting browser settings");
                             startBrowserSettingsActivity();
                             break;
@@ -1780,6 +1861,293 @@ public class WebViewActivity extends AppCompatActivity {
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error entering private mode", e);
             Toast.makeText(this, "进入私密模式失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void toggleVideoPurificationMode() {
+        try {
+            if (mContentPurifier != null) {
+                boolean enabled = mContentPurifier.isVideoModeEnabled();
+                mContentPurifier.setVideoModeEnabled(!enabled);
+                
+                String status = !enabled ? "已启用" : "已禁用";
+                Toast.makeText(this, "视频净化模式" + status, Toast.LENGTH_SHORT).show();
+                
+                // 刷新当前页面以应用新设置
+                TabData currentTab = getCurrentTab();
+                if (currentTab != null && currentTab.webView != null) {
+                    if (!enabled) {
+                        // 如果刚启用净化模式，立即应用净化
+                        String currentUrl = currentTab.webView.getUrl();
+                        if (currentUrl != null) {
+                            mContentPurifier.refreshPurification(currentTab.webView, currentUrl);
+                        }
+                    } else {
+                        // 如果禁用了净化模式，刷新页面恢复原样
+                        currentTab.webView.reload();
+                    }
+                }
+                
+                android.util.Log.d("WebViewActivity", "Video purification mode " + (!enabled ? "enabled" : "disabled"));
+            } else {
+                Toast.makeText(this, "内容净化器不可用", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error toggling video purification mode", e);
+            Toast.makeText(this, "切换视频净化模式失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 打开多标签管理器
+     */
+    private void openTabsManager() {
+        try {
+            Intent intent = new Intent(this, TabsManagerActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_TABS_MANAGER);
+            android.util.Log.d("WebViewActivity", "Opening tabs manager");
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error opening tabs manager", e);
+            Toast.makeText(this, "打开标签管理失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 更新标签数量显示
+     */
+    private void updateTabsCount() {
+        try {
+            if (mTabsCount != null) {
+                int tabCount = mTabs.size();
+                mTabsCount.setText(String.valueOf(tabCount));
+                mTabsCount.setVisibility(tabCount > 0 ? View.VISIBLE : View.GONE);
+                android.util.Log.d("WebViewActivity", "Updated tabs count: " + tabCount);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error updating tabs count", e);
+        }
+    }
+    
+    /**
+     * 更新无痕模式指示器
+     */
+    private void updateIncognitoIndicator() {
+        try {
+            TabData currentTab = getCurrentTab();
+            boolean isIncognito = currentTab != null && currentTab.isIncognito;
+            
+            if (mIncognitoIcon != null && mSearchIcon != null) {
+                if (isIncognito) {
+                    mIncognitoIcon.setVisibility(View.VISIBLE);
+                    mSearchIcon.setVisibility(View.GONE);
+                    
+                    // 为地址栏添加无痕模式样式
+                    if (mUrlInput != null) {
+                        mUrlInput.setHint("无痕浏览 - 搜索或输入网址");
+                    }
+                } else {
+                    mIncognitoIcon.setVisibility(View.GONE);
+                    mSearchIcon.setVisibility(View.VISIBLE);
+                    
+                    // 恢复正常地址栏样式
+                    if (mUrlInput != null) {
+                        mUrlInput.setHint("搜索或输入网址 (智能识别，例: youtube.com 或 'java教程')");
+                    }
+                }
+                
+                android.util.Log.d("WebViewActivity", "Updated incognito indicator: " + isIncognito);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error updating incognito indicator", e);
+        }
+    }
+    
+    private void toggleNovelPurificationMode() {
+        try {
+            if (mContentPurifier != null) {
+                boolean enabled = mContentPurifier.isReadingModeEnabled();
+                mContentPurifier.setReadingModeEnabled(!enabled);
+                
+                String status = !enabled ? "已启用" : "已禁用";
+                Toast.makeText(this, "小说净化模式" + status, Toast.LENGTH_SHORT).show();
+                
+                // 刷新当前页面以应用新设置
+                TabData currentTab = getCurrentTab();
+                if (currentTab != null && currentTab.webView != null) {
+                    if (!enabled) {
+                        // 如果刚启用净化模式，立即应用净化
+                        String currentUrl = currentTab.webView.getUrl();
+                        if (currentUrl != null) {
+                            mContentPurifier.refreshPurification(currentTab.webView, currentUrl);
+                        }
+                    } else {
+                        // 如果禁用了净化模式，刷新页面恢复原样
+                        currentTab.webView.reload();
+                    }
+                }
+                
+                android.util.Log.d("WebViewActivity", "Novel purification mode " + (!enabled ? "enabled" : "disabled"));
+            } else {
+                Toast.makeText(this, "内容净化器不可用", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error toggling novel purification mode", e);
+            Toast.makeText(this, "切换小说净化模式失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == REQUEST_CODE_TABS_MANAGER && resultCode == RESULT_OK && data != null) {
+            try {
+                String action = data.getStringExtra(TabsManagerActivity.EXTRA_ACTION);
+                int selectedTab = data.getIntExtra(TabsManagerActivity.EXTRA_SELECTED_TAB, -1);
+                
+                if (TabsManagerActivity.ACTION_NEW_TAB.equals(action)) {
+                    // 创建新的普通标签页
+                    createNewTab(false);
+                    android.util.Log.d(TAG, "Created new normal tab from tabs manager");
+                } else if (TabsManagerActivity.ACTION_NEW_INCOGNITO_TAB.equals(action)) {
+                    // 创建新的无痕标签页
+                    createNewTab(true);
+                    android.util.Log.d(TAG, "Created new incognito tab from tabs manager");
+                } else if (selectedTab != -1) {
+                    // 切换到指定标签页
+                    switchToTab(selectedTab);
+                    android.util.Log.d(TAG, "Switched to tab: " + selectedTab);
+                }
+                
+                // 更新标签数量显示
+                updateTabsCount();
+                
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error handling tabs manager result", e);
+            }
+        }
+    }
+    
+    /**
+     * 创建新标签页
+     */
+    private void createNewTab(boolean incognito) {
+        try {
+            // 创建新的WebView
+            WebView webView = new WebView(this);
+            
+            // 创建增强WebView管理器
+            EnhancedWebViewManager enhancedManager = new EnhancedWebViewManager(this, webView, mHistoryManager);
+            
+            // 创建标签页数据
+            TabData newTab = new TabData(webView, enhancedManager);
+            newTab.isIncognito = incognito;
+            
+            mTabs.add(newTab);
+            
+            // 设置WebView
+            setupWebViewForTab(webView);
+            setupEnhancedWebViewCallbacks(enhancedManager);
+            
+            // 为无痕模式设置特殊样式
+            if (incognito) {
+                setupIncognitoModeForWebView(webView);
+                android.util.Log.d(TAG, "Created new incognito tab");
+            } else {
+                android.util.Log.d(TAG, "Created new normal tab");
+            }
+            
+            // 切换到新标签页
+            switchTab(mTabs.size() - 1);
+            
+            updateTabsCount();
+            
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error creating new tab", e);
+        }
+    }
+    
+    /**
+     * 为WebView设置无痕模式
+     */
+    private void setupIncognitoModeForWebView(WebView webView) {
+        try {
+            WebSettings settings = webView.getSettings();
+            
+            // 禁用缓存（无痕模式核心特性）
+            settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+            
+            // 禁用各种存储
+            settings.setDatabaseEnabled(false);
+            settings.setDomStorageEnabled(false);
+            // setAppCacheEnabled deprecated in API 33+
+            
+            // 禁用地理位置缓存
+            settings.setGeolocationEnabled(false);
+            
+            // 设置无痕模式的User-Agent（添加标识）
+            String currentUA = settings.getUserAgentString();
+            if (currentUA != null && !currentUA.contains("Incognito")) {
+                settings.setUserAgentString(currentUA + " Incognito");
+            }
+            
+            android.util.Log.d(TAG, "Incognito mode configured for WebView");
+            
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error setting up incognito mode", e);
+        }
+    }
+    
+    /**
+     * 切换到指定标签页索引
+     */
+    private void switchTab(int index) {
+        try {
+            if (index >= 0 && index < mTabs.size()) {
+                mCurrentTabIndex = index;
+                TabData currentTab = mTabs.get(index);
+                
+                // 更新WebView容器
+                if (mSwipeRefreshLayout != null) {
+                    mSwipeRefreshLayout.removeAllViews();
+                    if (currentTab.webView != null) {
+                        mSwipeRefreshLayout.addView(currentTab.webView);
+                    }
+                }
+                
+                // 更新UI状态
+                updateTabsCount();
+                updateIncognitoIndicator();
+                updateTitle(currentTab.title);
+                
+                // 更新地址栏
+                if (mUrlInput != null && currentTab.url != null) {
+                    mUrlInput.setText(currentTab.url);
+                }
+                
+                android.util.Log.d(TAG, "Switched to tab at index: " + index);
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error switching tab", e);
+        }
+    }
+    
+    /**
+     * 切换到指定标签页ID
+     */
+    private void switchToTabById(int tabId) {
+        try {
+            for (int i = 0; i < mTabs.size(); i++) {
+                TabData tab = mTabs.get(i);
+                if (tab != null && tab.tabId == tabId) {
+                    switchToTab(i);
+                    android.util.Log.d(TAG, "Switched to tab at index: " + i);
+                    return;
+                }
+            }
+            android.util.Log.w(TAG, "Tab with ID " + tabId + " not found");
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error switching to tab", e);
         }
     }
 

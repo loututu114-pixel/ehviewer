@@ -579,6 +579,13 @@
 
         </activity>
 
+        <!-- 多标签管理 Activity -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.TabsManagerActivity"
+            android:theme="@style/AppTheme.Toolbar"
+            android:exported="false"
+            android:configChanges="screenSize|uiMode" />
+
         <!-- 缓存管理 Activity -->
         <activity
             android:name="com.hippo.ehviewer.ui.CacheManagementActivity"
