@@ -16,6 +16,11 @@
 
 <resources>
 
+    <!-- 多标签相关颜色 -->
+    <color name="tab_active_background">#E8F4FD</color>
+    <color name="tab_incognito_background">#2D2D2D</color>
+    <color name="incognito_color">#8E24AA</color>
+
     <!-- primary_drawable_light     54% -->
     <!-- secondary_drawable_light   26% -->
     <!-- primary_drawable_dark     100% -->
