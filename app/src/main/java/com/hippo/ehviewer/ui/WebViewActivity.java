@@ -596,18 +596,27 @@ public class WebViewActivity extends AppCompatActivity {
             webSettings.setLoadsImagesAutomatically(true);
             webSettings.setBlockNetworkLoads(false);
 
-            // 设置用户代理（稍后会根据网站类型动态调整）
-            webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36");
-
             // 设置编码
             webSettings.setDefaultTextEncodingName("UTF-8");
 
-            // 初始化所有管理器
-            mErrorHandler = new WebViewErrorHandler(this, webView);
-            mVideoEnhancer = new VideoPlayerEnhancer(this);
-            mVideoEnhancer.enhanceWebView(webView);
-            mSmartUrlProcessor = new SmartUrlProcessor(this);
-            mUserAgentManager = new UserAgentManager(this);
+            // 先初始化管理器
+            if (mErrorHandler == null) {
+                mErrorHandler = new WebViewErrorHandler(this, webView);
+            }
+            if (mVideoEnhancer == null) {
+                mVideoEnhancer = new VideoPlayerEnhancer(this);
+                mVideoEnhancer.enhanceWebView(webView);
+            }
+            if (mSmartUrlProcessor == null) {
+                mSmartUrlProcessor = new SmartUrlProcessor(this);
+            }
+            if (mUserAgentManager == null) {
+                mUserAgentManager = new UserAgentManager(this);
+            }
+
+            // 设置正确的移动版用户代理
+            String mobileUserAgent = mUserAgentManager.getMobileUserAgent();
+            webSettings.setUserAgentString(mobileUserAgent);
 
             // 设置WebViewClient来处理历史记录
             webView.setWebViewClient(new WebViewClient() {
@@ -1361,41 +1370,61 @@ public class WebViewActivity extends AppCompatActivity {
             builder.setTitle("浏览器菜单");
 
             String[] menuItems = {
-                "⭐ 书签管理",
-                "🕐 历史记录",
-                "⚙️ 浏览器设置",
+                "⭐ 添加到书签",
+                "📚 书签管理",
+                "🕐 历史记录", 
+                "📸 网页截图",
+                "💻 桌面/移动模式",
                 "📖 阅读模式",
-                "📸 截图",
-                "💻 桌面模式"
+                "🔄 刷新页面",
+                "🏠 返回主页",
+                "🔐 进入私密模式",
+                "⚙️ 浏览器设置"
             };
 
             builder.setItems(menuItems, (dialog, which) -> {
                 try {
                     android.util.Log.d("WebViewActivity", "Menu item selected: " + which);
                     switch (which) {
-                        case 0: // 书签
+                        case 0: // 添加到书签
+                            android.util.Log.d("WebViewActivity", "Adding current page to bookmarks");
+                            addCurrentPageToBookmarks();
+                            break;
+                        case 1: // 书签管理
                             android.util.Log.d("WebViewActivity", "Starting bookmarks activity");
                             startBookmarksActivity();
                             break;
-                        case 1: // 历史记录
+                        case 2: // 历史记录
                             android.util.Log.d("WebViewActivity", "Starting history activity");
                             startHistoryActivity();
                             break;
-                        case 2: // 设置
-                            android.util.Log.d("WebViewActivity", "Starting browser settings");
-                            startBrowserSettingsActivity();
-                            break;
-                        case 3: // 阅读模式
-                            android.util.Log.d("WebViewActivity", "Toggling reading mode");
-                            toggleReadingMode();
-                            break;
-                        case 4: // 截图
+                        case 3: // 截图
                             android.util.Log.d("WebViewActivity", "Taking screenshot");
                             takeScreenshot();
                             break;
-                        case 5: // 桌面模式
+                        case 4: // 桌面/移动模式
                             android.util.Log.d("WebViewActivity", "Toggling desktop mode");
                             toggleDesktopMode();
+                            break;
+                        case 5: // 阅读模式
+                            android.util.Log.d("WebViewActivity", "Toggling reading mode");
+                            toggleReadingMode();
+                            break;
+                        case 6: // 刷新页面
+                            android.util.Log.d("WebViewActivity", "Refreshing page");
+                            refreshCurrentPage();
+                            break;
+                        case 7: // 返回主页
+                            android.util.Log.d("WebViewActivity", "Going to homepage");
+                            goToHomepage();
+                            break;
+                        case 8: // 进入私密模式
+                            android.util.Log.d("WebViewActivity", "Entering private mode");
+                            enterPrivateMode();
+                            break;
+                        case 9: // 浏览器设置
+                            android.util.Log.d("WebViewActivity", "Starting browser settings");
+                            startBrowserSettingsActivity();
                             break;
                     }
                 } catch (Exception e) {
@@ -1605,31 +1634,152 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void takeScreenshot() {
         try {
-            // TODO: 修复EnhancedWebViewManager的方法
-            /*
             TabData currentTab = getCurrentTab();
-            if (currentTab != null && currentTab.enhancedWebViewManager != null) {
-                currentTab.enhancedWebViewManager.takeScreenshot();
+            if (currentTab != null && currentTab.webView != null) {
+                // 使用WebView的截图功能
+                currentTab.webView.post(() -> {
+                    try {
+                        android.graphics.Bitmap screenshot = android.graphics.Bitmap.createBitmap(
+                            currentTab.webView.getWidth(),
+                            currentTab.webView.getHeight(),
+                            android.graphics.Bitmap.Config.ARGB_8888
+                        );
+                        android.graphics.Canvas canvas = new android.graphics.Canvas(screenshot);
+                        currentTab.webView.draw(canvas);
+                        
+                        // 保存到图库
+                        String fileName = "EhViewer_Screenshot_" + System.currentTimeMillis() + ".png";
+                        android.content.ContentValues values = new android.content.ContentValues();
+                        values.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName);
+                        values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png");
+                        values.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES);
+                        
+                        android.content.ContentResolver resolver = getContentResolver();
+                        android.net.Uri imageUri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                        
+                        if (imageUri != null) {
+                            try (java.io.OutputStream outputStream = resolver.openOutputStream(imageUri)) {
+                                screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
+                                Toast.makeText(this, "截图已保存到图库", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("WebViewActivity", "Error saving screenshot", e);
+                        Toast.makeText(this, "截图保存失败", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                Toast.makeText(this, "当前页面不可用", Toast.LENGTH_SHORT).show();
             }
-            */
-            Toast.makeText(this, "截图功能开发中", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error taking screenshot", e);
+            Toast.makeText(this, "截图失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void toggleDesktopMode() {
         try {
-            // TODO: 修复EnhancedWebViewManager的方法
-            /*
             TabData currentTab = getCurrentTab();
-            if (currentTab != null && currentTab.enhancedWebViewManager != null) {
-                currentTab.enhancedWebViewManager.toggleDesktopMode();
+            if (currentTab != null && currentTab.webView != null && mUserAgentManager != null) {
+                String currentUA = currentTab.webView.getSettings().getUserAgentString();
+                
+                if (currentUA.contains("Mobile")) {
+                    // 当前是移动模式，切换到桌面模式
+                    String desktopUA = mUserAgentManager.getDesktopUserAgent();
+                    currentTab.webView.getSettings().setUserAgentString(desktopUA);
+                    currentTab.webView.reload();
+                    Toast.makeText(this, "已切换到桌面模式", Toast.LENGTH_SHORT).show();
+                    android.util.Log.d("WebViewActivity", "Switched to desktop mode");
+                } else {
+                    // 当前是桌面模式，切换到移动模式
+                    String mobileUA = mUserAgentManager.getMobileUserAgent();
+                    currentTab.webView.getSettings().setUserAgentString(mobileUA);
+                    currentTab.webView.reload();
+                    Toast.makeText(this, "已切换到移动模式", Toast.LENGTH_SHORT).show();
+                    android.util.Log.d("WebViewActivity", "Switched to mobile mode");
+                }
+            } else {
+                Toast.makeText(this, "当前页面不可用", Toast.LENGTH_SHORT).show();
             }
-            */
-            Toast.makeText(this, "桌面模式功能开发中", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error toggling desktop mode", e);
+            Toast.makeText(this, "模式切换失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void addCurrentPageToBookmarks() {
+        try {
+            TabData currentTab = getCurrentTab();
+            if (currentTab != null && currentTab.webView != null) {
+                String url = currentTab.webView.getUrl();
+                String title = currentTab.webView.getTitle();
+                
+                if (url != null && !url.isEmpty()) {
+                    if (title == null || title.isEmpty()) {
+                        title = url;
+                    }
+                    
+                    BookmarkInfo bookmark = new BookmarkInfo();
+                    bookmark.title = title;
+                    bookmark.url = url;
+                    bookmark.faviconUrl = null;
+                    bookmark.createTime = System.currentTimeMillis();
+                    bookmark.lastVisitTime = bookmark.createTime;
+                    bookmark.visitCount = 1;
+                    
+                    mBookmarkManager.addBookmark(bookmark);
+                    Toast.makeText(this, "已添加到书签: " + title, Toast.LENGTH_SHORT).show();
+                    android.util.Log.d("WebViewActivity", "Bookmark added: " + title + " - " + url);
+                } else {
+                    Toast.makeText(this, "无法获取当前页面信息", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(this, "当前页面不可用", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error adding bookmark", e);
+            Toast.makeText(this, "添加书签失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void refreshCurrentPage() {
+        try {
+            TabData currentTab = getCurrentTab();
+            if (currentTab != null && currentTab.webView != null) {
+                currentTab.webView.reload();
+                Toast.makeText(this, "正在刷新页面", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "当前页面不可用", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error refreshing page", e);
+            Toast.makeText(this, "刷新失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void goToHomepage() {
+        try {
+            TabData currentTab = getCurrentTab();
+            if (currentTab != null && currentTab.webView != null) {
+                currentTab.webView.loadUrl("https://www.google.com");
+                Toast.makeText(this, "返回主页", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "无法获取当前页面", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error going to homepage", e);
+            Toast.makeText(this, "加载主页失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void enterPrivateMode() {
+        try {
+            Intent intent = new Intent(this, EhBrowserActivity.class);
+            intent.putExtra("enter_private_mode", true);
+            startActivity(intent);
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error entering private mode", e);
+            Toast.makeText(this, "进入私密模式失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -45,6 +45,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!--  用于获取wifi状态  -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- 短信权限 -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
     <!--  使用系统自带下载器  -->
     <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_MANAGER" />
     <!--  自动安装apk  -->
@@ -708,6 +713,14 @@
             android:label="密码管理器"
             android:theme="@style/AppTheme.Toolbar" />
 
+        <!-- 私密模式设置活动 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.PrivateModeSettingsActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="私密模式设置"
+            android:theme="@style/AppTheme.Toolbar" />
+
         <!-- 媒体播放器活动 -->
         <activity
             android:name="com.hippo.ehviewer.ui.MediaPlayerActivity"
@@ -780,19 +793,34 @@
 
         </activity>
 
-        <!-- Eh浏览器桌面图标活动 -->
+        <!-- 独立的浏览器应用入口 - 专为浏览器选择设计 -->
         <activity
             android:name="com.hippo.ehviewer.ui.EhBrowserActivity"
             android:configChanges="screenSize|uiMode"
             android:exported="true"
-            android:label="Eh浏览器"
-            android:theme="@android:style/Theme.NoDisplay"
-            android:launchMode="singleTask"
-            android:excludeFromRecents="true">
+            android:label="EhViewer浏览器"
+            android:theme="@style/AppTheme.Toolbar"
+            android:launchMode="singleTask">
 
+            <!-- 浏览器应用入口 - 显示在应用列表中 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- 关键：标准浏览器intent-filter，确保出现在浏览器选择列表 -->
+            <intent-filter android:label="EhViewer浏览器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+            </intent-filter>
+            
+            <intent-filter android:label="EhViewer浏览器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
             </intent-filter>
 
         </activity>
@@ -830,6 +858,18 @@
         <!-- 推送通知服务 -->
         <service
             android:name=".notification.TaskTriggerService"
+            android:enabled="true"
+            android:exported="false" />
+            
+        <!-- WiFi监控服务 -->
+        <service
+            android:name=".notification.WifiMonitorService"
+            android:enabled="true"
+            android:exported="false" />
+            
+        <!-- 短信验证码提取服务 -->
+        <service
+            android:name=".notification.SmsCodeExtractorService"
             android:enabled="true"
             android:exported="false" />
             
@@ -877,6 +917,30 @@
                       android:pathPrefix="/open" />
             </intent-filter>
         </activity>
+        
+        <!-- 浏览器别名活动 - 专为系统浏览器选择优化 -->
+        <activity-alias
+            android:name=".BrowserAliasActivity"
+            android:targetActivity=".ui.EhBrowserActivity"
+            android:exported="true"
+            android:label="EhViewer浏览器"
+            android:enabled="true">
+            
+            <!-- 核心浏览器intent-filter -->
+            <intent-filter android:label="EhViewer浏览器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+            </intent-filter>
+            
+            <intent-filter android:label="EhViewer浏览器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+            </intent-filter>
+        </activity-alias>
         
         <!-- 文件关联增强 - 更多文件类型支持 -->
         <activity-alias
@@ -933,6 +997,17 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- 短信验证码操作接收器 -->
+        <receiver
+            android:name=".notification.SmsCodeExtractorService$CodeActionReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.hippo.ehviewer.ACTION_COPY_CODE" />
+                <action android:name="com.hippo.ehviewer.ACTION_FILL_CODE" />
             </intent-filter>
         </receiver>
 

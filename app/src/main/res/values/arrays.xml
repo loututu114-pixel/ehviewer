@@ -399,4 +399,69 @@
         <item>https://github.com/loututu114-pixel/ehviewer/releases/latest</item>
         <item>EhViewer</item>
     </string-array>
+
+    <!-- 历史记录保留时间选项 -->
+    <string-array name="history_retention_entries">
+        <item>不保存历史</item>
+        <item>1天</item>
+        <item>7天</item>
+        <item>30天</item>
+        <item>90天</item>
+        <item>永久保存</item>
+    </string-array>
+
+    <string-array name="history_retention_values">
+        <item>0</item>
+        <item>1</item>
+        <item>7</item>
+        <item>30</item>
+        <item>90</item>
+        <item>-1</item>
+    </string-array>
+
+    <!-- 图片加载选项 -->
+    <string-array name="image_loading_entries">
+        <item>总是加载</item>
+        <item>仅WiFi加载</item>
+        <item>从不加载</item>
+        <item>询问后加载</item>
+    </string-array>
+
+    <string-array name="image_loading_values">
+        <item>auto</item>
+        <item>wifi_only</item>
+        <item>never</item>
+        <item>ask</item>
+    </string-array>
+
+    <!-- 过滤严格度选项 -->
+    <string-array name="filter_strictness_entries">
+        <item>宽松</item>
+        <item>中等</item>
+        <item>严格</item>
+        <item>最严格</item>
+    </string-array>
+
+    <string-array name="filter_strictness_values">
+        <item>low</item>
+        <item>medium</item>
+        <item>high</item>
+        <item>maximum</item>
+    </string-array>
+
+    <!-- 缓存模式选项 -->
+    <string-array name="cache_mode_entries">
+        <item>默认缓存</item>
+        <item>优先缓存</item>
+        <item>仅使用缓存</item>
+        <item>不使用缓存</item>
+    </string-array>
+
+    <string-array name="cache_mode_values">
+        <item>default</item>
+        <item>cache_first</item>
+        <item>cache_only</item>
+        <item>no_cache</item>
+    </string-array>
+
 </resources>

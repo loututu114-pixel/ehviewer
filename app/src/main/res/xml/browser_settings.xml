@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <PreferenceCategory android:title="搜索引擎设置">
+    <!-- 通用设置 -->
+    <PreferenceCategory android:title="通用设置">
         <ListPreference
             android:key="pref_default_search_engine"
             android:title="默认搜索引擎"
@@ -9,48 +10,12 @@
             android:entries="@array/search_engine_entries"
             android:entryValues="@array/search_engine_values"
             android:defaultValue="google" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="内容设置">
-        <SwitchPreference
-            android:key="pref_enable_ad_blocking"
-            android:title="启用广告拦截"
-            android:summary="拦截网页中的广告内容"
-            android:defaultValue="true" />
-
-        <SwitchPreference
-            android:key="pref_enable_javascript"
-            android:title="启用JavaScript"
-            android:summary="允许网页运行JavaScript代码"
-            android:defaultValue="true" />
-
-        <SwitchPreference
-            android:key="pref_enable_images"
-            android:title="自动加载图片"
-            android:summary="自动加载网页中的图片"
-            android:defaultValue="true" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="下载与存储">
+        
         <Preference
-            android:key="pref_manage_downloads"
-            android:title="下载管理"
-            android:summary="查看和管理下载的文件" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="隐私与安全">
-        <Preference
-            android:key="pref_clear_browser_data"
-            android:title="清除浏览器数据"
-            android:summary="清除浏览历史、缓存和Cookie" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="浏览器设置">
-        <Preference
-            android:key="pref_set_as_default_browser"
-            android:title="设为默认浏览器"
-            android:summary="将EhViewer设置为默认浏览器" />
-
+            android:key="pref_homepage_url"
+            android:title="主页"
+            android:summary="设置浏览器主页地址" />
+        
         <ListPreference
             android:key="pref_text_size"
             android:title="文字大小"
@@ -58,19 +23,294 @@
             android:entries="@array/text_size_entries"
             android:entryValues="@array/text_size_values"
             android:defaultValue="normal" />
+        
+        <ListPreference
+            android:key="pref_app_theme"
+            android:title="应用主题"
+            android:summary="设置应用的外观主题"
+            android:entries="@array/theme_entries"
+            android:entryValues="@array/theme_entry_values"
+            android:defaultValue="system" />
+    </PreferenceCategory>
 
+    <!-- 隐私与安全 -->
+    <PreferenceCategory android:title="隐私与安全">
+        <Preference
+            android:key="pref_private_mode_settings"
+            android:title="🔐 私密模式设置"
+            android:summary="配置私密模式，保护您的隐私" />
+        
+        <Preference
+            android:key="pref_enter_private_mode"
+            android:title="🚪 进入私密模式"
+            android:summary="验证身份后进入完整应用功能" />
+        
+        <Preference
+            android:key="pref_password_manager"
+            android:title="密码管理器"
+            android:summary="管理保存的密码，启用自动填充" />
+        
+        <SwitchPreference
+            android:key="pref_enable_autofill"
+            android:title="启用密码自动填充"
+            android:summary="在支持的网站自动填充密码"
+            android:defaultValue="true" />
+        
+        <SwitchPreference
+            android:key="pref_biometric_auth"
+            android:title="生物识别验证"
+            android:summary="使用指纹或面部识别保护密码"
+            android:defaultValue="true" />
+        
+        <SwitchPreference
+            android:key="pref_private_browsing"
+            android:title="隐私浏览模式"
+            android:summary="不保存浏览历史和Cookie"
+            android:defaultValue="false" />
+        
+        <ListPreference
+            android:key="pref_history_retention"
+            android:title="历史记录保留"
+            android:summary="自动清理历史记录的时间"
+            android:entries="@array/history_retention_entries"
+            android:entryValues="@array/history_retention_values"
+            android:defaultValue="30" />
+        
+        <Preference
+            android:key="pref_clear_browser_data"
+            android:title="清除浏览器数据"
+            android:summary="清除浏览历史、缓存和Cookie" />
+    </PreferenceCategory>
+
+    <!-- 内容与媒体 -->
+    <PreferenceCategory android:title="内容与媒体">
+        <SwitchPreference
+            android:key="pref_enable_javascript"
+            android:title="启用JavaScript"
+            android:summary="允许网页运行JavaScript代码"
+            android:defaultValue="true" />
+        
+        <ListPreference
+            android:key="pref_image_loading"
+            android:title="图片加载"
+            android:summary="控制网页图片加载行为"
+            android:entries="@array/image_loading_entries"
+            android:entryValues="@array/image_loading_values"
+            android:defaultValue="auto" />
+        
+        <SwitchPreference
+            android:key="pref_enable_zoom_controls"
+            android:title="缩放控制"
+            android:summary="显示网页缩放控制按钮"
+            android:defaultValue="false" />
+        
         <SwitchPreference
             android:key="pref_desktop_mode"
             android:title="桌面模式"
             android:summary="以桌面版网页显示"
             android:defaultValue="false" />
+        
+        <SwitchPreference
+            android:key="pref_media_autoplay"
+            android:title="媒体自动播放"
+            android:summary="允许视频和音频自动播放"
+            android:defaultValue="false" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="关于">
+    <!-- 广告拦截与过滤 -->
+    <PreferenceCategory android:title="广告拦截与过滤">
+        <SwitchPreference
+            android:key="pref_enable_ad_blocking"
+            android:title="启用广告拦截"
+            android:summary="拦截网页中的广告内容"
+            android:defaultValue="true" />
+        
+        <SwitchPreference
+            android:key="pref_block_trackers"
+            android:title="拦截跟踪器"
+            android:summary="阻止网站跟踪您的浏览行为"
+            android:defaultValue="true" />
+        
+        <SwitchPreference
+            android:key="pref_block_social_widgets"
+            android:title="拦截社交插件"
+            android:summary="屏蔽Facebook、Twitter等社交插件"
+            android:defaultValue="false" />
+        
+        <Preference
+            android:key="pref_custom_filters"
+            android:title="自定义过滤器"
+            android:summary="管理自定义域名黑白名单" />
+        
+        <ListPreference
+            android:key="pref_filter_strictness"
+            android:title="过滤严格度"
+            android:summary="调整内容过滤的严格程度"
+            android:entries="@array/filter_strictness_entries"
+            android:entryValues="@array/filter_strictness_values"
+            android:defaultValue="medium" />
+    </PreferenceCategory>
+
+    <!-- 下载与文件 -->
+    <PreferenceCategory android:title="下载与文件">
+        <Preference
+            android:key="pref_download_directory"
+            android:title="下载位置"
+            android:summary="设置文件下载保存位置" />
+        
+        <SwitchPreference
+            android:key="pref_download_over_mobile"
+            android:title="移动网络下载"
+            android:summary="允许使用移动数据下载文件"
+            android:defaultValue="false" />
+        
+        <SwitchPreference
+            android:key="pref_download_notifications"
+            android:title="下载通知"
+            android:summary="显示下载进度和完成通知"
+            android:defaultValue="true" />
+        
+        <ListPreference
+            android:key="pref_parallel_downloads"
+            android:title="并行下载数"
+            android:summary="同时进行的下载任务数量"
+            android:entries="@array/multi_thread_download_entries"
+            android:entryValues="@array/multi_thread_download_entry_values"
+            android:defaultValue="3" />
+        
+        <Preference
+            android:key="pref_manage_downloads"
+            android:title="下载管理"
+            android:summary="查看和管理下载的文件" />
+        
+        <Preference
+            android:key="pref_file_associations"
+            android:title="文件关联设置"
+            android:summary="配置不同文件类型的打开方式" />
+    </PreferenceCategory>
+
+    <!-- 书签与历史 -->
+    <PreferenceCategory android:title="书签与历史">
+        <ListPreference
+            android:key="pref_bookmark_sort"
+            android:title="书签排序"
+            android:summary="设置书签的默认排序方式"
+            android:entries="@array/bookmark_sort_entries"
+            android:entryValues="@array/bookmark_sort_values"
+            android:defaultValue="date_added" />
+        
+        <ListPreference
+            android:key="pref_history_sort"
+            android:title="历史记录排序"
+            android:summary="设置历史记录的显示排序"
+            android:entries="@array/history_sort_entries"
+            android:entryValues="@array/history_sort_values"
+            android:defaultValue="last_visit" />
+        
+        <SwitchPreference
+            android:key="pref_bookmark_sync"
+            android:title="书签同步"
+            android:summary="在多设备间同步书签数据"
+            android:defaultValue="false" />
+        
+        <Preference
+            android:key="pref_import_export"
+            android:title="导入/导出"
+            android:summary="导入或导出书签和设置" />
+    </PreferenceCategory>
+
+    <!-- 高级设置 -->
+    <PreferenceCategory android:title="高级设置">
+        <Preference
+            android:key="pref_user_agent"
+            android:title="用户代理"
+            android:summary="自定义浏览器身份标识" />
+        
+        <SwitchPreference
+            android:key="pref_hardware_acceleration"
+            android:title="硬件加速"
+            android:summary="启用GPU加速渲染网页"
+            android:defaultValue="true" />
+        
+        <ListPreference
+            android:key="pref_cache_mode"
+            android:title="缓存模式"
+            android:summary="设置网页缓存策略"
+            android:entries="@array/cache_mode_entries"
+            android:entryValues="@array/cache_mode_values"
+            android:defaultValue="default" />
+        
+        <ListPreference
+            android:key="pref_cache_size"
+            android:title="缓存大小"
+            android:summary="设置浏览器缓存空间大小"
+            android:entries="@array/read_cache_size_entries"
+            android:entryValues="@array/read_cache_size_entry_values"
+            android:defaultValue="128" />
+        
+        <SwitchPreference
+            android:key="pref_webview_debugging"
+            android:title="WebView调试"
+            android:summary="启用开发者工具和调试功能"
+            android:defaultValue="false" />
+        
+        <SwitchPreference
+            android:key="pref_mixed_content"
+            android:title="混合内容"
+            android:summary="允许HTTPS网站加载HTTP内容"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <!-- 系统集成 -->
+    <PreferenceCategory android:title="系统集成">
+        <Preference
+            android:key="pref_set_as_default_browser"
+            android:title="🚀 设为默认浏览器"
+            android:summary="一键成为设备浏览器之王！多种方式确保设置成功" />
+        
+        <Preference
+            android:key="pref_browser_dominance_status"
+            android:title="📊 浏览器统治力状态"
+            android:summary="查看EhViewer在您设备上的统治地位" />
+        
+        <Preference
+            android:key="pref_create_browser_shortcut"
+            android:title="📱 创建浏览器快捷方式"
+            android:summary="在桌面添加专用浏览器图标" />
+        
+        <Preference
+            android:key="pref_intent_handling"
+            android:title="链接处理设置"
+            android:summary="配置外部链接的处理方式" />
+        
+        <SwitchPreference
+            android:key="pref_external_app_launch"
+            android:title="启动外部应用"
+            android:summary="允许网页启动其他应用程序"
+            android:defaultValue="true" />
+        
+        <Preference
+            android:key="pref_browser_shortcuts"
+            android:title="桌面快捷方式管理"
+            android:summary="管理所有浏览器相关的桌面快捷方式" />
+    </PreferenceCategory>
+
+    <!-- 关于与帮助 -->
+    <PreferenceCategory android:title="关于与帮助">
+        <Preference
+            android:key="pref_browser_test"
+            android:title="浏览器测试"
+            android:summary="测试浏览器功能和性能" />
+        
         <Preference
             android:key="pref_about_browser"
             android:title="关于浏览器"
-            android:summary="版本信息和帮助" />
+            android:summary="版本信息和帮助文档" />
+        
+        <Preference
+            android:key="pref_reset_settings"
+            android:title="重置设置"
+            android:summary="将所有浏览器设置恢复为默认值" />
     </PreferenceCategory>
 
 </PreferenceScreen>

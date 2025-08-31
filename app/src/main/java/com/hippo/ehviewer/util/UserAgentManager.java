@@ -85,11 +85,11 @@ public class UserAgentManager {
         put("xvideos.com", UA_CHROME_DESKTOP);
         put("xhamster.com", UA_CHROME_DESKTOP);
 
-        // 搜索引擎 - 桌面版
-        put("google.com", UA_CHROME_DESKTOP);
-        put("bing.com", UA_CHROME_DESKTOP);
-        put("duckduckgo.com", UA_CHROME_DESKTOP);
-        put("yahoo.com", UA_CHROME_DESKTOP);
+        // 搜索引擎 - 移动版（适配移动端浏览）
+        put("google.com", UA_CHROME_MOBILE);
+        put("bing.com", UA_CHROME_MOBILE);
+        put("duckduckgo.com", UA_CHROME_MOBILE);
+        put("yahoo.com", UA_CHROME_MOBILE);
 
         // 百度 - 移动版（中国用户）
         put("baidu.com", UA_CHROME_MOBILE);
@@ -287,8 +287,22 @@ public class UserAgentManager {
                 return UA_CHROME_MOBILE;
             case AUTO:
             default:
-                return UA_CHROME_DESKTOP; // 默认桌面版
+                return UA_CHROME_MOBILE; // 默认移动版，适合手机浏览
         }
+    }
+
+    /**
+     * 获取移动版用户代理
+     */
+    public String getMobileUserAgent() {
+        return UA_CHROME_MOBILE;
+    }
+
+    /**
+     * 获取桌面版用户代理
+     */
+    public String getDesktopUserAgent() {
+        return UA_CHROME_DESKTOP;
     }
 
     /**
