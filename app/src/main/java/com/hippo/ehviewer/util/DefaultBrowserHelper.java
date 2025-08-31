@@ -138,32 +138,150 @@ public class DefaultBrowserHelper {
     }
 
     /**
-     * 尝试设置应用为默认浏览器（仅在API 29+上有效）
+     * 增强版设置默认浏览器 - 多种方式尝试
      */
     public static boolean trySetAsDefaultBrowser(@NonNull Context context) {
+        Log.d(TAG, "Starting enhanced default browser setup...");
+        
         try {
-            // 在Android 10+上，可以通过RoleManager请求默认浏览器角色
+            // 方法1: Android 10+ RoleManager (最直接)
+            if (tryRoleManagerApproach(context)) {
+                Log.d(TAG, "RoleManager approach succeeded");
+                return true;
+            }
+
+            // 方法2: 直接打开默认应用设置
+            if (tryDirectDefaultAppsSettings(context)) {
+                Log.d(TAG, "Direct default apps settings opened");
+                return true;
+            }
+
+            // 方法3: 打开应用详情页
+            if (tryAppDetailsSettings(context)) {
+                Log.d(TAG, "App details settings opened");
+                return true;
+            }
+
+            // 方法4: 强制引导用户设置
+            if (tryForceUserGuidance(context)) {
+                Log.d(TAG, "Force user guidance initiated");
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            Log.e(TAG, "All default browser setup methods failed", e);
+            return tryEmergencyGuidance(context);
+        }
+    }
+
+    /**
+     * 方法1: RoleManager方式 (Android 10+)
+     */
+    private static boolean tryRoleManagerApproach(@NonNull Context context) {
+        try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 android.app.role.RoleManager roleManager = (android.app.role.RoleManager)
                     context.getSystemService(Context.ROLE_SERVICE);
 
-                if (roleManager != null) {
-                    if (roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER)) {
-                        if (!roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_BROWSER)) {
-                            Intent intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_BROWSER);
-                            context.startActivity(intent);
-                            return true;
-                        }
+                if (roleManager != null && roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER)) {
+                    if (!roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_BROWSER)) {
+                        Intent intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_BROWSER);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                        return true;
+                    } else {
+                        Toast.makeText(context, "EhViewer已是默认浏览器", Toast.LENGTH_SHORT).show();
+                        return true;
                     }
                 }
             }
-
-            // 对于低版本Android或RoleManager不可用，回退到手动设置
-            return openDefaultBrowserSettings(context);
-
+            return false;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to set as default browser", e);
-            return openDefaultBrowserSettings(context);
+            Log.e(TAG, "RoleManager approach failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * 方法2: 直接打开默认应用设置页面
+     */
+    private static boolean tryDirectDefaultAppsSettings(@NonNull Context context) {
+        try {
+            // 尝试多种设置页面
+            String[] settingsActions = {
+                Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
+                "android.settings.MANAGE_DEFAULT_APPS_SETTINGS",
+                Settings.ACTION_APPLICATION_SETTINGS
+            };
+
+            for (String action : settingsActions) {
+                try {
+                    Intent intent = new Intent(action);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(intent);
+                    
+                    Toast.makeText(context, "🚀 请在【浏览器】选项中选择EhViewer", Toast.LENGTH_LONG).show();
+                    return true;
+                } catch (Exception e) {
+                    Log.d(TAG, "Settings action failed: " + action);
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Direct settings approach failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * 方法3: 打开应用详情设置页面
+     */
+    private static boolean tryAppDetailsSettings(@NonNull Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + context.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            
+            Toast.makeText(context, "🔧 请在【打开链接】中设置为默认浏览器", Toast.LENGTH_LONG).show();
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "App details settings failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * 方法4: 强制用户引导
+     */
+    private static boolean tryForceUserGuidance(@NonNull Context context) {
+        try {
+            showEnhancedBrowserSetupDialog(context);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Force user guidance failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * 紧急引导方案
+     */
+    private static boolean tryEmergencyGuidance(@NonNull Context context) {
+        try {
+            Toast.makeText(context, 
+                "🆘 手动设置方法:\n" +
+                "1. 打开系统设置\n" +
+                "2. 找到【应用管理】或【默认应用】\n" +
+                "3. 选择【浏览器】\n" +
+                "4. 选择EhViewer", 
+                Toast.LENGTH_LONG).show();
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Emergency guidance failed", e);
+            return false;
         }
     }
 
@@ -444,6 +562,204 @@ public class DefaultBrowserHelper {
      */
     private static SharedPreferences getPrefs(@NonNull Context context) {
         return context.getSharedPreferences("ehviewer_browser_prefs", Context.MODE_PRIVATE);
+    }
+
+    /**
+     * 显示增强版浏览器设置对话框
+     */
+    private static void showEnhancedBrowserSetupDialog(@NonNull Context context) {
+        try {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
+            builder.setTitle("🚀 成为设备浏览器之王")
+                    .setMessage("让EhViewer统治您的浏览体验！\n\n" +
+                            "🎯 一键设置指南:\n" +
+                            "1. 点击【立即设置】\n" +
+                            "2. 在设置页面找到【浏览器】\n" +
+                            "3. 选择【EhViewer浏览器】\n" +
+                            "4. 返回享受王者体验\n\n" +
+                            "✨ 王者特权:\n" +
+                            "• ⚡ 超快加载速度\n" +
+                            "• 🛡️ 强力广告拦截\n" +
+                            "• 🔐 密码管理器\n" +
+                            "• 🎨 完美界面体验")
+                    .setCancelable(false)
+                    .setPositiveButton("🎯 立即设置", (dialog, which) -> {
+                        tryDirectDefaultAppsSettings(context);
+                    })
+                    .setNegativeButton("🔧 手动设置", (dialog, which) -> {
+                        tryAppDetailsSettings(context);
+                    })
+                    .setNeutralButton("📖 详细教程", (dialog, which) -> {
+                        showDetailedSetupGuide(context);
+                    })
+                    .show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing enhanced setup dialog", e);
+        }
+    }
+
+    /**
+     * 显示详细设置教程
+     */
+    private static void showDetailedSetupGuide(@NonNull Context context) {
+        try {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
+            builder.setTitle("📖 详细设置教程")
+                    .setMessage("根据您的设备品牌选择对应方法:\n\n" +
+                            "🔸 华为/荣耀:\n" +
+                            "设置 → 应用和服务 → 默认应用 → 浏览器\n\n" +
+                            "🔸 小米/红米:\n" +
+                            "设置 → 应用设置 → 应用管理 → 默认应用设置\n\n" +
+                            "🔸 OPPO/一加:\n" +
+                            "设置 → 应用管理 → 默认应用 → 浏览器应用\n\n" +
+                            "🔸 vivo:\n" +
+                            "设置 → 更多设置 → 应用管理 → 默认应用\n\n" +
+                            "🔸 三星:\n" +
+                            "设置 → 应用程序 → 选择默认应用 → 浏览器\n\n" +
+                            "🔸 原生Android:\n" +
+                            "设置 → 应用和通知 → 默认应用 → 浏览器应用")
+                    .setPositiveButton("💪 我来试试", (dialog, which) -> {
+                        trySetAsDefaultBrowser(context);
+                    })
+                    .setNegativeButton("👍 明白了", (dialog, which) -> {
+                        // 什么都不做
+                    })
+                    .show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing detailed guide", e);
+        }
+    }
+
+    // === 私密模式功能 ===
+    
+    private static final String PREF_PRIVATE_MODE_ENABLED = "private_mode_enabled";
+    private static final String PREF_PRIVATE_MODE_PASSWORD = "private_mode_password";
+    private static final String PREF_PRIVATE_MODE_USE_BIOMETRIC = "private_mode_use_biometric";
+
+    /**
+     * 检查是否启用了私密模式
+     */
+    public static boolean isPrivateModeEnabled(@NonNull Context context) {
+        return getPrefs(context).getBoolean(PREF_PRIVATE_MODE_ENABLED, false);
+    }
+
+    /**
+     * 设置私密模式状态
+     */
+    public static void setPrivateModeEnabled(@NonNull Context context, boolean enabled) {
+        getPrefs(context).edit().putBoolean(PREF_PRIVATE_MODE_ENABLED, enabled).apply();
+        Log.d(TAG, "Private mode " + (enabled ? "enabled" : "disabled"));
+    }
+
+    /**
+     * 设置私密模式密码
+     */
+    public static void setPrivateModePassword(@NonNull Context context, String password) {
+        // 简单加密存储
+        String encrypted = android.util.Base64.encodeToString(password.getBytes(), android.util.Base64.DEFAULT);
+        getPrefs(context).edit().putString(PREF_PRIVATE_MODE_PASSWORD, encrypted).apply();
+    }
+
+    /**
+     * 验证私密模式密码
+     */
+    public static boolean verifyPrivateModePassword(@NonNull Context context, String password) {
+        try {
+            String stored = getPrefs(context).getString(PREF_PRIVATE_MODE_PASSWORD, "");
+            if (stored.isEmpty()) return false;
+            
+            String decrypted = new String(android.util.Base64.decode(stored, android.util.Base64.DEFAULT));
+            return password.equals(decrypted);
+        } catch (Exception e) {
+            Log.e(TAG, "Error verifying private mode password", e);
+            return false;
+        }
+    }
+
+    /**
+     * 是否使用生物识别验证
+     */
+    public static boolean isPrivateModeBiometricEnabled(@NonNull Context context) {
+        return getPrefs(context).getBoolean(PREF_PRIVATE_MODE_USE_BIOMETRIC, false);
+    }
+
+    /**
+     * 设置生物识别验证
+     */
+    public static void setPrivateModeBiometricEnabled(@NonNull Context context, boolean enabled) {
+        getPrefs(context).edit().putBoolean(PREF_PRIVATE_MODE_USE_BIOMETRIC, enabled).apply();
+    }
+
+    /**
+     * 判断是否应该进入私密模式
+     * 返回0: 普通浏览器模式
+     * 返回1: 需要验证进入私密模式  
+     * 返回2: 直接进入私密模式
+     */
+    public static int shouldEnterPrivateMode(@NonNull Context context, Intent intent) {
+        // 如果没有启用私密模式，直接返回普通模式
+        if (!isPrivateModeEnabled(context)) {
+            return 0; // 普通浏览器模式
+        }
+
+        // 检查是否来自特殊入口
+        if (intent != null) {
+            // 来自私密模式专用入口
+            if (intent.getBooleanExtra("enter_private_mode", false)) {
+                return 1; // 需要验证
+            }
+            
+            // 来自桌面图标或浏览器选择，正常浏览器模式
+            if (intent.getBooleanExtra("from_desktop_browser", false) ||
+                intent.getBooleanExtra("from_browser_selection", false)) {
+                return 0; // 普通浏览器模式
+            }
+        }
+
+        // 默认普通浏览器模式
+        return 0;
+    }
+
+    /**
+     * 获取私密模式状态描述
+     */
+    @NonNull
+    public static String getPrivateModeStatusDescription(@NonNull Context context) {
+        if (isPrivateModeEnabled(context)) {
+            String biometric = isPrivateModeBiometricEnabled(context) ? "生物识别" : "密码";
+            return "私密模式已启用 (" + biometric + "验证)";
+        } else {
+            return "私密模式未启用";
+        }
+    }
+
+    /**
+     * 创建私密模式快捷方式
+     */
+    public static void createPrivateModeShortcut(@NonNull Context context) {
+        try {
+            Intent shortcutIntent = new Intent(context, com.hippo.ehviewer.ui.EhBrowserActivity.class);
+            shortcutIntent.setAction(Intent.ACTION_MAIN);
+            shortcutIntent.putExtra("enter_private_mode", true);
+            shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            Intent addShortcutIntent = new Intent("com.android.launcher.action.INSTALL_SHORTCUT");
+            addShortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
+            addShortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, "🔐 私密浏览");
+            addShortcutIntent.putExtra("duplicate", false);
+
+            // 设置图标 (可以用不同的图标表示私密模式)
+            android.content.res.Resources res = context.getResources();
+            android.graphics.Bitmap icon = android.graphics.BitmapFactory.decodeResource(res, android.R.mipmap.sym_def_app_icon);
+            addShortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, icon);
+
+            context.sendBroadcast(addShortcutIntent);
+            Toast.makeText(context, "🔐 私密模式快捷方式已添加到桌面", Toast.LENGTH_SHORT).show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating private mode shortcut", e);
+            Toast.makeText(context, "创建私密模式快捷方式失败", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
