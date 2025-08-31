@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_clear_all"
+        android:title="清空所有"
+        android:icon="@drawable/v_delete_red_x24"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sort"
+        android:title="排序"
+        app:showAsAction="never">
+        <menu>
+            <item
+                android:id="@+id/action_sort_last_visit"
+                android:title="按访问时间" />
+            <item
+                android:id="@+id/action_sort_title"
+                android:title="按标题" />
+            <item
+                android:id="@+id/action_sort_uploader"
+                android:title="按上传者" />
+        </menu>
+    </item>
+
+</menu>

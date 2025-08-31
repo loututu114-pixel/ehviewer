@@ -79,10 +79,21 @@ public class UserAgentManager {
         put("netflix.com", UA_CHROME_DESKTOP);
         put("hulu.com", UA_CHROME_DESKTOP);
 
-        // 成人网站 - 桌面版
-        put("pornhub.com", UA_CHROME_DESKTOP);
-        put("xvideos.com", UA_CHROME_DESKTOP);
-        put("xhamster.com", UA_CHROME_DESKTOP);
+        // 成人网站 - 移动版（根据统计数据，移动设备占比80-90%）
+        put("pornhub.com", UA_CHROME_MOBILE);
+        put("xvideos.com", UA_CHROME_MOBILE);
+        put("xhamster.com", UA_CHROME_MOBILE);
+        put("xnxx.com", UA_CHROME_MOBILE);
+        put("onlyfans.com", UA_CHROME_MOBILE);
+        put("xvideos.es", UA_CHROME_MOBILE);
+        put("xhamsterlive.com", UA_CHROME_MOBILE);
+        put("thisvid.com", UA_CHROME_MOBILE);
+        put("redtube.com", UA_CHROME_MOBILE);
+        put("xhamster19.com", UA_CHROME_MOBILE);
+        put("theporndude.com", UA_CHROME_MOBILE);
+        put("yandex.com.tr", UA_CHROME_MOBILE);
+        put("deviantart.com", UA_CHROME_MOBILE);
+        put("dlsite.com", UA_CHROME_MOBILE);
 
         // 搜索引擎 - 移动版（适配移动端浏览）
         put("google.com", UA_CHROME_MOBILE);
@@ -134,6 +145,11 @@ public class UserAgentManager {
         put("vimeo", "vimeo.com");
         put("pornhub", "pornhub.com");
         put("xvideos", "xvideos.com");
+        put("xhamster", "xhamster.com");
+        put("xnxx", "xnxx.com");
+        put("onlyfans", "onlyfans.com");
+        put("redtube", "redtube.com");
+        put("theporndude", "theporndude.com");
         put("baidu", "baidu.com");
         put("weibo", "weibo.com");
         put("zhihu", "zhihu.com");

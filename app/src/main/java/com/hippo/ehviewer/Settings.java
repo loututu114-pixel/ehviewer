@@ -1464,4 +1464,38 @@ public class Settings {
     public static void putUpdateTime(long updateTime) {
         putLong(KEY_LAST_UPDATE_TIME,updateTime);
     }
+
+    // 底部导航栏模式设置
+    public static final String KEY_BOTTOM_NAV_MODE = "bottom_nav_mode";
+    private static final int DEFAULT_BOTTOM_NAV_MODE = 0; // 0: 浏览器模式, 1: EhViewer图库模式
+
+    /**
+     * 获取底部导航栏模式
+     * @return 0: 浏览器模式（默认）, 1: EhViewer图库模式
+     */
+    public static int getBottomNavMode() {
+        return getInt(KEY_BOTTOM_NAV_MODE, DEFAULT_BOTTOM_NAV_MODE);
+    }
+
+    /**
+     * 设置底部导航栏模式
+     * @param mode 0: 浏览器模式, 1: EhViewer图库模式
+     */
+    public static void setBottomNavMode(int mode) {
+        putInt(KEY_BOTTOM_NAV_MODE, mode);
+    }
+
+    /**
+     * 检查是否为浏览器模式
+     */
+    public static boolean isBrowserMode() {
+        return getBottomNavMode() == 0;
+    }
+
+    /**
+     * 检查是否为EhViewer图库模式
+     */
+    public static boolean isGalleryMode() {
+        return getBottomNavMode() == 1;
+    }
 }

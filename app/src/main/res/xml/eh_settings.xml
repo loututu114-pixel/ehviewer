@@ -83,6 +83,15 @@
 
     <com.hippo.preference.ListPreference
         android:defaultValue="0"
+        android:key="bottom_nav_mode"
+        android:summary="%s"
+        android:title="@string/settings_eh_bottom_nav_mode"
+        app:allowDividerAbove="true"
+        app:entries="@array/bottom_nav_mode_entries"
+        app:entryValues="@array/bottom_nav_mode_entry_values" />
+
+    <com.hippo.preference.ListPreference
+        android:defaultValue="0"
         android:key="list_mode"
         android:summary="%s"
         android:title="@string/settings_eh_list_mode"

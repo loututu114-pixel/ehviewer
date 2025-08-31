@@ -96,30 +96,131 @@ public class VideoPlayerEnhancer {
         "    }" +
         "}" +
         "" +
-        "// XVideos特殊处理" +
+        "// XVideos特殊处理 - 改进版" +
         "function enhanceXVideos() {" +
         "    if (window.location.hostname.includes('xvideos.com')) {" +
         "        console.log('Applying XVideos enhancements');" +
         "        " +
-        "        // 查找播放器容器" +
-        "        var playerContainer = document.querySelector('#player');" +
-        "        if (playerContainer) {" +
-        "            playerContainer.style.position = 'relative';" +
+        "        // 延迟执行，确保页面完全加载" +
+        "        setTimeout(function() {" +
+        "            // 查找所有可能的播放器容器" +
+        "            var playerSelectors = [" +
+        "                '#player'," +
+        "                '.video-player'," +
+        "                '#video-player'," +
+        "                '.player-container'," +
+        "                '#main-video-player'," +
+        "                '.video-container'," +
+        "                '#videoWrapper'," +
+        "                '.video-wrapper'" +
+        "            ];" +
         "            " +
-        "            // 添加EhViewer全屏按钮" +
-        "            var fullscreenBtn = document.createElement('button');" +
-        "            fullscreenBtn.innerHTML = '⛶';" +
-        "            fullscreenBtn.style.cssText = " +
-        "                'position: absolute; top: 10px; right: 10px; z-index: 1000; " +
-        "                 background: rgba(0,0,0,0.7); color: white; border: none; " +
-        "                 width: 40px; height: 40px; border-radius: 50%; " +
-        "                 font-size: 18px; cursor: pointer;';" +
-        "            fullscreenBtn.onclick = function() {" +
-        "                window.VideoEnhancer.requestFullscreen();" +
-        "                return false;" +
-        "            };" +
-        "            playerContainer.appendChild(fullscreenBtn);" +
-        "        }" +
+        "            var playerContainer = null;" +
+        "            for (var i = 0; i < playerSelectors.length; i++) {" +
+        "                playerContainer = document.querySelector(playerSelectors[i]);" +
+        "                if (playerContainer) {" +
+        "                    console.log('Found XVideos player container:', playerSelectors[i]);" +
+        "                    break;" +
+        "                }" +
+        "            }" +
+        "            " +
+        "            if (!playerContainer) {" +
+        "                // 如果没找到容器，查找视频元素本身" +
+        "                var video = document.querySelector('video');" +
+        "                if (video) {" +
+        "                    playerContainer = video.parentElement;" +
+        "                    console.log('Using video parent as container');" +
+        "                }" +
+        "            }" +
+        "            " +
+        "            if (playerContainer) {" +
+        "                playerContainer.style.position = 'relative';" +
+        "                " +
+        "                // 检查是否已经有全屏按钮" +
+        "                var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
+        "                if (!existingBtn) {" +
+        "                    // 添加EhViewer全屏按钮" +
+        "                    var fullscreenBtn = document.createElement('button');" +
+        "                    fullscreenBtn.className = 'ehviewer-fullscreen-btn';" +
+        "                    fullscreenBtn.innerHTML = '⛶';" +
+        "                    fullscreenBtn.style.cssText = " +
+        "                        'position: absolute; top: 10px; right: 10px; z-index: 10000; " +
+        "                         background: rgba(0,0,0,0.8); color: white; border: 2px solid rgba(255,255,255,0.3); " +
+        "                         width: 45px; height: 45px; border-radius: 50%; " +
+        "                         font-size: 20px; cursor: pointer; " +
+        "                         transition: all 0.3s ease; " +
+        "                         box-shadow: 0 2px 8px rgba(0,0,0,0.3);';" +
+        "                    " +
+        "                    fullscreenBtn.onmouseover = function() {" +
+        "                        this.style.background = 'rgba(255,255,255,0.2);';" +
+        "                        this.style.transform = 'scale(1.1);';" +
+        "                    };" +
+        "                    fullscreenBtn.onmouseout = function() {" +
+        "                        this.style.background = 'rgba(0,0,0,0.8);';" +
+        "                        this.style.transform = 'scale(1);';" +
+        "                    };" +
+        "                    " +
+        "                    fullscreenBtn.onclick = function(e) {" +
+        "                        e.preventDefault();" +
+        "                        e.stopPropagation();" +
+        "                        console.log('XVideos fullscreen button clicked');" +
+        "                        window.VideoEnhancer.requestFullscreen();" +
+        "                        return false;" +
+        "                    };" +
+        "                    " +
+        "                    playerContainer.appendChild(fullscreenBtn);" +
+        "                    console.log('Added XVideos fullscreen button');" +
+        "                }" +
+        "                " +
+        "                // 增强视频元素" +
+        "                var videos = playerContainer.querySelectorAll('video');" +
+        "                for (var j = 0; j < videos.length; j++) {" +
+        "                    var video = videos[j];" +
+        "                    if (!video.hasAttribute('data-xvideos-enhanced')) {" +
+        "                        video.setAttribute('data-xvideos-enhanced', 'true');" +
+        "                        " +
+        "                        // 启用全屏属性" +
+        "                        video.setAttribute('playsinline', 'false');" +
+        "                        video.setAttribute('webkit-playsinline', 'false');" +
+        "                        video.setAttribute('controls', 'true');" +
+        "                        video.style.width = '100%';" +
+        "                        " +
+        "                        // 监听播放事件" +
+        "                        video.addEventListener('play', function() {" +
+        "                            console.log('XVideos video started playing');" +
+        "                            window.VideoEnhancer.onVideoPlay();" +
+        "                        });" +
+        "                        " +
+        "                        video.addEventListener('pause', function() {" +
+        "                            console.log('XVideos video paused');" +
+        "                            window.VideoEnhancer.onVideoPause();" +
+        "                        });" +
+        "                        " +
+        "                        // 双击全屏" +
+        "                        video.addEventListener('dblclick', function(e) {" +
+        "                            e.preventDefault();" +
+        "                            console.log('XVideos video double-clicked, requesting fullscreen');" +
+        "                            window.VideoEnhancer.requestFullscreen();" +
+        "                        });" +
+        "                        " +
+        "                        // 监听全屏变化" +
+        "                        document.addEventListener('fullscreenchange', function() {" +
+        "                            if (document.fullscreenElement) {" +
+        "                                console.log('XVideos video entered fullscreen');" +
+        "                                window.VideoEnhancer.onFullscreenChange(true);" +
+        "                            } else {" +
+        "                                console.log('XVideos video exited fullscreen');" +
+        "                                window.VideoEnhancer.onFullscreenChange(false);" +
+        "                            }" +
+        "                        });" +
+        "                    }" +
+        "                }" +
+        "                " +
+        "                console.log('XVideos enhancement completed');" +
+        "            } else {" +
+        "                console.log('XVideos player container not found');" +
+        "            }" +
+        "        }, 2000); // 等待页面完全加载" +
         "    }" +
         "}" +
         "" +
@@ -128,18 +229,111 @@ public class VideoPlayerEnhancer {
         "    if (window.location.hostname.includes('pornhub.com')) {" +
         "        console.log('Applying Pornhub enhancements');" +
         "        " +
-        "        // 查找播放器" +
+        "        // 延迟执行，确保页面完全加载" +
         "        setTimeout(function() {" +
-        "            var player = document.querySelector('#player');" +
-        "            if (player) {" +
-        "                // 添加全屏事件监听" +
-        "                player.addEventListener('click', function(e) {" +
-        "                    if (e.target.classList.contains('fullscreen-button')) {" +
-        "                        window.VideoEnhancer.requestFullscreen();" +
-        "                    }" +
-        "                });" +
+        "            // 查找播放器容器" +
+        "            var playerSelectors = [" +
+        "                '#player'," +
+        "                '.video-player'," +
+        "                '#video-player'," +
+        "                '.player-container'," +
+        "                '#main-video-player'" +
+        "            ];" +
+        "            " +
+        "            var playerContainer = null;" +
+        "            for (var i = 0; i < playerSelectors.length; i++) {" +
+        "                playerContainer = document.querySelector(playerSelectors[i]);" +
+        "                if (playerContainer) {" +
+        "                    console.log('Found Pornhub player container:', playerSelectors[i]);" +
+        "                    break;" +
+        "                }" +
         "            }" +
-        "        }, 2000);" +
+        "            " +
+        "            if (!playerContainer) {" +
+        "                // 如果没找到容器，查找视频元素本身" +
+        "                var video = document.querySelector('video');" +
+        "                if (video) {" +
+        "                    playerContainer = video.parentElement;" +
+        "                    console.log('Using video parent as container');" +
+        "                }" +
+        "            }" +
+        "            " +
+        "            if (playerContainer) {" +
+        "                playerContainer.style.position = 'relative';" +
+        "                " +
+        "                // 检查是否已经有全屏按钮" +
+        "                var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
+        "                if (!existingBtn) {" +
+        "                    // 添加EhViewer全屏按钮" +
+        "                    var fullscreenBtn = document.createElement('button');" +
+        "                    fullscreenBtn.className = 'ehviewer-fullscreen-btn';" +
+        "                    fullscreenBtn.innerHTML = '⛶';" +
+        "                    fullscreenBtn.style.cssText = " +
+        "                        'position: absolute; top: 10px; right: 10px; z-index: 10000; " +
+        "                         background: rgba(0,0,0,0.8); color: white; border: 2px solid rgba(255,255,255,0.3); " +
+        "                         width: 45px; height: 45px; border-radius: 50%; " +
+        "                         font-size: 20px; cursor: pointer; " +
+        "                         transition: all 0.3s ease; " +
+        "                         box-shadow: 0 2px 8px rgba(0,0,0,0.3);';" +
+        "                    " +
+        "                    fullscreenBtn.onmouseover = function() {" +
+        "                        this.style.background = 'rgba(255,255,255,0.2);';" +
+        "                        this.style.transform = 'scale(1.1);';" +
+        "                    };" +
+        "                    fullscreenBtn.onmouseout = function() {" +
+        "                        this.style.background = 'rgba(0,0,0,0.8);';" +
+        "                        this.style.transform = 'scale(1);';" +
+        "                    };" +
+        "                    " +
+        "                    fullscreenBtn.onclick = function(e) {" +
+        "                        e.preventDefault();" +
+        "                        e.stopPropagation();" +
+        "                        console.log('Pornhub fullscreen button clicked');" +
+        "                        window.VideoEnhancer.requestFullscreen();" +
+        "                        return false;" +
+        "                    };" +
+        "                    " +
+        "                    playerContainer.appendChild(fullscreenBtn);" +
+        "                    console.log('Added Pornhub fullscreen button');" +
+        "                }" +
+        "                " +
+        "                // 增强视频元素" +
+        "                var videos = playerContainer.querySelectorAll('video');" +
+        "                for (var j = 0; j < videos.length; j++) {" +
+        "                    var video = videos[j];" +
+        "                    if (!video.hasAttribute('data-pornhub-enhanced')) {" +
+        "                        video.setAttribute('data-pornhub-enhanced', 'true');" +
+        "                        " +
+        "                        // 启用全屏属性" +
+        "                        video.setAttribute('playsinline', 'false');" +
+        "                        video.setAttribute('webkit-playsinline', 'false');" +
+        "                        video.setAttribute('controls', 'true');" +
+        "                        " +
+        "                        // 监听播放事件" +
+        "                        video.addEventListener('play', function() {" +
+        "                            console.log('Pornhub video started playing');" +
+        "                            window.VideoEnhancer.onVideoPlay();" +
+        "                        });" +
+        "                        " +
+        "                        video.addEventListener('pause', function() {" +
+        "                            console.log('Pornhub video paused');" +
+        "                            window.VideoEnhancer.onVideoPause();" +
+        "                        });" +
+        "                        " +
+        "                        // 双击全屏" +
+        "                        video.addEventListener('dblclick', function(e) {" +
+        "                            e.preventDefault();" +
+        "                            console.log('Pornhub video double-clicked, requesting fullscreen');" +
+        "                            window.VideoEnhancer.requestFullscreen();" +
+        "                        });" +
+        "                    }" +
+        "                }" +
+        "                " +
+        "                console.log('Pornhub enhancement completed');" +
+        "            } else {" +
+        "                console.log('Pornhub player container not found');" +
+        "            }" +
+        "        }, 2000); // 等待页面完全加载" +
         "    }" +
         "}" +
         "" +
@@ -247,6 +441,20 @@ public class VideoPlayerEnhancer {
         "        enhancePornhub();" +
         "        enhanceYouTube();" +
         "        enhanceWebPlayers();" +
+        "        " +
+        "        // 增强其他色情网站" +
+        "        if (window.location.hostname.includes('xhamster.com')) {" +
+        "            enhanceXHamster();" +
+        "        }" +
+        "        if (window.location.hostname.includes('xnxx.com')) {" +
+        "            enhanceXNXX();" +
+        "        }" +
+        "        if (window.location.hostname.includes('redtube.com')) {" +
+        "            enhanceRedTube();" +
+        "        }" +
+        "        if (window.location.hostname.includes('xvideos.es')) {" +
+        "            enhanceXVideosES();" +
+        "        }" +
         "    }, 1000);" +
         "}" +
         "" +
@@ -258,7 +466,171 @@ public class VideoPlayerEnhancer {
         "}" +
         "" +
         "// 暴露检测函数" +
-        "window.detectVideoElements = detectVideoElements;";
+        "window.detectVideoElements = detectVideoElements;" +
+        "" +
+        "// XHamster特殊处理" +
+        "function enhanceXHamster() {" +
+        "    console.log('Applying XHamster enhancements');" +
+        "    setTimeout(function() {" +
+        "        var playerSelectors = ['#player', '.video-player', '#video-player', '.player-container', '#main-video-player', '.video-container'];" +
+        "        var playerContainer = null;" +
+        "        for (var i = 0; i < playerSelectors.length; i++) {" +
+        "            playerContainer = document.querySelector(playerSelectors[i]);" +
+        "            if (playerContainer) break;" +
+        "        }" +
+        "        if (!playerContainer) {" +
+        "            var video = document.querySelector('video');" +
+        "            if (video) playerContainer = video.parentElement;" +
+        "        }" +
+        "        if (playerContainer) {" +
+        "            playerContainer.style.position = 'relative';" +
+        "            var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
+        "            if (!existingBtn) {" +
+        "                var fullscreenBtn = document.createElement('button');" +
+        "                fullscreenBtn.className = 'ehviewer-fullscreen-btn';" +
+        "                fullscreenBtn.innerHTML = '⛶';" +
+        "                fullscreenBtn.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: white; border: 2px solid rgba(255,255,255,0.3); width: 45px; height: 45px; border-radius: 50%; font-size: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';" +
+        "                fullscreenBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); window.VideoEnhancer.requestFullscreen(); return false; };" +
+        "                playerContainer.appendChild(fullscreenBtn);" +
+        "            }" +
+        "            var videos = playerContainer.querySelectorAll('video');" +
+        "            for (var j = 0; j < videos.length; j++) {" +
+        "                var video = videos[j];" +
+        "                if (!video.hasAttribute('data-xhamster-enhanced')) {" +
+        "                    video.setAttribute('data-xhamster-enhanced', 'true');" +
+        "                    video.setAttribute('playsinline', 'false');" +
+        "                    video.setAttribute('webkit-playsinline', 'false');" +
+        "                    video.setAttribute('controls', 'true');" +
+        "                    video.addEventListener('dblclick', function(e) { e.preventDefault(); window.VideoEnhancer.requestFullscreen(); });" +
+        "                }" +
+        "            }" +
+        "            console.log('XHamster enhancement completed');" +
+        "        }" +
+        "    }, 2000);" +
+        "}" +
+        "" +
+        "// XNXX特殊处理" +
+        "function enhanceXNXX() {" +
+        "    console.log('Applying XNXX enhancements');" +
+        "    setTimeout(function() {" +
+        "        var playerSelectors = ['#player', '.video-player', '#video-player', '.player-container', '#main-video-player', '.video-container'];" +
+        "        var playerContainer = null;" +
+        "        for (var i = 0; i < playerSelectors.length; i++) {" +
+        "            playerContainer = document.querySelector(playerSelectors[i]);" +
+        "            if (playerContainer) break;" +
+        "        }" +
+        "        if (!playerContainer) {" +
+        "            var video = document.querySelector('video');" +
+        "            if (video) playerContainer = video.parentElement;" +
+        "        }" +
+        "        if (playerContainer) {" +
+        "            playerContainer.style.position = 'relative';" +
+        "            var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
+        "            if (!existingBtn) {" +
+        "                var fullscreenBtn = document.createElement('button');" +
+        "                fullscreenBtn.className = 'ehviewer-fullscreen-btn';" +
+        "                fullscreenBtn.innerHTML = '⛶';" +
+        "                fullscreenBtn.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: white; border: 2px solid rgba(255,255,255,0.3); width: 45px; height: 45px; border-radius: 50%; font-size: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';" +
+        "                fullscreenBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); window.VideoEnhancer.requestFullscreen(); return false; };" +
+        "                playerContainer.appendChild(fullscreenBtn);" +
+        "            }" +
+        "            var videos = playerContainer.querySelectorAll('video');" +
+        "            for (var j = 0; j < videos.length; j++) {" +
+        "                var video = videos[j];" +
+        "                if (!video.hasAttribute('data-xnxx-enhanced')) {" +
+        "                    video.setAttribute('data-xnxx-enhanced', 'true');" +
+        "                    video.setAttribute('playsinline', 'false');" +
+        "                    video.setAttribute('webkit-playsinline', 'false');" +
+        "                    video.setAttribute('controls', 'true');" +
+        "                    video.addEventListener('dblclick', function(e) { e.preventDefault(); window.VideoEnhancer.requestFullscreen(); });" +
+        "                }" +
+        "            }" +
+        "            console.log('XNXX enhancement completed');" +
+        "        }" +
+        "    }, 2000);" +
+        "}" +
+        "" +
+        "// RedTube特殊处理" +
+        "function enhanceRedTube() {" +
+        "    console.log('Applying RedTube enhancements');" +
+        "    setTimeout(function() {" +
+        "        var playerSelectors = ['#player', '.video-player', '#video-player', '.player-container', '#main-video-player', '.video-container'];" +
+        "        var playerContainer = null;" +
+        "        for (var i = 0; i < playerSelectors.length; i++) {" +
+        "            playerContainer = document.querySelector(playerSelectors[i]);" +
+        "            if (playerContainer) break;" +
+        "        }" +
+        "        if (!playerContainer) {" +
+        "            var video = document.querySelector('video');" +
+        "            if (video) playerContainer = video.parentElement;" +
+        "        }" +
+        "        if (playerContainer) {" +
+        "            playerContainer.style.position = 'relative';" +
+        "            var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
+        "            if (!existingBtn) {" +
+        "                var fullscreenBtn = document.createElement('button');" +
+        "                fullscreenBtn.className = 'ehviewer-fullscreen-btn';" +
+        "                fullscreenBtn.innerHTML = '⛶';" +
+        "                fullscreenBtn.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: white; border: 2px solid rgba(255,255,255,0.3); width: 45px; height: 45px; border-radius: 50%; font-size: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';" +
+        "                fullscreenBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); window.VideoEnhancer.requestFullscreen(); return false; };" +
+        "                playerContainer.appendChild(fullscreenBtn);" +
+        "            }" +
+        "            var videos = playerContainer.querySelectorAll('video');" +
+        "            for (var j = 0; j < videos.length; j++) {" +
+        "                var video = videos[j];" +
+        "                if (!video.hasAttribute('data-redtube-enhanced')) {" +
+        "                    video.setAttribute('data-redtube-enhanced', 'true');" +
+        "                    video.setAttribute('playsinline', 'false');" +
+        "                    video.setAttribute('webkit-playsinline', 'false');" +
+        "                    video.setAttribute('controls', 'true');" +
+        "                    video.addEventListener('dblclick', function(e) { e.preventDefault(); window.VideoEnhancer.requestFullscreen(); });" +
+        "                }" +
+        "            }" +
+        "            console.log('RedTube enhancement completed');" +
+        "        }" +
+        "    }, 2000);" +
+        "}" +
+        "" +
+        "// XVideosES特殊处理" +
+        "function enhanceXVideosES() {" +
+        "    console.log('Applying XVideosES enhancements');" +
+        "    setTimeout(function() {" +
+        "        var playerSelectors = ['#player', '.video-player', '#video-player', '.player-container', '#main-video-player', '.video-container'];" +
+        "        var playerContainer = null;" +
+        "        for (var i = 0; i < playerSelectors.length; i++) {" +
+        "            playerContainer = document.querySelector(playerSelectors[i]);" +
+        "            if (playerContainer) break;" +
+        "        }" +
+        "        if (!playerContainer) {" +
+        "            var video = document.querySelector('video');" +
+        "            if (video) playerContainer = video.parentElement;" +
+        "        }" +
+        "        if (playerContainer) {" +
+        "            playerContainer.style.position = 'relative';" +
+        "            var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
+        "            if (!existingBtn) {" +
+        "                var fullscreenBtn = document.createElement('button');" +
+        "                fullscreenBtn.className = 'ehviewer-fullscreen-btn';" +
+        "                fullscreenBtn.innerHTML = '⛶';" +
+        "                fullscreenBtn.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: white; border: 2px solid rgba(255,255,255,0.3); width: 45px; height: 45px; border-radius: 50%; font-size: 20px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';" +
+        "                fullscreenBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); window.VideoEnhancer.requestFullscreen(); return false; };" +
+        "                playerContainer.appendChild(fullscreenBtn);" +
+        "            }" +
+        "            var videos = playerContainer.querySelectorAll('video');" +
+        "            for (var j = 0; j < videos.length; j++) {" +
+        "                var video = videos[j];" +
+        "                if (!video.hasAttribute('data-xvideoses-enhanced')) {" +
+        "                    video.setAttribute('data-xvideoses-enhanced', 'true');" +
+        "                    video.setAttribute('playsinline', 'false');" +
+        "                    video.setAttribute('webkit-playsinline', 'false');" +
+        "                    video.setAttribute('controls', 'true');" +
+        "                    video.addEventListener('dblclick', function(e) { e.preventDefault(); window.VideoEnhancer.requestFullscreen(); });" +
+        "                }" +
+        "            }" +
+        "            console.log('XVideosES enhancement completed');" +
+        "        }" +
+        "    }, 2000);" +
+        "}";
 
     public VideoPlayerEnhancer(Activity activity) {
         this.context = activity.getApplicationContext();
@@ -312,7 +684,7 @@ public class VideoPlayerEnhancer {
     }
 
     /**
-     * 进入全屏模式
+     * 进入全屏模式 - 改进版本，使用覆盖层而不是替换整个Activity布局
      */
     private void enterFullscreen(View view, android.webkit.WebChromeClient.CustomViewCallback callback) {
         if (isFullscreen) return;
@@ -321,35 +693,258 @@ public class VideoPlayerEnhancer {
             isFullscreen = true;
             customView = view;
 
-            // 保存原始方向
-            originalOrientation = activity.getRequestedOrientation();
+            // 启动独立的视频播放Activity
+            launchVideoPlayerActivity();
 
-            // 强制横屏
-            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            isLandscapeForced = true;
-
-            // 隐藏系统UI
-            activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-            // 创建全屏容器
-            if (fullscreenContainer == null) {
-                fullscreenContainer = new FrameLayout(activity);
-                fullscreenContainer.setBackgroundColor(0xFF000000);
-            }
-
-            // 添加视频视图
-            fullscreenContainer.addView(view);
-            activity.setContentView(fullscreenContainer);
-
-            Log.d(TAG, "Entered fullscreen mode");
+            Log.d(TAG, "Launched video player activity");
 
         } catch (Exception e) {
             Log.e(TAG, "Error entering fullscreen", e);
+            // 回退到原来的方法
+            enterFullscreenFallback(view, callback);
+        }
+    }
+    
+    /**
+     * 启动视频播放Activity - 改进版，支持多种网站
+     */
+    private void launchVideoPlayerActivity() {
+        try {
+            // 通过JavaScript获取视频信息
+            if (webView != null) {
+                // 获取当前URL来判断网站类型
+                String currentUrl = webView.getUrl();
+
+                String script;
+                if (currentUrl != null && currentUrl.contains("xvideos.com")) {
+                    // XVideos特殊处理
+                    script = "(function() {" +
+                        "try {" +
+                        "    // 查找视频元素" +
+                        "    var video = document.querySelector('video');" +
+                        "    if (!video) {" +
+                        "        // 尝试查找其他可能的视频元素" +
+                        "        var videos = document.querySelectorAll('video, [data-video-src], .video-js video');" +
+                        "        video = videos.length > 0 ? videos[0] : null;" +
+                        "    }" +
+                        "    " +
+                        "    if (video) {" +
+                        "        var videoUrl = video.currentSrc || video.src;" +
+                        "        " +
+                        "        // 如果没有直接的src，尝试从data属性或其他地方获取" +
+                        "        if (!videoUrl) {" +
+                        "            videoUrl = video.getAttribute('data-video-src') || " +
+                        "                       video.getAttribute('data-src') || " +
+                        "                       video.getAttribute('data-url');" +
+                        "        }" +
+                        "        " +
+                        "        // 尝试从source标签获取" +
+                        "        if (!videoUrl) {" +
+                        "            var sources = video.querySelectorAll('source');" +
+                        "            for (var i = 0; i < sources.length; i++) {" +
+                        "                var src = sources[i].getAttribute('src');" +
+                        "                if (src && src.includes('.mp4')) {" +
+                        "                    videoUrl = src;" +
+                        "                    break;" +
+                        "                }" +
+                        "            }" +
+                        "        }" +
+                        "        " +
+                        "        // XVideos特定：查找script标签中的视频信息" +
+                        "        if (!videoUrl) {" +
+                        "            var scripts = document.querySelectorAll('script');" +
+                        "            for (var i = 0; i < scripts.length; i++) {" +
+                        "                var scriptContent = scripts[i].textContent || scripts[i].innerText;" +
+                        "                if (scriptContent && scriptContent.includes('html5player.setVideoUrl')) {" +
+                        "                    var urlMatch = scriptContent.match(/html5player\\.setVideoUrl\\(['\"](.*?)['\"]/);" +
+                        "                    if (urlMatch && urlMatch[1]) {" +
+                        "                        videoUrl = urlMatch[1];" +
+                        "                        break;" +
+                        "                    }" +
+                        "                }" +
+                        "                if (scriptContent && scriptContent.includes('html5player.setVideoHLS')) {" +
+                        "                    var hlsMatch = scriptContent.match(/html5player\\.setVideoHLS\\(['\"](.*?)['\"]/);" +
+                        "                    if (hlsMatch && hlsMatch[1]) {" +
+                        "                        videoUrl = hlsMatch[1];" +
+                        "                        break;" +
+                        "                    }" +
+                        "                }" +
+                        "            }" +
+                        "        }" +
+                        "        " +
+                        "        return JSON.stringify({" +
+                        "            src: videoUrl," +
+                        "            title: document.title || 'XVideos'," +
+                        "            currentTime: video.currentTime || 0," +
+                        "            duration: video.duration || 0," +
+                        "            poster: video.poster || ''," +
+                        "            type: 'xvideos'" +
+                        "        });" +
+                        "    }" +
+                        "    " +
+                        "    return null;" +
+                        "} catch (e) {" +
+                        "    console.error('Error getting XVideos video info:', e);" +
+                        "    return null;" +
+                        "}" +
+                        "})();";
+                } else {
+                    // 通用视频处理
+                    script = "(function() {" +
+                        "var videos = document.querySelectorAll('video');" +
+                        "if (videos.length > 0) {" +
+                        "    var video = videos[0];" +
+                        "    return JSON.stringify({" +
+                        "        src: video.currentSrc || video.src," +
+                        "        title: document.title || 'Video'," +
+                        "        currentTime: video.currentTime || 0," +
+                        "        duration: video.duration || 0," +
+                        "        poster: video.poster || ''," +
+                        "        type: 'generic'" +
+                        "    });" +
+                        "}" +
+                        "return null;" +
+                        "})();";
+                }
+
+                webView.evaluateJavascript(script, result -> {
+                    android.util.Log.d(TAG, "Video info result: " + result);
+                    if (result != null && !"null".equals(result)) {
+                        try {
+                            // 解析结果并启动MediaPlayerActivity
+                            // 简化JSON解析 - 移除首尾引号
+                            String jsonResult = result;
+                            String quote = String.valueOf((char)34); // ASCII 34 = \"
+                            if (jsonResult.startsWith(quote)) {
+                                jsonResult = jsonResult.substring(1);
+                            }
+                            if (jsonResult.endsWith(quote)) {
+                                jsonResult = jsonResult.substring(0, jsonResult.length() - 1);
+                            }
+
+                            // 处理转义字符
+                            jsonResult = jsonResult.replaceAll("\\\\\"", "\"");
+                            jsonResult = jsonResult.replaceAll("\\\\\\\\", "\\\\");
+
+                            android.util.Log.d(TAG, "Parsed JSON: " + jsonResult);
+
+                            org.json.JSONObject videoInfo = new org.json.JSONObject(jsonResult);
+                            String videoUrl = videoInfo.optString("src");
+                            String title = videoInfo.optString("title", "Video");
+                            String videoType = videoInfo.optString("type", "generic");
+
+                            android.util.Log.d(TAG, "Video URL: " + videoUrl + ", Type: " + videoType);
+
+                            if (!videoUrl.isEmpty() && !"null".equals(videoUrl)) {
+                                // 启动MediaPlayerActivity
+                                android.content.Intent intent = new android.content.Intent(activity,
+                                    com.hippo.ehviewer.ui.MediaPlayerActivity.class);
+                                intent.putExtra(com.hippo.ehviewer.ui.MediaPlayerActivity.EXTRA_MEDIA_URI,
+                                    android.net.Uri.parse(videoUrl));
+                                intent.putExtra(com.hippo.ehviewer.ui.MediaPlayerActivity.EXTRA_MEDIA_TYPE, "video/*");
+                                intent.putExtra(com.hippo.ehviewer.ui.MediaPlayerActivity.EXTRA_TITLE, title);
+
+                                // 添加额外信息用于调试
+                                intent.putExtra("video_type", videoType);
+                                intent.putExtra("original_url", currentUrl);
+
+                                activity.startActivity(intent);
+
+                                // 退出当前全屏状态
+                                activity.runOnUiThread(() -> exitFullscreen());
+
+                                android.util.Log.d(TAG, "Successfully launched MediaPlayerActivity for " + videoType);
+                            } else {
+                                android.util.Log.w(TAG, "No valid video URL found");
+                                // 回退到WebView全屏
+                                activity.runOnUiThread(() -> {
+                                    android.widget.Toast.makeText(activity, "无法获取视频URL，使用网页全屏", android.widget.Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        } catch (Exception e) {
+                            android.util.Log.e(TAG, "Error parsing video info", e);
+                            // 回退到WebView全屏
+                            activity.runOnUiThread(() -> {
+                                android.widget.Toast.makeText(activity, "解析视频信息失败", android.widget.Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    } else {
+                        android.util.Log.w(TAG, "No video info returned from JavaScript");
+                        // 回退到WebView全屏
+                        activity.runOnUiThread(() -> {
+                            android.widget.Toast.makeText(activity, "未找到视频，使用网页全屏", android.widget.Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching video player activity", e);
+            // 回退到WebView全屏
+            activity.runOnUiThread(() -> {
+                android.widget.Toast.makeText(activity, "启动视频播放器失败", android.widget.Toast.LENGTH_SHORT).show();
+            });
+        }
+    }
+    
+    /**
+     * 回退的全屏方法 - 在覆盖层中显示视频，而不是替换整个Activity
+     */
+    private void enterFullscreenFallback(View view, android.webkit.WebChromeClient.CustomViewCallback callback) {
+        try {
+            // 获取根视图
+            android.view.ViewGroup rootView = (android.view.ViewGroup) activity.findViewById(android.R.id.content);
+            if (rootView == null) return;
+            
+            // 保存原始方向
+            originalOrientation = activity.getRequestedOrientation();
+
+            // 强制横屏 - 只针对视频播放
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            isLandscapeForced = true;
+
+            // 隐藏状态栏和导航栏
+            activity.getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+
+            // 创建全屏覆盖容器
+            if (fullscreenContainer == null) {
+                fullscreenContainer = new FrameLayout(activity);
+                fullscreenContainer.setBackgroundColor(0xFF000000);
+                fullscreenContainer.setLayoutParams(new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT));
+                    
+                // 添加退出按钮
+                android.widget.ImageButton exitButton = new android.widget.ImageButton(activity);
+                exitButton.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+                exitButton.setBackgroundColor(0x80000000);
+                FrameLayout.LayoutParams exitParams = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT);
+                exitParams.gravity = android.view.Gravity.TOP | android.view.Gravity.RIGHT;
+                exitParams.setMargins(0, 50, 50, 0);
+                exitButton.setLayoutParams(exitParams);
+                exitButton.setOnClickListener(v -> exitFullscreen());
+                fullscreenContainer.addView(exitButton);
+            }
+
+            // 添加视频视图到容器
+            fullscreenContainer.addView(view, 0); // 添加到退出按钮下方
+            
+            // 添加到根视图
+            rootView.addView(fullscreenContainer);
+
+            Log.d(TAG, "Entered fullscreen mode with overlay");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in fallback fullscreen", e);
         }
     }
 
     /**
-     * 退出全屏模式
+     * 退出全屏模式 - 改进版本，只移除覆盖层
      */
     private void exitFullscreen() {
         if (!isFullscreen) return;
@@ -363,16 +958,23 @@ public class VideoPlayerEnhancer {
                 isLandscapeForced = false;
             }
 
-            // 显示系统UI
-            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            // 恢复系统UI
+            activity.getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_VISIBLE);
 
-            // 移除全屏视图
-            if (fullscreenContainer != null && customView != null) {
-                fullscreenContainer.removeView(customView);
+            // 从根视图中移除全屏容器
+            if (fullscreenContainer != null) {
+                android.view.ViewGroup rootView = (android.view.ViewGroup) activity.findViewById(android.R.id.content);
+                if (rootView != null) {
+                    rootView.removeView(fullscreenContainer);
+                }
+                
+                // 清理全屏容器
+                if (customView != null) {
+                    fullscreenContainer.removeView(customView);
+                }
+                fullscreenContainer.removeAllViews();
             }
-
-            // 恢复原始布局
-            activity.setContentView(R.layout.activity_web_view);
 
             // 清理引用
             customView = null;
@@ -390,8 +992,9 @@ public class VideoPlayerEnhancer {
     public void requestFullscreen() {
         activity.runOnUiThread(() -> {
             Log.d(TAG, "Fullscreen requested from JavaScript");
-            // 这里可以触发WebView的全屏模式
-            // 或者直接调用系统的全屏处理
+            
+            // 直接启动视频播放Activity
+            launchVideoPlayerActivity();
         });
     }
 

@@ -42,19 +42,43 @@ public class ContentPurifierManager {
     private final Map<String, String> novelSitePurifiers = new HashMap<String, String>() {{
         // 起点中文网
         put("qidian.com", getQidianPurifierScript());
-        
+
         // 晋江文学城
         put("jjwxc.net", getJinjiangPurifierScript());
-        
+
         // 纵横中文网
         put("zongheng.com", getZonghengPurifierScript());
-        
+
         // 17K小说网
         put("17k.com", get17KPurifierScript());
-        
+
         // 番茄小说
         put("fanqienovel.com", getFanqiePurifierScript());
-        
+
+        // 更多中文小说网站
+        put("zhuishushenqi.com", getZhuishuPurifierScript());
+        put("qixiaoshuo.com", getQixiaoPurifierScript());
+        put("booktxt.net", getBooktxtPurifierScript());
+        put("xbiquge.so", getXbiqugePurifierScript());
+        put("biquge.info", getBiqugePurifierScript());
+        put("69shu.com", get69shuPurifierScript());
+        put("uukanshu.com", getUukanshuPurifierScript());
+        put("shubaow.net", getShubaowPurifierScript());
+        put("bqg5200.com", getBqg5200PurifierScript());
+        put("kanshu8.net", getKanshu8PurifierScript());
+
+        // 色情小说网站
+        put("18xs.org", get18XSPurifierScript());
+        put("sewenhua.com", getSewenhuaPurifierScript());
+        put("18novel.com", get18NovelPurifierScript());
+        put("qingdou.net", getQingdouPurifierScript());
+        put("dajianet.com", getDajiaPurifierScript());
+        put("ranwen.net", getRanwenPurifierScript());
+        put("xxbiquge.com", getXxbiqugePurifierScript());
+        put("luoqiuzw.com", getLuoqiuPurifierScript());
+        put("yushuwu.com", getYushuwuPurifierScript());
+        put("hentai2read.com", getHentai2ReadPurifierScript());
+
         // 通用小说网站
         put("novel", getGenericNovelPurifierScript());
     }};
@@ -129,7 +153,9 @@ public class ContentPurifierManager {
      * 检查是否是中文小说网站
      */
     private boolean isChineseNovelSite(String domain) {
-        String[] novelKeywords = {"小说", "书", "文学", "阅读", "txt", "起点", "晋江", "纵横", "17k", "番茄"};
+        String[] novelKeywords = {"小说", "书", "文学", "阅读", "txt", "起点", "晋江", "纵横", "17k", "番茄",
+                                 "18xs", "sewenhua", "18novel", "qingdou", "dajia", "ranwen",
+                                 "xxbiquge", "luoqiu", "yushuwu", "hentai2read"};
         for (String keyword : novelKeywords) {
             if (domain.contains(keyword)) {
                 return true;
@@ -338,6 +364,144 @@ public class ContentPurifierManager {
     }
     
     /**
+     * 追书神器净化脚本
+     */
+    private String getZhuishuPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement, .banner { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend-list { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".chapter-content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
+     * 69书吧净化脚本
+     */
+    private String get69shuPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .ads, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                "#content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
+     * UU看书净化脚本
+     */
+    private String getUukanshuPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad-container { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; }" +
+                ".chapter-content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
+     * 18小说净化脚本
+     */
+    private String get18XSPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                // 隐藏成人网站常见的广告和干扰元素
+                ".ad, .ads, .advertisement, .banner, .popup { display: none !important; }" +
+                ".sidebar, .side-bar { display: none !important; }" +
+                ".recommend, .related, .hot-list { display: none !important; }" +
+                ".comment, .comments { display: none !important; }" +
+                // 优化阅读区域
+                ".content, .article, .chapter { " +
+                    "width: 100% !important; " +
+                    "max-width: 800px !important; " +
+                    "margin: 0 auto !important; " +
+                    "padding: 20px !important; " +
+                    "font-size: 18px !important; " +
+                    "line-height: 1.8 !important; " +
+                "}" +
+                // 夜间模式 - 适合成人内容
+                "body { " +
+                    "background: #1a1a1a !important; " +
+                    "color: #e0e0e0 !important; " +
+                "}" +
+                ".text, .novel-text { " +
+                    "color: #e0e0e0 !important; " +
+                "}" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
+     * 色文化净化脚本
+     */
+    private String getSewenhuaPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement, .banner { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".chapter-content, .text { font-size: 18px !important; line-height: 1.8 !important; color: #e0e0e0 !important; }" +
+                "body { background: #1a1a1a !important; color: #e0e0e0 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
+     * 18小说网净化脚本
+     */
+    private String get18NovelPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .ads, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".chapter-content { font-size: 18px !important; line-height: 1.8 !important; color: #e0e0e0 !important; }" +
+                "body { background: #1a1a1a !important; color: #e0e0e0 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
+     * 青豆小说净化脚本
+     */
+    private String getQingdouPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    /**
      * 通用小说网站净化脚本
      */
     private String getGenericNovelPurifierScript() {
@@ -368,12 +532,193 @@ public class ContentPurifierManager {
                 "}" +
             "';" +
             "document.head.appendChild(style);" +
-            
+
             // 移除干扰元素
             "setTimeout(function() {" +
                 "var distractions = document.querySelectorAll('.ad, .advertisement, .sidebar, .popup');" +
                 "distractions.forEach(function(el) { el.remove(); });" +
             "}, 2000);" +
+        "})();";
+    }
+
+    /**
+     * 其他小说网站净化脚本
+     */
+    private String getQixiaoPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getBooktxtPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; }" +
+                "#content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getXbiqugePurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getBiqugePurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; }" +
+                ".chapter-content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getShubaowPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getBqg5200PurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getKanshu8PurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; }" +
+                ".chapter-content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getDajiaPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; color: #e0e0e0 !important; }" +
+                "body { background: #1a1a1a !important; color: #e0e0e0 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getRanwenPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getXxbiqugePurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; color: #e0e0e0 !important; }" +
+                "body { background: #1a1a1a !important; color: #e0e0e0 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getLuoqiuPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; }" +
+                ".chapter-content { font-size: 18px !important; line-height: 1.8 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getYushuwuPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".text { font-size: 18px !important; line-height: 1.8 !important; color: #e0e0e0 !important; }" +
+                "body { background: #1a1a1a !important; color: #e0e0e0 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
+        "})();";
+    }
+
+    private String getHentai2ReadPurifierScript() {
+        return "(function() {" +
+            "var style = document.createElement('style');" +
+            "style.textContent = '" +
+                ".ad, .advertisement, .banner { display: none !important; }" +
+                ".sidebar { display: none !important; }" +
+                ".recommend { display: none !important; }" +
+                ".content { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; padding: 20px !important; }" +
+                ".chapter-content, .text { font-size: 18px !important; line-height: 1.8 !important; color: #e0e0e0 !important; }" +
+                "body { background: #1a1a1a !important; color: #e0e0e0 !important; }" +
+            "';" +
+            "document.head.appendChild(style);" +
         "})();";
     }
     

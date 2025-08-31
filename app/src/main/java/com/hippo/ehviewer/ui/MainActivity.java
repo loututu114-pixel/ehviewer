@@ -1097,20 +1097,37 @@ public final class MainActivity extends StageActivity
             android.util.Log.d("MainActivity", "Browser button clicked, calling openBrowserWithSmartUrl");
             openBrowserWithSmartUrl();
         } else if (itemId == R.id.nav_bottom_bookmarks) {
-            // 书签 - 打开书签管理（Eh图库书签）
-            try {
-                com.hippo.ehviewer.ui.BookmarksActivity.startBookmarks(this);
-            } catch (Exception e) {
-                android.util.Log.e("MainActivity", "Failed to start BookmarksActivity", e);
-                showTip("无法打开书签管理", BaseScene.LENGTH_SHORT);
+            // 书签 - 根据模式选择打开浏览器书签或EhViewer图库收藏
+            if (Settings.isBrowserMode()) {
+                // 浏览器模式：打开浏览器书签
+                try {
+                    com.hippo.ehviewer.ui.BookmarksActivity.startBookmarks(this);
+                } catch (Exception e) {
+                    android.util.Log.e("MainActivity", "Failed to start BookmarksActivity", e);
+                    showTip("无法打开浏览器书签", BaseScene.LENGTH_SHORT);
+                }
+            } else {
+                // EhViewer图库模式：打开图库收藏
+                startScene(new Announcer(com.hippo.ehviewer.ui.scene.gallery.list.FavoritesScene.class));
             }
         } else if (itemId == R.id.nav_bottom_history) {
-            // 历史记录 - 打开历史记录（Eh图库历史）
-            try {
-                com.hippo.ehviewer.ui.HistoryActivity.startHistory(this);
-            } catch (Exception e) {
-                android.util.Log.e("MainActivity", "Failed to start HistoryActivity", e);
-                showTip("无法打开历史记录", BaseScene.LENGTH_SHORT);
+            // 历史记录 - 根据模式选择打开浏览器历史或EhViewer图库历史
+            if (Settings.isBrowserMode()) {
+                // 浏览器模式：打开浏览器历史
+                try {
+                    com.hippo.ehviewer.ui.HistoryActivity.startHistory(this);
+                } catch (Exception e) {
+                    android.util.Log.e("MainActivity", "Failed to start HistoryActivity", e);
+                    showTip("无法打开浏览器历史", BaseScene.LENGTH_SHORT);
+                }
+            } else {
+                // EhViewer图库模式：打开图库历史
+                try {
+                    com.hippo.ehviewer.ui.GalleryHistoryActivity.startGalleryHistory(this);
+                } catch (Exception e) {
+                    android.util.Log.e("MainActivity", "Failed to start GalleryHistoryActivity", e);
+                    showTip("无法打开图库历史", BaseScene.LENGTH_SHORT);
+                }
             }
         } else if (itemId == R.id.nav_bottom_settings) {
             // 设置 - 打开设置页面
