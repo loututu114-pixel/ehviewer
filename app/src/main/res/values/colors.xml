@@ -243,4 +243,31 @@
     <color name="cartoon_background_light">#FFF8F8F8</color>
     <color name="cartoon_background_warm">#FFFFF9C4</color>
 
+    <!-- Browser UI Colors -->
+    <color name="window_background">@color/background_light</color>
+    <color name="toolbar_background">@color/colorPrimary</color>
+    <color name="icon_tint">@color/grey_600</color>
+    <color name="text_primary">@color/grey_900</color>
+    <color name="text_secondary">@color/grey_600</color>
+    <color name="text_hint">@color/grey_400</color>
+    <color name="browser_background">@color/background_light</color>
+    <color name="address_bar_background">@color/white</color>
+    <color name="tab_item_stroke">@color/grey_300</color>
+    <color name="tab_item_background">@color/white</color>
+    <color name="tab_preview_background">@color/grey_100</color>
+    <color name="tab_info_background">@color/white</color>
+    <color name="tab_switcher_background">@color/grey_100</color>
+    <color name="tab_selected_border">@color/colorAccent</color>
+    <color name="menu_background">@color/white</color>
+    <color name="divider">@color/divider_light</color>
+    <color name="chip_background">@color/grey_200</color>
+    <color name="chip_stroke">@color/grey_400</color>
+    <color name="fab_background">@color/colorAccent</color>
+    <color name="tab_empty">@color/grey_400</color>
+    <color name="incognito_accent">@color/purple_500</color>
+    <color name="incognito_toolbar">#424242</color>
+    <color name="suggestion_background">@color/white</color>
+    <color name="progress_color">@color/colorAccent</color>
+    <color name="accent">@color/colorAccent</color>
+
 </resources>

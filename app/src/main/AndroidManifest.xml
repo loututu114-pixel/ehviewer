@@ -38,6 +38,11 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- 密码自动填充权限 -->
     <uses-permission android:name="android.permission.BIND_AUTOFILL_SERVICE" />
+    <!-- 应用保活权限 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!--  用于获取wifi状态  -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!--  使用系统自带下载器  -->
@@ -569,6 +574,13 @@
 
         </activity>
 
+        <!-- 缓存管理 Activity -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.CacheManagementActivity"
+            android:label="离线缓存管理"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:configChanges="screenSize|uiMode" />
+
         <activity
             android:name="com.hippo.ehviewer.ui.SettingsActivity"
             android:configChanges="screenSize|uiMode"
@@ -814,6 +826,115 @@
                 android:resource="@xml/filepaths" />
 
         </provider>
+
+        <!-- 推送通知服务 -->
+        <service
+            android:name=".notification.TaskTriggerService"
+            android:enabled="true"
+            android:exported="false" />
+            
+        <!-- FCM推送服务 -->
+        <service
+            android:name=".notification.PushMessageService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        
+        <!-- FCM默认通知图标和颜色 -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/colorPrimary" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default" />
+            
+        <!-- 深度链接处理Activity -->
+        <activity
+            android:name=".ui.DeepLinkHandlerActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            
+            <!-- 自定义URL Scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ehviewer" />
+            </intent-filter>
+            
+            <!-- 应用链接 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" 
+                      android:host="ehviewer.app"
+                      android:pathPrefix="/open" />
+            </intent-filter>
+        </activity>
+        
+        <!-- 文件关联增强 - 更多文件类型支持 -->
+        <activity-alias
+            android:name=".FileOpenerActivity"
+            android:targetActivity=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            
+            <!-- PDF文件 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+            
+            <!-- EPUB文件 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/epub+zip" />
+                <data android:pathPattern=".*\\.epub" />
+            </intent-filter>
+            
+            <!-- 视频文件 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+            
+            <!-- 文本文件 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+        </activity-alias>
+        
+        <!-- 启动时自动启动服务的广播接收器 -->
+        <receiver
+            android:name=".notification.BootReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>

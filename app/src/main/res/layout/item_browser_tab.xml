@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="200dp"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    app:strokeColor="@color/tab_item_stroke"
+    app:strokeWidth="1dp">
+    
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/tab_item_background">
+        
+        <!-- 标签页预览 -->
+        <ImageView
+            android:id="@+id/tab_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@id/tab_info_container"
+            android:scaleType="centerCrop"
+            android:background="@color/tab_preview_background" />
+        
+        <!-- 关闭按钮 -->
+        <ImageButton
+            android:id="@+id/tab_close"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="8dp"
+            android:background="@drawable/circle_background"
+            android:src="@drawable/ic_close"
+            android:tint="@android:color/white"
+            android:padding="6dp"
+            android:elevation="2dp" />
+        
+        <!-- 标签信息容器 -->
+        <LinearLayout
+            android:id="@+id/tab_info_container"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_alignParentBottom="true"
+            android:background="@color/tab_info_background"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            
+            <!-- 网站图标 -->
+            <ImageView
+                android:id="@+id/tab_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_web"
+                android:tint="@color/icon_tint" />
+            
+            <!-- 标题和URL -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:orientation="vertical">
+                
+                <TextView
+                    android:id="@+id/tab_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="新标签页"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+                
+                <TextView
+                    android:id="@+id/tab_url"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="about:blank"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+            </LinearLayout>
+            
+            <!-- 隐私模式标识 -->
+            <ImageView
+                android:id="@+id/tab_incognito_badge"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_incognito"
+                android:tint="@color/incognito_accent"
+                android:visibility="gone" />
+        </LinearLayout>
+        
+        <!-- 选中状态边框 -->
+        <View
+            android:id="@+id/tab_selected_indicator"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/tab_selected_border"
+            android:visibility="gone" />
+        
+    </RelativeLayout>
+    
+</com.google.android.material.card.MaterialCardView>
