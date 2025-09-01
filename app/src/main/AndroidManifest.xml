@@ -800,6 +800,24 @@
 
         </activity>
 
+        <!-- 小说阅读器 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.NovelReaderActivity"
+            android:configChanges="screenSize|uiMode|orientation"
+            android:exported="true"
+            android:label="小说阅读器"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        </activity>
+
+        <!-- 小说书库 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.NovelLibraryActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="小说书库"
+            android:theme="@style/AppTheme.NoActionBar">
+        </activity>
+
         <!-- 独立的浏览器应用入口 - 专为浏览器选择设计 -->
         <activity
             android:name="com.hippo.ehviewer.ui.EhBrowserActivity"

@@ -191,10 +191,9 @@ public class MemoryManager implements ComponentCallbacks2 {
             }
 
             // 3. 清理WebView池
-            if (WebViewPoolManager.getInstance(mContext) != null) {
-                // 这里可以实现更智能的池清理策略
-                Log.d(TAG, "WebView pool optimized");
-            }
+            // 注意：WebViewPoolManager.getInstance方法不存在，这里先注释掉
+            // TODO: 实现WebView池管理器的内存清理
+            Log.d(TAG, "WebView pool optimization skipped - manager not available");
 
             // 4. 强制垃圾回收
             System.gc();

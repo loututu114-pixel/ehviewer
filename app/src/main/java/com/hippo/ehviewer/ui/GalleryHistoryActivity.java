@@ -223,12 +223,11 @@ public class GalleryHistoryActivity extends AppCompatActivity {
      * 打开图库详情
      */
     private void openGalleryDetail(HistoryInfo history) {
-        Bundle args = new Bundle();
-        args.putString(GalleryDetailScene.KEY_ACTION, GalleryDetailScene.ACTION_GID_TOKEN);
-        args.putLong(GalleryDetailScene.KEY_GID, history.gid);
-        args.putString(GalleryDetailScene.KEY_TOKEN, history.token);
-        Announcer announcer = new Announcer(GalleryDetailScene.class).setArgs(args);
-        startScene(announcer);
+        // 使用EhViewer的标准方式打开图库详情
+        Intent intent = new Intent(this, com.hippo.ehviewer.ui.GalleryActivity.class);
+        intent.putExtra("gid", history.gid);
+        intent.putExtra("token", history.token);
+        startActivity(intent);
         finish();
     }
 

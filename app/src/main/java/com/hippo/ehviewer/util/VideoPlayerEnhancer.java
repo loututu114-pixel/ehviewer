@@ -807,7 +807,46 @@ public class VideoPlayerEnhancer {
                         "})();";
                 }
 
+                android.util.Log.d(TAG, "Executing JavaScript for video URL extraction...");
+                android.util.Log.d(TAG, "Current URL: " + currentUrl);
+                android.util.Log.d(TAG, "JavaScript length: " + script.length());
+
+                // 添加超时处理
+                final android.os.Handler timeoutHandler = new android.os.Handler();
+                final Runnable timeoutRunnable = () -> {
+                    android.util.Log.e(TAG, "JavaScript execution timeout!");
+                    showErrorAndCleanup("JavaScript执行超时");
+                };
+
+                // 设置5秒超时
+                timeoutHandler.postDelayed(timeoutRunnable, 5000);
+
                 webView.evaluateJavascript(script, result -> {
+                    // 取消超时
+                    timeoutHandler.removeCallbacks(timeoutRunnable);
+                    android.util.Log.d(TAG, "=== JavaScript Execution Result ===");
+                    android.util.Log.d(TAG, "Raw result: " + result);
+                    android.util.Log.d(TAG, "Result type: " + (result != null ? result.getClass().getSimpleName() : "null"));
+                    android.util.Log.d(TAG, "Result length: " + (result != null ? result.length() : 0));
+
+                    if (result == null) {
+                        android.util.Log.e(TAG, "JavaScript execution returned null");
+                        showErrorAndCleanup("JavaScript执行失败，返回null");
+                        return;
+                    }
+
+                    if ("null".equals(result.trim())) {
+                        android.util.Log.e(TAG, "JavaScript execution returned 'null' string");
+                        showErrorAndCleanup("JavaScript返回null结果");
+                        return;
+                    }
+
+                    if (result.trim().isEmpty()) {
+                        android.util.Log.e(TAG, "JavaScript execution returned empty result");
+                        showErrorAndCleanup("JavaScript返回空结果");
+                        return;
+                    }
+
                     android.util.Log.d(TAG, "Video info result: " + result);
                     if (result != null && !"null".equals(result)) {
                         try {
@@ -1141,5 +1180,53 @@ public class VideoPlayerEnhancer {
         } catch (Exception e) {
             Log.e(TAG, "Error releasing VideoPlayerEnhancer", e);
         }
+    }
+
+    /**
+     * 清理全屏加载状态
+     */
+    private void cleanupFullscreenLoadingState() {
+        if (webView != null) {
+            String cleanupScript = "var loadingMsg = document.getElementById('ehviewer-loading-msg');" +
+                "if (loadingMsg) { loadingMsg.remove(); }" +
+                "var fullscreenBtn = document.querySelector('.ehviewer-fullscreen-btn');" +
+                "if (fullscreenBtn) {" +
+                "    fullscreenBtn.innerHTML = '⛶';" +
+                "    fullscreenBtn.style.background = 'rgba(0,0,0,0.8);';" +
+                "    fullscreenBtn.disabled = false;" +
+                "}";
+            webView.evaluateJavascript(cleanupScript, null);
+        }
+    }
+
+    /**
+     * 显示错误并清理状态
+     */
+    private void showErrorAndCleanup(String errorMessage) {
+        android.util.Log.e(TAG, "Video extraction error: " + errorMessage);
+
+        activity.runOnUiThread(() -> {
+            // 清理加载状态
+            cleanupFullscreenLoadingState();
+
+            // 显示错误提示
+            android.widget.Toast.makeText(activity,
+                "视频提取失败: " + errorMessage + "\n使用网页全屏模式",
+                android.widget.Toast.LENGTH_LONG).show();
+
+            // 延迟后尝试网页全屏
+            android.os.Handler handler = new android.os.Handler();
+            handler.postDelayed(() -> {
+                try {
+                    android.widget.Toast.makeText(activity, "尝试网页全屏...",
+                        android.widget.Toast.LENGTH_SHORT).show();
+                    enterFullscreenFallback(null, null);
+                } catch (Exception e) {
+                    android.util.Log.e(TAG, "Fallback fullscreen failed", e);
+                    android.widget.Toast.makeText(activity, "网页全屏也失败了",
+                        android.widget.Toast.LENGTH_SHORT).show();
+                }
+            }, 1000);
+        });
     }
 }

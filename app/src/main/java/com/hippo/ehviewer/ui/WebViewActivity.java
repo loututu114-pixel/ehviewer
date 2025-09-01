@@ -50,7 +50,7 @@ import com.hippo.ehviewer.client.NetworkDetector;
 import com.hippo.ehviewer.client.ReadingModeManager;
 import com.hippo.ehviewer.client.SearchEngineManager;
 import com.hippo.ehviewer.client.WebViewCacheManager;
-import com.hippo.ehviewer.client.WebViewPoolManager;
+import com.hippo.ehviewer.client.BrowserCoreManager;
 import com.hippo.ehviewer.client.X5WebViewManager;
 import com.hippo.ehviewer.util.DomainSuggestionManager;
 import com.hippo.ehviewer.util.YouTubeCompatibilityManager;
@@ -59,6 +59,8 @@ import com.hippo.ehviewer.util.VideoPlayerEnhancer;
 import com.hippo.ehviewer.util.SmartUrlProcessor;
 import com.hippo.ehviewer.util.UserAgentManager;
 import com.hippo.ehviewer.util.ContentPurifierManager;
+import com.hippo.ehviewer.util.EroNovelDetector;
+import com.hippo.ehviewer.client.NovelLibraryManager;
 import com.hippo.util.ExceptionUtils;
 
 import java.util.ArrayList;
@@ -97,7 +99,7 @@ public class WebViewActivity extends AppCompatActivity {
     private HistoryManager mHistoryManager;
     private AdBlockManager mAdBlockManager;
     private X5WebViewManager mX5WebViewManager;
-    private WebViewPoolManager mWebViewPoolManager;
+    private BrowserCoreManager mBrowserCoreManager;
     private JavaScriptOptimizer mJavaScriptOptimizer;
     private WebViewCacheManager mWebViewCacheManager;
     private ImageLazyLoader mImageLazyLoader;
@@ -122,6 +124,10 @@ public class WebViewActivity extends AppCompatActivity {
     private SmartUrlProcessor mSmartUrlProcessor;
     private UserAgentManager mUserAgentManager;
     private ContentPurifierManager mContentPurifier;
+
+    // 小说相关
+    private EroNovelDetector mNovelDetector;
+    private NovelLibraryManager mNovelLibraryManager;
     
     // 视频全屏相关
     private FrameLayout mVideoFullscreenContainer;
@@ -164,7 +170,8 @@ public class WebViewActivity extends AppCompatActivity {
             mX5WebViewManager = X5WebViewManager.getInstance();
 
             // 初始化性能优化管理器
-            mWebViewPoolManager = WebViewPoolManager.getInstance(this);
+            // 注意：WebViewPoolManager.getInstance方法不存在，使用BrowserCoreManager替代
+            mBrowserCoreManager = BrowserCoreManager.getInstance(this);
             mJavaScriptOptimizer = JavaScriptOptimizer.getInstance();
             mWebViewCacheManager = WebViewCacheManager.getInstance(this);
             mImageLazyLoader = ImageLazyLoader.getInstance();
@@ -175,9 +182,6 @@ public class WebViewActivity extends AppCompatActivity {
             initializeViews();
             // 初始化增强WebView管理器（暂时设为null，会在创建标签页时设置）
             mEnhancedWebViewManager = null;
-
-            // 预热WebView池
-            mWebViewPoolManager.warmUpPool();
 
             // 处理Intent参数
             Intent intent = getIntent();
@@ -576,8 +580,8 @@ public class WebViewActivity extends AppCompatActivity {
         android.util.Log.d("WebViewActivity", "Creating new tab with URL: " + url);
 
         try {
-            // 创建新的WebView
-            WebView webView = mWebViewPoolManager.acquireWebView();
+            // 创建新的WebView - 使用BrowserCoreManager
+            WebView webView = mBrowserCoreManager.acquireOptimizedWebView(url);
             if (webView == null) {
                 webView = mX5WebViewManager.createWebView(this);
             }
@@ -660,6 +664,12 @@ public class WebViewActivity extends AppCompatActivity {
             if (mContentPurifier == null) {
                 mContentPurifier = ContentPurifierManager.getInstance(this);
             }
+            if (mNovelDetector == null) {
+                mNovelDetector = EroNovelDetector.getInstance();
+            }
+            if (mNovelLibraryManager == null) {
+                mNovelLibraryManager = NovelLibraryManager.getInstance(this);
+            }
 
             // 设置默认的移动版UA，让网站自己决定是否跳转
             if (mUserAgentManager != null) {
@@ -672,6 +682,13 @@ public class WebViewActivity extends AppCompatActivity {
                 @Override
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
+
+                    // 如果是YouTube相关的页面加载成功，重置失败计数器
+                    if (url != null && mUserAgentManager != null &&
+                        (url.contains("youtube.com") || url.contains("youtu.be") || url.contains("googlevideo.com"))) {
+                        mUserAgentManager.resetYouTubeFailureCount();
+                        android.util.Log.d("WebViewActivity", "YouTube access successful, reset failure counter");
+                    }
 
                     // 保存历史记录
                     try {
@@ -788,13 +805,41 @@ public class WebViewActivity extends AppCompatActivity {
                 public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                     super.onReceivedError(view, errorCode, description, failingUrl);
 
-                    // 对于403错误，可以尝试简单的UA切换（仅限特殊情况）
-                    if (errorCode == WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME && 
+                    android.util.Log.e("WebViewActivity", "WebView error: " + errorCode + " - " + description + " - " + failingUrl);
+
+                    // 处理403 Forbidden错误 - YouTube访问被拒绝
+                    if ((errorCode == 403 || errorCode == WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME) &&
                         mUserAgentManager != null && failingUrl != null) {
-                        android.util.Log.d("WebViewActivity", "Auth error, may try different UA for: " + failingUrl);
+
+                        // 检查是否是YouTube相关的URL
+                        if (mUserAgentManager.isYouTubeRelatedUrl(failingUrl)) {
+                            android.util.Log.d("WebViewActivity", "YouTube 403 error detected, attempting UA recovery");
+
+                            // 检查是否应该继续重试
+                            if (mUserAgentManager.shouldRetryYouTube()) {
+                                String recoveryUA = mUserAgentManager.getRecoveryUserAgent(failingUrl);
+
+                                // 应用新的User-Agent
+                                WebSettings settings = view.getSettings();
+                                settings.setUserAgentString(recoveryUA);
+
+                                android.util.Log.d("WebViewActivity", "Retrying YouTube access with new UA: " +
+                                    mUserAgentManager.getUserAgentType(recoveryUA));
+
+                                // 延迟重试
+                                view.postDelayed(() -> {
+                                    view.reload();
+                                }, 1000);
+
+                                return; // 等待重试结果
+                            } else {
+                                android.util.Log.w("WebViewActivity", "All YouTube UA strategies exhausted");
+                                mUserAgentManager.resetYouTubeFailureCount();
+                            }
+                        }
                     }
 
-                    // 使用增强的错误处理器
+                    // 对于其他错误，使用增强的错误处理器
                     if (mErrorHandler != null) {
                         boolean handled = mErrorHandler.handleError(errorCode, description, failingUrl);
                         if (handled) {
@@ -802,9 +847,8 @@ public class WebViewActivity extends AppCompatActivity {
                         }
                     }
 
-                    // 回退到旧的处理方式
-                    android.util.Log.e("WebViewActivity", "WebView error (fallback): " + errorCode + " - " + description + " - " + failingUrl);
-                    showErrorPage(errorCode, description, failingUrl);
+                    // 显示美化的错误页面
+                    showEnhancedErrorPage(view, errorCode, description, failingUrl);
                 }
 
                 @Override
@@ -954,7 +998,143 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     /**
-     * 生成错误页面HTML
+     * 显示增强的错误页面（支持智能重试）
+     */
+    private void showEnhancedErrorPage(WebView view, int errorCode, String description, String failingUrl) {
+        try {
+            String htmlContent = generateEnhancedErrorPageHtml(errorCode, description, failingUrl);
+            loadHtmlContent(htmlContent);
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing enhanced error page", e);
+            // 回退到简单错误页面
+            showErrorPage(errorCode, description, failingUrl);
+        }
+    }
+
+    /**
+     * 生成增强的错误页面HTML（包含智能重试功能）
+     */
+    private String generateEnhancedErrorPageHtml(int errorCode, String description, String failingUrl) {
+        StringBuilder html = new StringBuilder();
+
+        // 获取错误类型描述
+        String errorType = getErrorTypeDescription(errorCode);
+        String userAgentStats = (mUserAgentManager != null) ? mUserAgentManager.getYouTubeFailureStats() : "";
+
+        html.append("<!DOCTYPE html>")
+            .append("<html>")
+            .append("<head>")
+            .append("<meta charset='UTF-8'>")
+            .append("<meta name='viewport' content='width=device-width, initial-scale=1.0'>")
+            .append("<title>加载失败 - EhViewer</title>")
+            .append("<style>")
+            .append("body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }")
+            .append(".error-container { max-width: 600px; background: white; border-radius: 15px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; }")
+            .append(".error-icon { font-size: 72px; margin-bottom: 20px; }")
+            .append(".error-title { color: #333; margin-bottom: 10px; font-size: 28px; font-weight: 600; }")
+            .append(".error-type { color: #666; margin-bottom: 20px; font-size: 16px; padding: 8px 16px; background: #f8f9fa; border-radius: 20px; display: inline-block; }")
+            .append(".error-description { color: #666; margin-bottom: 30px; line-height: 1.6; font-size: 16px; }")
+            .append(".error-url { background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; margin-bottom: 20px; word-break: break-all; font-size: 14px; color: #495057; }")
+            .append(".retry-btn { background: linear-gradient(45deg, #ff6b35, #f7931e); color: white; border: none; padding: 15px 30px; border-radius: 25px; font-size: 16px; font-weight: 600; cursor: pointer; margin: 8px; transition: all 0.3s ease; }")
+            .append(".retry-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4); }")
+            .append(".secondary-btn { background: #6c757d; color: white; border: none; padding: 12px 25px; border-radius: 20px; font-size: 14px; cursor: pointer; margin: 8px; transition: all 0.3s ease; }")
+            .append(".secondary-btn:hover { background: #5a6268; }")
+            .append(".stats-info { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 12px; color: #495057; text-align: left; }")
+            .append("</style>")
+            .append("</head>")
+            .append("<body>")
+            .append("<div class='error-container'>")
+            .append("<div class='error-icon'>🚨</div>")
+            .append("<h1 class='error-title'>网页加载失败</h1>")
+            .append("<div class='error-type'>").append(errorType).append("</div>")
+            .append("<div class='error-description'>")
+            .append("<p>错误代码: <strong>").append(errorCode).append("</strong></p>")
+            .append("<p>").append(description).append("</p>")
+            .append("</div>");
+
+        if (failingUrl != null && !failingUrl.isEmpty()) {
+            html.append("<div class='error-url'>").append(failingUrl).append("</div>");
+        }
+
+        // 智能重试按钮（仅对YouTube相关错误）
+        if (failingUrl != null && failingUrl.contains("youtube.com") && mUserAgentManager != null && mUserAgentManager.shouldRetryYouTube()) {
+            html.append("<button class='retry-btn' onclick='smartRetry()'>智能重试 (换UA)</button>");
+        }
+
+        html.append("<button class='retry-btn' onclick='retryLoad()'>重新加载</button>")
+            .append("<button class='secondary-btn' onclick='searchInstead()'>搜索页面</button>")
+            .append("<button class='secondary-btn' onclick='copyError()'>复制错误信息</button>");
+
+        // 显示User-Agent统计信息
+        if (!userAgentStats.isEmpty()) {
+            html.append("<div class='stats-info'>")
+                .append("<strong>重试统计:</strong><br>")
+                .append(userAgentStats)
+                .append("</div>");
+        }
+
+        html.append("</div>")
+            .append("<script>")
+            .append("function retryLoad() { location.reload(); }")
+            .append("function searchInstead() { ")
+            .append("  var query = encodeURIComponent('" + (failingUrl != null ? failingUrl : "") + "');")
+            .append("  window.location.href = 'https://www.baidu.com/s?wd=' + query;")
+            .append("}")
+            .append("function smartRetry() { location.reload(); }")
+            .append("function copyError() { ")
+            .append("  var errorInfo = 'EhViewer错误报告\\n';")
+            .append("  errorInfo += '时间: ' + new Date().toLocaleString() + '\\n';")
+            .append("  errorInfo += '错误代码: ").append(errorCode).append("\\n';")
+            .append("  errorInfo += '错误描述: ").append(description.replace("'", "\\'")).append("\\n';")
+            .append("  errorInfo += 'URL: ").append((failingUrl != null ? failingUrl : "")).append("\\n';")
+            .append("  errorInfo += '").append(userAgentStats.replace("'", "\\'")).append("\\n';")
+            .append("  navigator.clipboard.writeText(errorInfo).then(function() {")
+            .append("    alert('错误信息已复制到剪贴板');")
+            .append("  }).catch(function(err) {")
+            .append("    alert('复制失败: ' + err);")
+            .append("  });")
+            .append("}")
+            .append("</script>")
+            .append("</body>")
+            .append("</html>");
+
+        return html.toString();
+    }
+
+    /**
+     * 获取错误类型描述
+     */
+    private String getErrorTypeDescription(int errorCode) {
+        switch (errorCode) {
+            case 403:
+                return "访问被拒绝";
+            case 404:
+                return "页面未找到";
+            case 500:
+            case 502:
+            case 503:
+                return "服务器错误";
+            case WebViewClient.ERROR_HOST_LOOKUP:
+                return "DNS解析失败";
+            case WebViewClient.ERROR_TIMEOUT:
+                return "请求超时";
+            case WebViewClient.ERROR_CONNECT:
+                return "连接失败";
+            case WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME:
+                return "认证失败";
+            default:
+                if (errorCode >= 400 && errorCode < 500) {
+                    return "客户端错误";
+                } else if (errorCode >= 500) {
+                    return "服务器错误";
+                } else {
+                    return "网络错误";
+                }
+        }
+    }
+
+    /**
+     * 生成错误页面HTML（原有方法保持兼容）
      */
     private String generateErrorPageHtml(int errorCode, String description, String failingUrl) {
         StringBuilder html = new StringBuilder();
@@ -1467,12 +1647,14 @@ public class WebViewActivity extends AppCompatActivity {
             String[] menuItems = {
                 "⭐ 添加到书签",
                 "📚 书签管理",
-                "🕐 历史记录", 
+                "🕐 历史记录",
                 "📸 网页截图",
                 "💻 桌面/移动模式",
                 "📖 阅读模式",
                 "🎬 视频净化模式",
                 "📚 小说净化模式",
+                "📖 检测小说内容",
+                "📚 小说书库",
                 "🔄 刷新页面",
                 "🏠 返回主页",
                 "🔐 进入私密模式",
@@ -1515,19 +1697,27 @@ public class WebViewActivity extends AppCompatActivity {
                             android.util.Log.d("WebViewActivity", "Toggling novel purification mode");
                             toggleNovelPurificationMode();
                             break;
-                        case 8: // 刷新页面
+                        case 8: // 检测小说内容
+                            android.util.Log.d("WebViewActivity", "Detecting novel content");
+                            detectNovelContent();
+                            break;
+                        case 9: // 小说书库
+                            android.util.Log.d("WebViewActivity", "Opening novel library");
+                            openNovelLibrary();
+                            break;
+                        case 10: // 刷新页面
                             android.util.Log.d("WebViewActivity", "Refreshing page");
                             refreshCurrentPage();
                             break;
-                        case 9: // 返回主页
+                        case 11: // 返回主页
                             android.util.Log.d("WebViewActivity", "Going to homepage");
                             goToHomepage();
                             break;
-                        case 10: // 进入私密模式
+                        case 12: // 进入私密模式
                             android.util.Log.d("WebViewActivity", "Entering private mode");
                             enterPrivateMode();
                             break;
-                        case 11: // 浏览器设置
+                        case 13: // 浏览器设置
                             android.util.Log.d("WebViewActivity", "Starting browser settings");
                             startBrowserSettingsActivity();
                             break;
@@ -1998,10 +2188,10 @@ public class WebViewActivity extends AppCompatActivity {
             if (mContentPurifier != null) {
                 boolean enabled = mContentPurifier.isReadingModeEnabled();
                 mContentPurifier.setReadingModeEnabled(!enabled);
-                
+
                 String status = !enabled ? "已启用" : "已禁用";
                 Toast.makeText(this, "小说净化模式" + status, Toast.LENGTH_SHORT).show();
-                
+
                 // 刷新当前页面以应用新设置
                 TabData currentTab = getCurrentTab();
                 if (currentTab != null && currentTab.webView != null) {
@@ -2016,7 +2206,7 @@ public class WebViewActivity extends AppCompatActivity {
                         currentTab.webView.reload();
                     }
                 }
-                
+
                 android.util.Log.d("WebViewActivity", "Novel purification mode " + (!enabled ? "enabled" : "disabled"));
             } else {
                 Toast.makeText(this, "内容净化器不可用", Toast.LENGTH_SHORT).show();
@@ -2024,6 +2214,140 @@ public class WebViewActivity extends AppCompatActivity {
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error toggling novel purification mode", e);
             Toast.makeText(this, "切换小说净化模式失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 检测当前页面的小说内容
+     */
+    private void detectNovelContent() {
+        try {
+            TabData currentTab = getCurrentTab();
+            if (currentTab == null || currentTab.webView == null) {
+                Toast.makeText(this, "当前页面不可用", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String url = currentTab.webView.getUrl();
+            String title = currentTab.webView.getTitle();
+
+            if (url == null || title == null) {
+                Toast.makeText(this, "无法获取页面信息", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 显示检测中提示
+            Toast.makeText(this, "正在检测小说内容...", Toast.LENGTH_SHORT).show();
+
+            // 执行JavaScript获取页面文本内容
+            String script = "(function() {" +
+                    "var elements = document.querySelectorAll('*');" +
+                    "var text = '';" +
+                    "for (var i = 0; i < elements.length; i++) {" +
+                    "    var element = elements[i];" +
+                    "    if (element.offsetParent !== null && " +
+                    "        element.tagName.toLowerCase() !== 'script' && " +
+                    "        element.tagName.toLowerCase() !== 'style' && " +
+                    "        element.tagName.toLowerCase() !== 'noscript') {" +
+                    "        var elementText = element.textContent || element.innerText || '';" +
+                    "        if (elementText.trim().length > 10) {" +
+                    "            text += elementText.trim() + '\\n';" +
+                    "        }" +
+                    "    }" +
+                    "}" +
+                    "return text.substring(0, 10000); " + // 限制长度避免内存问题
+                    "})();";
+
+            currentTab.webView.evaluateJavascript(script, result -> {
+                try {
+                    if (result != null && !"null".equals(result)) {
+                        // 清理JavaScript结果
+                        String content = result;
+                        if (content.startsWith("\"") && content.endsWith("\"")) {
+                            content = content.substring(1, content.length() - 1);
+                        }
+                        content = content.replace("\\\"", "\"");
+                        content = content.replace("\\\\", "\\");
+                        content = content.replace("\\n", "\n");
+
+                        // 使用小说检测器检测内容
+                        boolean isNovel = mNovelDetector.isEroNovelPage(url, title, content);
+
+                        if (isNovel) {
+                            // 检测到小说内容，显示收藏对话框
+                            showNovelDetectedDialog(url, title, content);
+                        } else {
+                            Toast.makeText(WebViewActivity.this, "未检测到小说内容", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(WebViewActivity.this, "无法提取页面内容", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("WebViewActivity", "Error detecting novel content", e);
+                    Toast.makeText(WebViewActivity.this, "检测失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error in detectNovelContent", e);
+            Toast.makeText(this, "检测小说内容失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 显示小说检测结果对话框
+     */
+    private void showNovelDetectedDialog(String url, String title, String content) {
+        try {
+            EroNovelDetector.NovelInfo novelInfo = mNovelDetector.extractNovelInfo(url, title, content);
+
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("检测到小说内容");
+            builder.setMessage("标题: " + novelInfo.title + "\n" +
+                              "作者: " + novelInfo.author + "\n" +
+                              "类型: " + (novelInfo.isEro ? "色情小说" : "普通小说") + "\n" +
+                              "章节数: " + novelInfo.chapters.size() + "\n\n" +
+                              "是否添加到小说书库?");
+
+            builder.setPositiveButton("添加到书库", (dialog, which) -> {
+                // 添加到小说书库
+                long result = mNovelLibraryManager.addNovel(novelInfo);
+                if (result > 0) {
+                    Toast.makeText(this, "已添加到小说书库", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "添加失败，请重试", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            builder.setNeutralButton("直接阅读", (dialog, which) -> {
+                // 直接打开小说阅读器
+                Intent intent = new Intent(this, NovelReaderActivity.class);
+                intent.putExtra(NovelReaderActivity.EXTRA_NOVEL_URL, url);
+                intent.putExtra(NovelReaderActivity.EXTRA_NOVEL_TITLE, title);
+                intent.putExtra(NovelReaderActivity.EXTRA_NOVEL_CONTENT, content);
+                startActivity(intent);
+            });
+
+            builder.setNegativeButton("取消", null);
+
+            builder.show();
+
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing novel detected dialog", e);
+            Toast.makeText(this, "显示对话框失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 打开小说书库
+     */
+    private void openNovelLibrary() {
+        try {
+            Intent intent = new Intent(this, NovelLibraryActivity.class);
+            startActivity(intent);
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error opening novel library", e);
+            Toast.makeText(this, "打开小说书库失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -2211,7 +2535,7 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void createNewTabWithHtmlContent(String htmlContent, String title) {
         try {
-            WebView webView = mWebViewPoolManager.acquireWebView();
+            WebView webView = mBrowserCoreManager.acquireOptimizedWebView(null);
             if (webView == null) {
                 webView = mX5WebViewManager.createWebView(this);
             }

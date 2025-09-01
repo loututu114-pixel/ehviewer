@@ -58,6 +58,9 @@ public class EhFragment extends BasePreferenceFragmentCompat
         historyInfoSize.setOnPreferenceChangeListener(this);
         showTagTranslations.setOnPreferenceChangeListener(this);
         showGalleryComment.setOnPreferenceChangeListener(this);
+        if (bottomNavMode != null) {
+            bottomNavMode.setOnPreferenceChangeListener(this);
+        }
 
         if (!EhTagDatabase.isPossible(getActivity())) {
             getPreferenceScreen().removePreference(showTagTranslations);
@@ -103,6 +106,10 @@ public class EhFragment extends BasePreferenceFragmentCompat
             }
             return true;
         } else if (Settings.KEY_SHOW_GALLERY_COMMENT.equals(key)) {
+            getActivity().setResult(Activity.RESULT_OK);
+            return true;
+        } else if (Settings.KEY_BOTTOM_NAV_MODE.equals(key)) {
+            // 底部导航栏模式改变，需要重新创建Activity以应用更改
             getActivity().setResult(Activity.RESULT_OK);
             return true;
         }

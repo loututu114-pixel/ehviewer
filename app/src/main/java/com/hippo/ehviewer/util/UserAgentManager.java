@@ -20,19 +20,44 @@ public class UserAgentManager {
     private final Context context;
     private final SharedPreferences preferences;
 
-    // 预定义的User-Agent字符串
+    // YouTube访问失败计数器
+    private int youtubeFailureCount = 0;
+    private int currentYoutubeUAIndex = 0;
+
+    // YouTube专用User-Agent轮换列表
+    private final String[] youtubeUserAgents = {
+        UA_YOUTUBE_CHROME,
+        UA_YOUTUBE_FIREFOX,
+        UA_YOUTUBE_EDGE,
+        UA_CHROME_MAC,
+        UA_CHROME_LINUX,
+        UA_CHROME_DESKTOP
+    };
+
+    // 预定义的User-Agent字符串 - 增强版，包含更多真实设备信息
     public static final String UA_CHROME_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     public static final String UA_CHROME_MOBILE = "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
     public static final String UA_FIREFOX_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0";
     public static final String UA_SAFARI_DESKTOP = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15";
     public static final String UA_EDGE_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
 
+    // YouTube专用User-Agent - 模拟真实用户访问
+    public static final String UA_YOUTUBE_CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+    public static final String UA_YOUTUBE_FIREFOX = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0";
+    public static final String UA_YOUTUBE_EDGE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0";
+
+    // 备用User-Agent策略
+    public static final String UA_CHROME_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+    public static final String UA_CHROME_LINUX = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+
     // 网站特定的User-Agent映射
     private final Map<String, String> siteSpecificUAs = new HashMap<String, String>() {{
-        // YouTube - 需要桌面版UA来避免重定向
-        put("youtube.com", UA_CHROME_DESKTOP);
-        put("youtu.be", UA_CHROME_DESKTOP);
-        put("m.youtube.com", UA_CHROME_DESKTOP);
+        // YouTube - 使用专门优化的UA避免403错误
+        put("youtube.com", UA_YOUTUBE_CHROME);
+        put("www.youtube.com", UA_YOUTUBE_CHROME);
+        put("youtu.be", UA_YOUTUBE_CHROME);
+        put("m.youtube.com", UA_YOUTUBE_CHROME);
+        put("googlevideo.com", UA_YOUTUBE_CHROME);
 
         // Facebook - 移动版触控体验更好
         put("facebook.com", UA_CHROME_MOBILE);
@@ -509,5 +534,78 @@ public class UserAgentManager {
         } else {
             return "自定义UA";
         }
+    }
+
+    /**
+     * 处理YouTube访问失败，尝试下一个User-Agent
+     */
+    public String getNextYouTubeUserAgent() {
+        youtubeFailureCount++;
+        currentYoutubeUAIndex = (currentYoutubeUAIndex + 1) % youtubeUserAgents.length;
+
+        String nextUA = youtubeUserAgents[currentYoutubeUAIndex];
+        Log.d(TAG, "YouTube access failed " + youtubeFailureCount + " times, trying UA: " + getUserAgentType(nextUA));
+
+        return nextUA;
+    }
+
+    /**
+     * 重置YouTube失败计数器（访问成功时调用）
+     */
+    public void resetYouTubeFailureCount() {
+        if (youtubeFailureCount > 0) {
+            Log.d(TAG, "YouTube access successful after " + youtubeFailureCount + " failures");
+            youtubeFailureCount = 0;
+        }
+    }
+
+    /**
+     * 检查是否应该继续重试YouTube访问
+     */
+    public boolean shouldRetryYouTube() {
+        return youtubeFailureCount < youtubeUserAgents.length;
+    }
+
+    /**
+     * 获取YouTube专用User-Agent（带轮换策略）
+     */
+    public String getYouTubeUserAgent() {
+        if (youtubeFailureCount == 0) {
+            return UA_YOUTUBE_CHROME; // 默认使用Chrome
+        } else {
+            return youtubeUserAgents[currentYoutubeUAIndex];
+        }
+    }
+
+    /**
+     * 处理403错误的智能恢复
+     */
+    public String getRecoveryUserAgent(String failedUrl) {
+        if (failedUrl.contains("youtube.com") || failedUrl.contains("googlevideo.com")) {
+            return getNextYouTubeUserAgent();
+        }
+
+        // 对于其他网站，使用备用策略
+        return UA_CHROME_MAC; // 使用Mac版Chrome作为备用
+    }
+
+    /**
+     * 检查是否是YouTube相关的URL
+     */
+    public boolean isYouTubeRelatedUrl(String url) {
+        if (url == null) return false;
+
+        return url.contains("youtube.com") ||
+               url.contains("youtu.be") ||
+               url.contains("googlevideo.com");
+    }
+
+    /**
+     * 获取YouTube失败统计信息
+     */
+    public String getYouTubeFailureStats() {
+        return "YouTube失败次数: " + youtubeFailureCount +
+               ", 当前UA索引: " + currentYoutubeUAIndex +
+               ", 当前UA: " + getUserAgentType(youtubeUserAgents[currentYoutubeUAIndex]);
     }
 }

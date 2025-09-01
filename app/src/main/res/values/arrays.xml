@@ -475,4 +475,18 @@
         <item>1</item>
     </string-array>
 
+    <!-- 图库分类数组 -->
+    <string-array name="gallery_categories">
+        <item>Doujinshi</item>
+        <item>Manga</item>
+        <item>Artist CG</item>
+        <item>Game CG</item>
+        <item>Western</item>
+        <item>Non-H</item>
+        <item>Image Set</item>
+        <item>Cosplay</item>
+        <item>Asian Porn</item>
+        <item>Misc</item>
+    </string-array>
+
 </resources>
