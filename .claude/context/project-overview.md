@@ -1,14 +1,14 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-08-30T16:34:38Z
-version: 1.2
+last_updated: 2025-09-01T00:39:57Z
+version: 1.3
 author: Claude Code PM System
 ---
 
 # Project Overview
 
 ## Executive Summary
-EhViewer has evolved into a comprehensive Android application combining gallery browsing with a full-featured web browser, advanced password management, and media handling capabilities. The application provides an ad-free, highly customizable interface with cloud synchronization, biometric security, and extensive performance optimizations, supporting multiple languages and visual themes.
+EhViewer has evolved into a comprehensive Android application ecosystem featuring gallery browsing, a full-featured web browser, novel library system, advanced password management, and extensive media handling. The application now includes a complete modular architecture (mokuai/) with pluggable components, extensive notification systems, and advanced browser capabilities including error recovery, cache management, and performance monitoring.
 
 ## Current Features
 
@@ -20,16 +20,23 @@ EhViewer has evolved into a comprehensive Android application combining gallery 
 - **Search Capabilities**: Find galleries quickly
 
 #### Full-Featured Web Browser
-- **WebViewActivity**: Complete browser implementation (2000+ lines)
+- **WebViewActivity**: Complete browser implementation (enhanced)
+- **BrowserCoreManager**: Advanced browser engine management
+- **ErrorRecoveryManager**: Intelligent error handling and recovery
+- **PreloadManager**: Intelligent content preloading
+- **RenderEngineManager**: Enhanced rendering capabilities
 - **Multi-Tab Management**: Browser-style tab switching with session persistence
 - **Enhanced WebView Manager**: Extensions, developer tools, browser controls
-- **Tencent X5 SDK**: Advanced rendering engine (v44286)
+- **Cache Manager**: Advanced offline caching system
+- **Performance Monitor**: Real-time performance tracking
 - **WebView Pool**: Instance recycling for optimal performance
-- **JavaScript Optimizer**: Enhanced JS execution speed
-- **Cache Management**: Smart caching strategies
-- **Reading Mode**: Optimized content display
-- **Download Manager**: Integrated download handling
-- **Network Detection**: Adaptive behavior based on connection
+
+#### Novel Library System (NEW)
+- **NovelLibraryManager**: Complete reading platform
+- **Novel Content Extraction**: Advanced text processing
+- **NovelLibraryActivity**: Reading interface
+- **NovelReaderActivity**: Enhanced reading experience
+- **Content Purifier**: Text cleaning and formatting
 
 #### Advanced Password Management
 - **Encrypted Storage**: AES encryption for credentials
@@ -146,6 +153,47 @@ Full support for 8 languages:
 - **Build Variants**: Multiple product flavors
 - **Automation Scripts**: Setup and configuration
 - **Claude PM System**: Project management integration
+
+## New Modular Architecture (mokuai/)
+
+### Architecture Overview
+The application now features a comprehensive modular system enabling:
+- **Pluggable Components**: Independent feature modules
+- **Standardized Interfaces**: Consistent APIs across modules
+- **Easy Integration**: Example implementations included
+
+### Available Modules
+1. **database**: Enhanced database operations with migration support
+2. **network**: Advanced networking with connection management
+3. **security-manager**: Comprehensive security features
+4. **ui**: Enhanced user interface components
+5. **performance-monitor**: Real-time performance tracking
+6. **memory-manager**: Advanced memory optimization
+7. **crash**: Crash reporting and analysis
+8. **analytics**: Usage analytics and metrics
+9. **ad-blocker**: Advertisement blocking capabilities
+10. **bookmark-manager**: Bookmark synchronization
+11. **password-manager**: Secure credential storage
+12. **proxy-selector**: Proxy configuration and management
+13. **image-helper**: Image processing and optimization
+
+### System Services (NEW)
+- **AppKeepAliveService**: Background application optimization
+- **NotificationManager**: Advanced notification system
+- **PushMessageService**: Push notification handling
+- **SmsCodeExtractorService**: SMS code extraction
+- **SystemMonitor**: System performance monitoring
+- **TaskTriggerService**: Task scheduling and execution
+- **WifiMonitorService**: WiFi connectivity monitoring
+
+### Enhanced Activities (NEW)
+- **CacheManagementActivity**: Cache system administration
+- **DeepLinkHandlerActivity**: Deep link processing
+- **EnhancedImageViewerActivity**: Advanced image viewer
+- **GalleryHistoryActivity**: Gallery viewing history
+- **ModernBrowserActivity**: Modern browser interface
+- **PrivateModeSettingsActivity**: Privacy mode configuration
+- **TabsManagerActivity**: Advanced tab management
 
 ## Integration Points
 

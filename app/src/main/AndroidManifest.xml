@@ -272,7 +272,7 @@
 
         <activity
             android:name="com.hippo.ehviewer.ui.WebViewActivity"
-            android:configChanges="screenSize|uiMode"
+            android:configChanges="orientation|keyboardHidden|screenSize|uiMode"
             android:exported="true"
             android:theme="@style/AppTheme.Toolbar">
 
@@ -575,6 +575,28 @@
                 <data android:pathPattern=".*\\.conf" />
                 <data android:pathPattern=".*\\.ini" />
                 <data android:pathPattern=".*\\.cfg" />
+            </intent-filter>
+
+            <!-- 翻译功能intent-filter：接收文本翻译请求 -->
+            <intent-filter android:label="EH翻译" android:priority="999">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- 翻译功能intent-filter：处理翻译链接 -->
+            <intent-filter android:label="EH翻译" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="translate" />
+            </intent-filter>
+
+            <!-- 处理选中文本的翻译请求 -->
+            <intent-filter android:label="EH翻译" android:priority="999">
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
 
         </activity>

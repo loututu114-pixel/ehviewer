@@ -35,7 +35,8 @@ public class WebViewErrorHandler {
      * 处理WebView错误
      */
     public boolean handleError(int errorCode, String description, String failingUrl) {
-        Log.e(TAG, "WebView error: " + errorCode + " - " + description + " - " + failingUrl);
+        // 详细记录错误信息
+        logDetailedError(errorCode, description, failingUrl);
 
         // 检查是否需要重置错误计数
         if (System.currentTimeMillis() - lastErrorTime > ERROR_RESET_TIME) {
@@ -368,6 +369,170 @@ public class WebViewErrorHandler {
             "</div>" +
             "</body>" +
             "</html>";
+    }
+
+    /**
+     * 详细记录错误信息
+     */
+    private void logDetailedError(int errorCode, String description, String failingUrl) {
+        String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", java.util.Locale.getDefault())
+            .format(new java.util.Date());
+
+        StringBuilder logBuilder = new StringBuilder();
+        logBuilder.append("=== WebView Error Report ===\n");
+        logBuilder.append("Timestamp: ").append(timestamp).append("\n");
+        logBuilder.append("Error Code: ").append(errorCode).append("\n");
+        logBuilder.append("Description: ").append(description != null ? description : "null").append("\n");
+        logBuilder.append("Failing URL: ").append(failingUrl != null ? failingUrl : "null").append("\n");
+        logBuilder.append("Consecutive Errors: ").append(consecutiveErrors).append("\n");
+
+        // 分析错误类型
+        String errorType = analyzeErrorType(errorCode, description);
+        logBuilder.append("Error Type: ").append(errorType).append("\n");
+
+        // 网络状态信息
+        String networkInfo = getNetworkInfo();
+        logBuilder.append("Network Info: ").append(networkInfo).append("\n");
+
+        // WebView状态信息
+        String webViewInfo = getWebViewInfo();
+        logBuilder.append("WebView Info: ").append(webViewInfo).append("\n");
+
+        // 可能的解决方案建议
+        String suggestions = getErrorSuggestions(errorCode, description);
+        logBuilder.append("Suggestions: ").append(suggestions).append("\n");
+        logBuilder.append("===========================\n");
+
+        String logMessage = logBuilder.toString();
+
+        // 根据错误严重程度选择日志级别
+        if (description != null && description.contains("ERR_CONNECTION_CLOSED")) {
+            Log.e(TAG, logMessage); // ERR_CONNECTION_CLOSED 使用错误级别
+        } else if (errorCode == WebViewClient.ERROR_TIMEOUT || errorCode == WebViewClient.ERROR_CONNECT) {
+            Log.w(TAG, logMessage); // 连接和超时错误使用警告级别
+        } else {
+            Log.i(TAG, logMessage); // 其他错误使用信息级别
+        }
+
+        // 保存到错误历史（可选，用于调试）
+        saveErrorToHistory(errorCode, description, failingUrl);
+    }
+
+    /**
+     * 分析错误类型
+     */
+    private String analyzeErrorType(int errorCode, String description) {
+        if (description != null) {
+            if (description.contains("ERR_CONNECTION_CLOSED")) {
+                return "CONNECTION_CLOSED";
+            } else if (description.contains("ERR_CONNECTION_RESET")) {
+                return "CONNECTION_RESET";
+            } else if (description.contains("ERR_CONNECTION_REFUSED")) {
+                return "CONNECTION_REFUSED";
+            } else if (description.contains("ERR_CONNECTION_TIMED_OUT")) {
+                return "CONNECTION_TIMEOUT";
+            } else if (description.contains("ERR_NAME_NOT_RESOLVED")) {
+                return "DNS_RESOLUTION_FAILED";
+            } else if (description.contains("ERR_SSL")) {
+                return "SSL_ERROR";
+            }
+        }
+
+        switch (errorCode) {
+            case WebViewClient.ERROR_UNKNOWN:
+                return "UNKNOWN_ERROR";
+            case WebViewClient.ERROR_HOST_LOOKUP:
+                return "HOST_LOOKUP_FAILED";
+            case WebViewClient.ERROR_UNSUPPORTED_SCHEME:
+                return "UNSUPPORTED_SCHEME";
+            case WebViewClient.ERROR_CONNECT:
+                return "CONNECTION_FAILED";
+            case WebViewClient.ERROR_TIMEOUT:
+                return "TIMEOUT";
+            case WebViewClient.ERROR_REDIRECT_LOOP:
+                return "REDIRECT_LOOP";
+            case WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME:
+                return "UNSUPPORTED_AUTH_SCHEME";
+            case WebViewClient.ERROR_FAILED_SSL_HANDSHAKE:
+                return "SSL_HANDSHAKE_FAILED";
+            case WebViewClient.ERROR_BAD_URL:
+                return "BAD_URL";
+            case WebViewClient.ERROR_FILE:
+                return "FILE_ERROR";
+            case WebViewClient.ERROR_FILE_NOT_FOUND:
+                return "FILE_NOT_FOUND";
+            case WebViewClient.ERROR_TOO_MANY_REQUESTS:
+                return "TOO_MANY_REQUESTS";
+            default:
+                return "GENERIC_ERROR";
+        }
+    }
+
+    /**
+     * 获取网络状态信息
+     */
+    private String getNetworkInfo() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                android.net.NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+                if (activeNetwork != null && activeNetwork.isConnected()) {
+                    return activeNetwork.getTypeName() + " (" + activeNetwork.getSubtypeName() + ")";
+                } else {
+                    return "NO_NETWORK";
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get network info", e);
+        }
+        return "UNKNOWN";
+    }
+
+    /**
+     * 获取WebView状态信息
+     */
+    private String getWebViewInfo() {
+        try {
+            if (webView != null) {
+                StringBuilder info = new StringBuilder();
+                info.append("URL: ").append(webView.getUrl() != null ? webView.getUrl() : "null");
+                info.append(", Title: ").append(webView.getTitle() != null ? webView.getTitle() : "null");
+                info.append(", Progress: ").append(webView.getProgress());
+                return info.toString();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get WebView info", e);
+        }
+        return "UNKNOWN";
+    }
+
+    /**
+     * 获取错误解决方案建议
+     */
+    private String getErrorSuggestions(int errorCode, String description) {
+        if (description != null && description.contains("ERR_CONNECTION_CLOSED")) {
+            return "1. Wait 30 seconds and retry; 2. Check network stability; 3. Clear cache and retry; 4. Check if server is overloaded";
+        } else if (errorCode == WebViewClient.ERROR_TIMEOUT) {
+            return "1. Check network speed; 2. Try again later; 3. Check proxy/VPN settings";
+        } else if (errorCode == WebViewClient.ERROR_HOST_LOOKUP) {
+            return "1. Verify URL is correct; 2. Check DNS settings; 3. Try different DNS (8.8.8.8)";
+        } else {
+            return "1. Check network connection; 2. Clear cache and retry; 3. Try different network";
+        }
+    }
+
+    /**
+     * 保存错误到历史记录（用于调试）
+     */
+    private void saveErrorToHistory(int errorCode, String description, String failingUrl) {
+        try {
+            // 这里可以实现保存错误历史到文件或数据库的功能
+            // 暂时只记录到日志
+            Log.v(TAG + "_HISTORY", "Error saved to history: " + errorCode + " - " + description + " - " + failingUrl);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to save error to history", e);
+        }
     }
 
     /**

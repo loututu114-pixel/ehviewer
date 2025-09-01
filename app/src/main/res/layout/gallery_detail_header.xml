@@ -87,9 +87,9 @@
                 android:ellipsize="end"
                 android:maxLines="5"
                 android:textColor="@android:color/white"
-                style="@style/TextAppearance.CartoonTitle"
+                style="@style/TextAppearance.ModernTitle"
                 android:textSize="@dimen/text_cartoon_title"
-                android:shadowColor="@color/cartoon_shadow_dark"
+                android:shadowColor="@color/modern_on_surface"
                 android:shadowDx="2"
                 android:shadowDy="2"
                 android:shadowRadius="3" />
@@ -109,8 +109,8 @@
                 android:paddingBottom="@dimen/spacing_xsmall"
                 android:ellipsize="end"
                 android:singleLine="true"
-                android:textColor="@color/cartoon_subtitle_color"
-                style="@style/TextAppearance.CartoonSubtitle"
+                android:textColor="@color/modern_on_surface_variant"
+                style="@style/TextAppearance.ModernSubtitle"
                 android:drawableLeft="@drawable/ic_person_cartoon"
                 android:drawablePadding="@dimen/spacing_small" />
 
@@ -130,9 +130,9 @@
                 android:singleLine="true"
                 android:textAllCaps="true"
                 android:textColor="@android:color/white"
-                style="@style/TextAppearance.CartoonCaption"
+                style="@style/TextAppearance.ModernCaption"
                 android:background="@drawable/category_detail_cartoon"
-                android:shadowColor="@color/cartoon_shadow_dark"
+                android:shadowColor="@color/modern_on_surface"
                 android:shadowDx="1"
                 android:shadowDy="1"
                 android:shadowRadius="2" />

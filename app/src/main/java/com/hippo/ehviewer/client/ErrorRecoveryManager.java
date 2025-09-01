@@ -288,7 +288,7 @@ public class ErrorRecoveryManager {
     }
 
     /**
-     * 启用崩溃检测
+     * 启用崩溃检测和网络监控
      */
     private void enableCrashDetection(WebView webView) {
         if (isCrashDetectionEnabled) return;
@@ -300,13 +300,49 @@ public class ErrorRecoveryManager {
             @Override
             public void run() {
                 checkForCrash();
+                checkNetworkStability();
                 if (isCrashDetectionEnabled) {
                     mainHandler.postDelayed(this, CRASH_TIMEOUT);
                 }
             }
         }, CRASH_TIMEOUT);
 
-        Log.d(TAG, "Crash detection enabled");
+        Log.d(TAG, "Crash detection and network monitoring enabled");
+    }
+
+    /**
+     * 检查网络稳定性
+     */
+    private void checkNetworkStability() {
+        try {
+            if (context == null) return;
+
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+
+            if (cm != null) {
+                android.net.NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+
+                if (activeNetwork == null || !activeNetwork.isConnected()) {
+                    Log.w(TAG, "Network connectivity lost during operation");
+                    // 可以在这里触发网络恢复策略
+                    if (currentWebView != null && lastErrorUrl != null) {
+                        Log.d(TAG, "Network restored, attempting to reload: " + lastErrorUrl);
+                        // 延迟重试，让网络完全恢复
+                        mainHandler.postDelayed(() -> {
+                            if (currentWebView != null) {
+                                currentWebView.reload();
+                            }
+                        }, 3000);
+                    }
+                } else {
+                    Log.v(TAG, "Network status: " + activeNetwork.getTypeName() +
+                          " (" + activeNetwork.getSubtypeName() + ")");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking network stability", e);
+        }
     }
 
     /**

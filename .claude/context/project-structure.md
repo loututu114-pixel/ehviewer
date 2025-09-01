@@ -1,7 +1,7 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-08-30T16:23:24Z
-version: 1.2
+last_updated: 2025-09-01T00:39:57Z
+version: 1.3
 author: Claude Code PM System
 ---
 
@@ -11,6 +11,23 @@ author: Claude Code PM System
 ```
 EhViewerh/
 ├── app/                    # Main application module
+├── mokuai/                 # NEW: Modular architecture system
+│   ├── main-base/         # Base module template
+│   ├── modules/           # Individual feature modules
+│   │   ├── ad-blocker/    # Advertisement blocking
+│   │   ├── analytics/     # Usage analytics
+│   │   ├── bookmark-manager/ # Bookmark management
+│   │   ├── crash/         # Crash reporting
+│   │   ├── database/      # Database operations
+│   │   ├── image-helper/  # Image processing
+│   │   ├── memory-manager/ # Memory optimization
+│   │   ├── network/       # Network operations
+│   │   ├── password-manager/ # Password management
+│   │   ├── performance-monitor/ # Performance tracking
+│   │   ├── proxy-selector/ # Proxy selection
+│   │   ├── security-manager/ # Security features
+│   │   └── ui/           # UI components
+│   └── examples/         # Integration examples
 ├── gradle/                 # Gradle wrapper and configuration
 ├── .claude/               # Claude AI context and configuration
 ├── .idea/                 # Android Studio IDE configuration
@@ -30,21 +47,17 @@ app/
 │   │   │   │   ├── client/      # Network and data clients
 │   │   │   │   │   ├── data/    # Data models
 │   │   │   │   │   ├── AdBlockManager.java
-│   │   │   │   │   ├── BookmarkManager.java
-│   │   │   │   │   ├── CloudSyncManager.java
-│   │   │   │   │   ├── EnhancedWebViewManager.java
-│   │   │   │   │   ├── HistoryManager.java
-│   │   │   │   │   ├── ImageLazyLoader.java
-│   │   │   │   │   ├── JavaScriptOptimizer.java
-│   │   │   │   │   ├── MemoryManager.java
-│   │   │   │   │   ├── NetworkDetector.java
-│   │   │   │   │   ├── PasswordAutofillService.java
-│   │   │   │   │   ├── PasswordManager.java
-│   │   │   │   │   ├── ReadingModeManager.java
-│   │   │   │   │   ├── SearchEngineManager.java
-│   │   │   │   │   ├── WebViewCacheManager.java
-│   │   │   │   │   ├── WebViewPoolManager.java
-│   │   │   │   │   └── X5WebViewManager.java
+│   │   │   │   │   ├── BrowserCoreManager.java (NEW)
+│   │   │   │   │   ├── CacheManager.java (NEW)
+│   │   │   │   │   ├── EnhancedWebViewManager.java (ENHANCED)
+│   │   │   │   │   ├── ErrorRecoveryManager.java (NEW)
+│   │   │   │   │   ├── MemoryManager.java (UPDATED)
+│   │   │   │   │   ├── NovelLibraryManager.java (NEW)
+│   │   │   │   │   ├── PerformanceMonitor.java (NEW)
+│   │   │   │   │   ├── PreloadManager.java (NEW)
+│   │   │   │   │   ├── RenderEngineManager.java (NEW)
+│   │   │   │   │   ├── SecurityManager.java (NEW)
+│   │   │   │   │   └── WebViewPoolManager.java (ENHANCED)
 │   │   │   │   ├── ui/          # User interface components
 │   │   │   │   │   ├── scene/   # App scenes/screens
 │   │   │   │   │   ├── wifi/    # WiFi features
@@ -161,6 +174,34 @@ app/
 - `.gitignore`: Git ignore patterns
 - `gradlew`, `gradlew.bat`: Gradle wrapper scripts
 - Various shell scripts for setup and updates
+
+## Modular Architecture (`mokuai/`)
+
+### Module System Overview
+- **Purpose**: Pluggable feature modules with standardized interfaces
+- **Architecture**: Each module is self-contained with clear interfaces
+- **Integration**: Examples provided for seamless module integration
+
+### Core Modules
+- **database/**: DatabaseManager, migration helpers, configuration
+- **network/**: NetworkManager, connectivity utils, exception handling  
+- **security-manager/**: Security features and protection
+- **ui/**: Enhanced UI components and patterns
+- **performance-monitor/**: Performance tracking and optimization
+- **memory-manager/**: Advanced memory management
+- **crash/**: Crash reporting and recovery
+- **analytics/**: Usage analytics and metrics
+- **ad-blocker/**: Advertisement blocking capabilities
+- **bookmark-manager/**: Bookmark synchronization and management
+- **password-manager/**: Secure credential storage
+- **proxy-selector/**: Proxy configuration and selection
+- **image-helper/**: Image processing and optimization
+
+### Module Standards
+- Consistent API interfaces across all modules
+- Self-documenting with comprehensive README files
+- Gradle build configuration with ProGuard rules
+- Example implementations for quick integration
 
 ## APK Variants
 The project produces multiple themed APK variants:

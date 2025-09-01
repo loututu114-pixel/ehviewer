@@ -54,7 +54,7 @@
                     android:text="@string/favorited"
                     android:drawablePadding="@dimen/spacing_small"
                     android:textColor="?android:attr/textColorPrimary"
-                    style="@style/TextAppearance.CartoonButton"
+                    style="@style/TextAppearance.ModernButton"
                     android:background="@drawable/action_button_cartoon"
                     android:padding="@dimen/spacing_small" />
 
@@ -66,7 +66,7 @@
                     android:text="@string/not_favorited"
                     android:drawablePadding="@dimen/spacing_small"
                     android:textColor="?android:attr/textColorPrimary"
-                    style="@style/TextAppearance.CartoonButton"
+                    style="@style/TextAppearance.ModernButton"
                     android:background="@drawable/action_button_cartoon"
                     android:padding="@dimen/spacing_small" />
 
@@ -80,7 +80,7 @@
                 android:text="@string/rate"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 
@@ -92,7 +92,7 @@
                 android:text="@string/share"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 
@@ -103,7 +103,7 @@
                 android:gravity="center_horizontal"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 
@@ -115,7 +115,7 @@
                 android:gravity="center_horizontal"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 
@@ -127,7 +127,7 @@
                 android:gravity="center_horizontal"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 
@@ -139,7 +139,7 @@
                 android:text="@string/similar_gallery"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 
@@ -151,7 +151,7 @@
                 android:text="@string/search_cover"
                 android:drawablePadding="@dimen/spacing_small"
                 android:textColor="?android:attr/textColorPrimary"
-                style="@style/TextAppearance.CartoonButton"
+                style="@style/TextAppearance.ModernButton"
                 android:background="@drawable/action_button_cartoon"
                 android:padding="@dimen/spacing_small" />
 

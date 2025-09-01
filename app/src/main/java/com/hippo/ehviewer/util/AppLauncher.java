@@ -443,16 +443,186 @@ public class AppLauncher {
                         android.util.Log.e(TAG, "Failed to parse intent URL", e);
                         return false;
                     }
+                // 处理TikTok相关scheme
+                case "snssdk1180":
+                case "tiktok":
+                case "musically":
+                    return handleTikTokUrl(context, url, uri);
+
+                // 处理其他常见应用scheme
+                case "weixin":
+                case "wechat":
+                case "alipays":
+                case "alipay":
+                case "taobao":
+                case "tmall":
+                    return handleThirdPartyAppScheme(context, url, uri);
+
                 default:
-                    // 尝试通用处理
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    context.startActivity(intent);
-                    return true;
+                    // 对于未知scheme，先尝试提取HTTP URL
+                    String extractedUrl = extractHttpUrlFromScheme(url);
+                    if (extractedUrl != null) {
+                        android.util.Log.d(TAG, "Extracted HTTP URL: " + extractedUrl);
+                        return handleUniversalUrl(context, extractedUrl);
+                    }
+                    
+                    // 最后尝试通用处理
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                        context.startActivity(intent);
+                        return true;
+                    } catch (ActivityNotFoundException e) {
+                        android.util.Log.w(TAG, "No app can handle scheme: " + scheme);
+                        Toast.makeText(context, "无法找到处理此链接的应用", Toast.LENGTH_SHORT).show();
+                        return false;
+                    }
             }
         } catch (Exception e) {
             android.util.Log.e(TAG, "Failed to handle universal URL", e);
             Toast.makeText(context, "无法处理链接: " + url, Toast.LENGTH_SHORT).show();
             return false;
+        }
+    }
+
+    /**
+     * 处理TikTok相关的URL scheme
+     */
+    private static boolean handleTikTokUrl(@NonNull Context context, String url, Uri uri) {
+        try {
+            android.util.Log.d(TAG, "Handling TikTok URL: " + url);
+            
+            // 从snssdk1180://aweme/detail/xxx?params_url=https%3A%2F%2Fwww.tiktok.com%2F...
+            // 提取params_url参数中的实际URL
+            String paramsUrl = uri.getQueryParameter("params_url");
+            if (paramsUrl != null) {
+                String decodedUrl = java.net.URLDecoder.decode(paramsUrl, "UTF-8");
+                android.util.Log.d(TAG, "Extracted TikTok URL: " + decodedUrl);
+                
+                // 确保URL是有效的HTTP/HTTPS链接
+                if (decodedUrl.startsWith("http://") || decodedUrl.startsWith("https://")) {
+                    return openWebPage(context, decodedUrl);
+                }
+            }
+            
+            // 如果没有找到params_url，尝试构造TikTok web链接
+            String path = uri.getPath();
+            if (path != null && path.contains("/detail/")) {
+                // 提取视频ID
+                String[] pathParts = path.split("/");
+                for (String part : pathParts) {
+                    if (part.matches("\\d+")) { // 数字ID
+                        String tiktokWebUrl = "https://www.tiktok.com/@unknown/video/" + part;
+                        android.util.Log.d(TAG, "Constructed TikTok web URL: " + tiktokWebUrl);
+                        return openWebPage(context, tiktokWebUrl);
+                    }
+                }
+            }
+            
+            // 最后尝试打开TikTok首页
+            return openWebPage(context, "https://www.tiktok.com/");
+            
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Failed to handle TikTok URL", e);
+            // 出错时打开TikTok首页
+            return openWebPage(context, "https://www.tiktok.com/");
+        }
+    }
+
+    /**
+     * 处理第三方应用scheme
+     */
+    private static boolean handleThirdPartyAppScheme(@NonNull Context context, String url, Uri uri) {
+        try {
+            // 尝试启动对应的应用
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            context.startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            android.util.Log.w(TAG, "Third party app not found for scheme: " + uri.getScheme());
+            
+            // 如果应用未安装，提供Web替代方案
+            String webUrl = getWebAlternativeForScheme(uri.getScheme());
+            if (webUrl != null) {
+                Toast.makeText(context, "应用未安装，将在浏览器中打开", Toast.LENGTH_SHORT).show();
+                return openWebPage(context, webUrl);
+            }
+            
+            Toast.makeText(context, "未安装相应应用", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+
+    /**
+     * 从各种scheme URL中提取HTTP URL
+     */
+    private static String extractHttpUrlFromScheme(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            
+            // 检查查询参数中的常见URL参数
+            String[] urlParams = {"url", "link", "u", "target", "redirect", "goto", "params_url"};
+            for (String param : urlParams) {
+                String value = uri.getQueryParameter(param);
+                if (value != null) {
+                    String decoded = java.net.URLDecoder.decode(value, "UTF-8");
+                    if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+                        return decoded;
+                    }
+                }
+            }
+            
+            // 检查fragment中的URL
+            String fragment = uri.getFragment();
+            if (fragment != null) {
+                if (fragment.startsWith("http://") || fragment.startsWith("https://")) {
+                    return fragment;
+                }
+                // 检查fragment中的URL参数
+                if (fragment.contains("url=") || fragment.contains("link=")) {
+                    for (String param : urlParams) {
+                        int index = fragment.indexOf(param + "=");
+                        if (index >= 0) {
+                            String remaining = fragment.substring(index + param.length() + 1);
+                            int end = remaining.indexOf("&");
+                            if (end > 0) {
+                                remaining = remaining.substring(0, end);
+                            }
+                            String decoded = java.net.URLDecoder.decode(remaining, "UTF-8");
+                            if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+                                return decoded;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "Failed to extract HTTP URL from: " + url, e);
+        }
+        return null;
+    }
+
+    /**
+     * 获取scheme对应的Web替代链接
+     */
+    private static String getWebAlternativeForScheme(String scheme) {
+        if (scheme == null) return null;
+        
+        switch (scheme.toLowerCase()) {
+            case "weixin":
+            case "wechat":
+                return "https://web.wechat.com/";
+            case "alipays":
+            case "alipay":
+                return "https://www.alipay.com/";
+            case "taobao":
+                return "https://www.taobao.com/";
+            case "tmall":
+                return "https://www.tmall.com/";
+            case "tiktok":
+            case "musically":
+                return "https://www.tiktok.com/";
+            default:
+                return null;
         }
     }
 }

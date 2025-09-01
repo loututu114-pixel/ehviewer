@@ -235,44 +235,70 @@
     <color name="light_blue_50">#FFE1F5FE</color>
     <color name="light_blue_200">#FF81D4FA</color>
 
-    <!-- 🎨 卡通风格字体颜色 -->
-    <color name="cartoon_title_color">#FF6B35</color>
-    <color name="cartoon_subtitle_color">#FF8A65</color>
-    <color name="cartoon_caption_color">#FF4081</color>
-    <color name="cartoon_shadow">#CC000000</color>
-    <color name="cartoon_shadow_light">#66000000</color>
-    <color name="cartoon_shadow_dark">#AA000000</color>
-    <color name="cartoon_accent_pink">#FFE91E63</color>
-    <color name="cartoon_accent_blue">#FF2196F3</color>
-    <color name="cartoon_accent_yellow">#FFFFC107</color>
-    <color name="cartoon_background_light">#FFF8F8F8</color>
-    <color name="cartoon_background_warm">#FFFFF9C4</color>
+    <!-- 🎨 现代化纯色设计 - 参考顶级网站 -->
+    <!-- YouTube风格配色 -->
+    <color name="youtube_red">#FF0000</color>
+    <color name="youtube_white">#FFFFFF</color>
+    <color name="youtube_black">#000000</color>
+    <color name="youtube_gray">#606060</color>
+    <color name="youtube_light_gray">#F9F9F9</color>
 
-    <!-- Browser UI Colors -->
-    <color name="window_background">@color/background_light</color>
-    <color name="toolbar_background">@color/colorPrimary</color>
-    <color name="icon_tint">@color/grey_600</color>
-    <color name="text_primary">@color/grey_900</color>
-    <color name="text_secondary">@color/grey_600</color>
-    <color name="text_hint">@color/grey_400</color>
-    <color name="browser_background">@color/background_light</color>
-    <color name="address_bar_background">@color/white</color>
-    <color name="tab_item_stroke">@color/grey_300</color>
-    <color name="tab_item_background">@color/white</color>
-    <color name="tab_preview_background">@color/grey_100</color>
-    <color name="tab_info_background">@color/white</color>
-    <color name="tab_switcher_background">@color/grey_100</color>
-    <color name="tab_selected_border">@color/colorAccent</color>
-    <color name="menu_background">@color/white</color>
-    <color name="divider">@color/divider_light</color>
-    <color name="chip_background">@color/grey_200</color>
-    <color name="chip_stroke">@color/grey_400</color>
-    <color name="fab_background">@color/colorAccent</color>
-    <color name="tab_empty">@color/grey_400</color>
-    <color name="incognito_accent">@color/purple_500</color>
-    <color name="incognito_toolbar">#424242</color>
-    <color name="suggestion_background">@color/white</color>
-    <color name="progress_color">@color/colorAccent</color>
-    <color name="accent">@color/colorAccent</color>
+    <!-- X (Twitter) 风格配色 -->
+    <color name="twitter_black">#000000</color>
+    <color name="twitter_white">#FFFFFF</color>
+    <color name="twitter_blue">#1D9BF0</color>
+    <color name="twitter_gray">#536471</color>
+    <color name="twitter_light_gray">#F7F9FA</color>
+
+    <!-- XVideos 风格配色 -->
+    <color name="xvideos_orange">#FF6B35</color>
+    <color name="xvideos_white">#FFFFFF</color>
+    <color name="xvideos_black">#000000</color>
+    <color name="xvideos_gray">#666666</color>
+    <color name="xvideos_light_gray">#F5F5F5</color>
+
+    <!-- 现代化主色调 - 纯色设计 -->
+    <color name="modern_primary">#1D9BF0</color>        <!-- Twitter Blue -->
+    <color name="modern_secondary">#FF6B35</color>     <!-- XVideos Orange -->
+    <color name="modern_accent">#FF0000</color>        <!-- YouTube Red -->
+    <color name="modern_surface">#FFFFFF</color>       <!-- Pure White -->
+    <color name="modern_background">#F7F9FA</color>    <!-- Light Gray BG -->
+    <color name="modern_on_surface">#000000</color>   <!-- Pure Black -->
+    <color name="modern_on_surface_variant">#536471</color> <!-- Gray Text -->
+    <color name="modern_outline">#CFD9DE</color>       <!-- Border Gray -->
+    <color name="modern_error">#DC3545</color>         <!-- Error Red -->
+
+    <!-- 🎨 现代化Browser UI Colors - 纯色设计 -->
+    <color name="window_background">@color/modern_background</color>
+    <color name="toolbar_background">@color/modern_surface</color>
+    <color name="icon_tint">@color/modern_on_surface_variant</color>
+    <color name="text_primary">@color/modern_on_surface</color>
+    <color name="text_secondary">@color/modern_on_surface_variant</color>
+    <color name="text_hint">@color/modern_on_surface_variant</color>
+    <color name="browser_background">@color/modern_background</color>
+    <color name="address_bar_background">@color/modern_surface</color>
+    <color name="tab_item_stroke">@color/modern_outline</color>
+    <color name="tab_item_background">@color/modern_surface</color>
+    <color name="tab_preview_background">@color/modern_background</color>
+    <color name="tab_info_background">@color/modern_surface</color>
+    <color name="tab_switcher_background">@color/modern_background</color>
+    <color name="tab_selected_border">@color/modern_primary</color>
+    <color name="menu_background">@color/modern_surface</color>
+    <color name="divider">@color/modern_outline</color>
+    <color name="chip_background">@color/modern_background</color>
+    <color name="chip_stroke">@color/modern_outline</color>
+    <color name="fab_background">@color/modern_primary</color>
+    <color name="tab_empty">@color/modern_on_surface_variant</color>
+    <color name="incognito_accent">@color/modern_secondary</color>
+    <color name="incognito_toolbar">@color/modern_on_surface</color>
+    <color name="suggestion_background">@color/modern_surface</color>
+    <color name="progress_color">@color/modern_primary</color>
+    <color name="accent">@color/modern_primary</color>
+
+    <!-- 现代化地址栏配色 -->
+    <color name="address_bar_border">@color/modern_outline</color>
+    <color name="address_bar_focus">@color/modern_primary</color>
+    <color name="clear_button_normal">@color/modern_on_surface_variant</color>
+    <color name="clear_button_pressed">@color/modern_primary</color>
 
 </resources>

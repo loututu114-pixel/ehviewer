@@ -6,10 +6,13 @@ import android.content.pm.ActivityInfo;
 import android.media.AudioManager;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 import com.hippo.ehviewer.R;
+import com.hippo.ehviewer.ui.widget.EmbeddedVideoPlayer;
+import com.hippo.ehviewer.ui.widget.VideoJavaScriptInterface;
 
 /**
  * 视频播放增强器
@@ -21,6 +24,8 @@ public class VideoPlayerEnhancer {
     private final Context context;
     private final Activity activity;
     private WebView webView;
+    private EmbeddedVideoPlayer embeddedVideoPlayer;
+    private VideoJavaScriptInterface jsInterface;
     private boolean isFullscreen = false;
     private FrameLayout fullscreenContainer;
     private View customView;
@@ -639,20 +644,201 @@ public class VideoPlayerEnhancer {
     }
 
     /**
-     * 为WebView应用视频增强功能
+     * 为WebView应用视频增强功能 - 新版本使用EmbeddedVideoPlayer
      */
     public void enhanceWebView(WebView webView) {
         this.webView = webView;
 
-        // 注入JavaScript
-        injectVideoEnhancerScript();
-
-        // 设置WebChromeClient来处理全屏
-        setupWebChromeClient();
+        try {
+            // 创建内嵌视频播放器
+            setupEmbeddedVideoPlayer();
+            
+            // 添加JavaScript接口
+            setupJavaScriptInterface();
+            
+            // 延迟注入脚本，确保页面加载完成
+            webView.post(() -> {
+                injectSimplifiedVideoScript();
+            });
+            
+            Log.d(TAG, "Enhanced WebView with embedded video player");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to enhance WebView", e);
+            // 回退到原始方法
+            fallbackEnhanceWebView();
+        }
     }
 
     /**
-     * 注入视频增强脚本
+     * 设置内嵌视频播放器
+     */
+    private void setupEmbeddedVideoPlayer() {
+        if (embeddedVideoPlayer == null && activity != null && webView != null) {
+            embeddedVideoPlayer = new EmbeddedVideoPlayer(context);
+            embeddedVideoPlayer.attachToWebView(webView, activity);
+            Log.d(TAG, "Embedded video player created and attached");
+        }
+    }
+
+    /**
+     * 设置JavaScript接口
+     */
+    private void setupJavaScriptInterface() {
+        if (webView != null && embeddedVideoPlayer != null) {
+            jsInterface = new VideoJavaScriptInterface(embeddedVideoPlayer);
+            webView.addJavascriptInterface(jsInterface, "Android");
+            Log.d(TAG, "JavaScript interface added");
+        }
+    }
+
+    /**
+     * 注入简化的视频脚本
+     */
+    private void injectSimplifiedVideoScript() {
+        if (webView == null) return;
+        
+        String script = "(function() {" +
+            "if (window.EhVideoEnhanced) return;" +
+            "window.EhVideoEnhanced = true;" +
+            
+            // 等待DOM准备就绪，增加重试机制
+            "function waitForVideos(callback, retries) {" +
+            "    retries = retries || 0;" +
+            "    if (retries > 10) return;" + // 最多重试10次
+            "    " +
+            "    var videos = document.querySelectorAll('video');" +
+            "    if (videos.length > 0) {" +
+            "        callback(videos);" +
+            "    } else {" +
+            "        setTimeout(function() { waitForVideos(callback, retries + 1); }, 1000);" +
+            "    }" +
+            "}" +
+            
+            // 增强视频元素
+            "waitForVideos(function(videos) {" +
+            "    console.log('EhViewer: Found ' + videos.length + ' video(s)');" +
+            "    " +
+            "    for (var i = 0; i < videos.length; i++) {" +
+            "        var video = videos[i];" +
+            "        " +
+            "        try {" +
+            "            // 基本设置" +
+            "            video.setAttribute('controls', 'true');" +
+            "            video.setAttribute('playsinline', 'false');" + // 允许全屏
+            "            " +
+            "            // 添加双击全屏" +
+            "            video.addEventListener('dblclick', function(e) {" +
+            "                e.preventDefault();" +
+            "                console.log('EhViewer: Video double-clicked');" +
+            "                try {" +
+            "                    if (typeof Android !== 'undefined' && Android.requestFullscreen) {" +
+            "                        Android.requestFullscreen();" +
+            "                    } else {" +
+            "                        // 原生全屏回退" +
+            "                        if (this.requestFullscreen) this.requestFullscreen();" +
+            "                        else if (this.webkitRequestFullscreen) this.webkitRequestFullscreen();" +
+            "                        else if (this.mozRequestFullScreen) this.mozRequestFullScreen();" +
+            "                        else if (this.msRequestFullscreen) this.msRequestFullscreen();" +
+            "                    }" +
+            "                } catch (err) {" +
+            "                    console.error('EhViewer: Fullscreen error:', err);" +
+            "                }" +
+            "            });" +
+            "            " +
+            "            // 播放状态监听" +
+            "            video.addEventListener('play', function() {" +
+            "                console.log('EhViewer: Video playing');" +
+            "                if (typeof Android !== 'undefined' && Android.onPlayStateChanged) {" +
+            "                    Android.onPlayStateChanged(true);" +
+            "                }" +
+            "            });" +
+            "            " +
+            "            video.addEventListener('pause', function() {" +
+            "                console.log('EhViewer: Video paused');" +
+            "                if (typeof Android !== 'undefined' && Android.onPlayStateChanged) {" +
+            "                    Android.onPlayStateChanged(false);" +
+            "                }" +
+            "            });" +
+            "            " +
+            "            // 视频加载监听" +
+            "            video.addEventListener('loadedmetadata', function() {" +
+            "                console.log('EhViewer: Video metadata loaded');" +
+            "                if (typeof Android !== 'undefined' && Android.onVideoLoaded) {" +
+            "                    var src = this.currentSrc || this.src || 'unknown';" +
+            "                    Android.onVideoLoaded(src, document.title || 'Video');" +
+            "                }" +
+            "            });" +
+            "            " +
+            "            // 错误监听" +
+            "            video.addEventListener('error', function() {" +
+            "                console.error('EhViewer: Video error:', this.error);" +
+            "                if (typeof Android !== 'undefined' && Android.onVideoError) {" +
+            "                    var errorMsg = this.error ? this.error.message : 'Unknown video error';" +
+            "                    Android.onVideoError(errorMsg);" +
+            "                }" +
+            "            });" +
+            "            " +
+            "            console.log('EhViewer: Enhanced video element', i + 1);" +
+            "            " +
+            "        } catch (e) {" +
+            "            console.error('EhViewer: Error enhancing video:', e);" +
+            "        }" +
+            "    }" +
+            "});" +
+            
+            "console.log('EhViewer: Video enhancement script loaded');" +
+            "})();";
+        
+        try {
+            webView.evaluateJavascript(script, result -> {
+                Log.d(TAG, "Simplified video script injected, result: " + result);
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to inject simplified video script", e);
+        }
+    }
+
+    /**
+     * 回退到原始增强方法
+     */
+    private void fallbackEnhanceWebView() {
+        try {
+            // 原始的JavaScript注入
+            injectVideoEnhancerScript();
+            
+            // 设置WebChromeClient来处理全屏
+            setupWebChromeClient();
+            
+            Log.d(TAG, "Using fallback video enhancement");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Fallback enhancement also failed", e);
+        }
+    }
+
+    /**
+     * 清理资源
+     */
+    public void cleanup() {
+        try {
+            if (embeddedVideoPlayer != null) {
+                embeddedVideoPlayer.cleanup();
+                embeddedVideoPlayer = null;
+            }
+            
+            jsInterface = null;
+            webView = null;
+            
+            Log.d(TAG, "VideoPlayerEnhancer cleaned up");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        }
+    }
+
+    /**
+     * 注入视频增强脚本 - 原始版本
      */
     private void injectVideoEnhancerScript() {
         if (webView != null) {

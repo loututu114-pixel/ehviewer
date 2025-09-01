@@ -42,6 +42,8 @@ public class BrowserCoreManager {
     private CacheManager cacheManager;
     private PreloadManager preloadManager;
     private ErrorRecoveryManager errorRecoveryManager;
+    private BrowserCompatibilityManager compatibilityManager;
+    private SmartRequestProcessor requestProcessor;
 
     // 配置参数
     private static final int MAX_WEBVIEW_POOL_SIZE = 3;
@@ -102,11 +104,18 @@ public class BrowserCoreManager {
             // 7. 初始化错误恢复管理器
             errorRecoveryManager = new ErrorRecoveryManager(context);
 
-            // 8. 启动后台服务
+            // 8. 初始化兼容性管理器
+            compatibilityManager = BrowserCompatibilityManager.getInstance(context);
+
+            // 9. 初始化智能请求处理器
+            requestProcessor = new SmartRequestProcessor(context);
+
+            // 10. 启动后台服务
             startBackgroundServices();
 
             isInitialized = true;
             Log.i(TAG, "BrowserCoreManager initialized successfully");
+            Log.i(TAG, "Compatibility Manager Stats: " + compatibilityManager.getCompatibilityStats());
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize BrowserCoreManager", e);
@@ -152,8 +161,8 @@ public class BrowserCoreManager {
 
             activeWebViews.incrementAndGet();
 
-            // 2. 应用安全配置
-            securityManager.applySecuritySettings(webView);
+            // 2. 安全配置被禁用以确保最大兼容性
+            // securityManager.applySecuritySettings(webView); // 已禁用保证高可用性
 
             // 3. 优化渲染引擎
             if (url != null && !url.isEmpty()) {
@@ -163,6 +172,11 @@ public class BrowserCoreManager {
 
             // 4. 配置错误处理
             setupErrorHandling(webView);
+
+            // 5. 应用网站兼容性配置
+            if (url != null && !url.isEmpty()) {
+                compatibilityManager.applyCompatibilityConfig(webView, url);
+            }
 
             Log.d(TAG, "Acquired optimized WebView for URL: " + url);
             return webView;
@@ -206,33 +220,43 @@ public class BrowserCoreManager {
      * @param url 目标URL
      */
     public void preloadForUrl(String url) {
-        if (url == null || url.isEmpty()) return;
+        Log.d(TAG, "=== BROWSERCORE: preloadForUrl called with URL: " + url);
+
+        if (url == null || url.isEmpty()) {
+            Log.w(TAG, "=== BROWSERCORE: URL is null or empty, skipping preload");
+            return;
+        }
 
         try {
             // 分析URL类型
             ContentType contentType = analyzeContentType(url);
+            Log.d(TAG, "=== BROWSERCORE: Analyzed content type: " + contentType + " for URL: " + url);
 
             // 根据内容类型进行预加载
             switch (contentType) {
                 case GALLERY:
+                    Log.d(TAG, "=== BROWSERCORE: Starting gallery resource preload");
                     preloadGalleryResources(url);
                     break;
                 case IMAGE:
+                    Log.d(TAG, "=== BROWSERCORE: Starting image resource preload");
                     preloadImageResources(url);
                     break;
                 case VIDEO:
+                    Log.d(TAG, "=== BROWSERCORE: Starting video resource preload");
                     preloadVideoResources(url);
                     break;
                 case GENERAL:
                 default:
+                    Log.d(TAG, "=== BROWSERCORE: Starting general resource preload");
                     preloadGeneralResources(url);
                     break;
             }
 
-            Log.d(TAG, "Started preloading for URL: " + url + " (type: " + contentType + ")");
+            Log.d(TAG, "=== BROWSERCORE: Preload completed for URL: " + url + " (type: " + contentType + ")");
 
         } catch (Exception e) {
-            Log.e(TAG, "Failed to preload for URL: " + url, e);
+            Log.e(TAG, "=== BROWSERCORE: Failed to preload for URL: " + url, e);
         }
     }
 
@@ -441,5 +465,12 @@ public class BrowserCoreManager {
             return String.format("SecurityStatus{ssl=%b, xss=%b, privacy=%b, blocked=%d}",
                     sslEnabled, xssProtectionEnabled, privacyModeEnabled, blockedRequestsCount);
         }
+    }
+
+    /**
+     * 获取智能请求处理器
+     */
+    public SmartRequestProcessor getRequestProcessor() {
+        return requestProcessor;
     }
 }

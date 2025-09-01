@@ -1,22 +1,24 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-08-30T16:08:18Z
-version: 1.1
+last_updated: 2025-09-01T00:39:57Z
+version: 1.2
 author: Claude Code PM System
 ---
 
 # Product Context
 
 ## Product Overview
-**EhViewer** - An enhanced Android application for browsing and viewing galleries with personalized features and improved user experience.
+**EhViewer** - A comprehensive Android application ecosystem that combines gallery browsing, full-featured web browsing, novel reading, and advanced content management. Features modular architecture, extensive notification systems, and enterprise-level browser capabilities with error recovery and performance optimization.
 
 ## Target Users
 
 ### Primary Users
-- **Content Browsers**: Users who frequently browse online galleries
-- **Privacy-Conscious Users**: Those who value ad-free browsing
-- **Power Users**: Users who need advanced browsing features
+- **Content Browsers**: Users who frequently browse online galleries and novels
+- **Privacy-Conscious Users**: Those who value ad-free browsing with advanced security
+- **Power Users**: Users who need enterprise-level browser features and performance
 - **Multi-Language Users**: Especially Chinese, Japanese, and Korean speakers
+- **Novel Readers**: Users seeking advanced text reading experiences
+- **Performance Enthusiasts**: Users requiring optimized, modular applications
 
 ### User Personas
 1. **Gallery Enthusiast**
@@ -39,15 +41,20 @@ author: Claude Code PM System
 - **Multiple View Modes**: Different layouts for various content types
 
 ### Advanced Web Browser
-- **Full Browser Implementation**: Complete WebViewActivity with 2000+ lines
-- **Smart URL Processing**: 
-  - Intelligent URL completion and correction
-  - Domain suggestions with autocomplete
-  - URL validation and formatting
-  - Default browser registration support
-- **Enhanced Video Playback**:
-  - Custom video controls overlay
-  - YouTube compatibility layer
+- **Enterprise-Level Browser Core**: Enhanced browser with error recovery
+- **BrowserCoreManager**: Advanced browser engine management
+- **ErrorRecoveryManager**: Intelligent error handling and recovery
+- **Cache Management**: Advanced offline caching system
+- **Performance Monitoring**: Real-time performance tracking
+- **Preload Management**: Intelligent content preloading
+- **Render Engine**: Enhanced rendering capabilities
+- **Security Manager**: Comprehensive security features
+
+### Novel Library System (NEW)
+- **Complete Reading Platform**: NovelLibraryManager with content extraction
+- **Advanced Text Processing**: Content purification and formatting
+- **Reading Interface**: NovelLibraryActivity and NovelReaderActivity
+- **Text Optimization**: Enhanced reading experience with smart formatting
   - Fullscreen and rotation support
   - Volume control integration
 - **Multi-Tab Management**: Browser-style tab switching and management
@@ -100,6 +107,37 @@ author: Claude Code PM System
 - **Encrypted Storage**: Secure credential storage
 - **Biometric Auth**: Fingerprint/face unlock
 - **Privacy Mode**: Incognito browsing
+
+### System Services & Background Operations (NEW)
+- **AppKeepAliveService**: Background application optimization
+- **NotificationManager**: Advanced notification system with rich features
+- **PushMessageService**: Comprehensive push notification handling
+- **SmsCodeExtractorService**: Intelligent SMS code extraction
+- **SystemMonitor**: Real-time system performance monitoring
+- **TaskTriggerService**: Advanced task scheduling and execution
+- **WifiMonitorService**: WiFi connectivity monitoring and optimization
+
+### Modular Architecture (NEW)
+- **Pluggable Module System**: 13 independent feature modules
+- **Standardized Interfaces**: Consistent APIs across all modules
+- **Easy Integration**: Example implementations for quick setup
+- **Core Modules Available**:
+  - Database operations with migration support
+  - Advanced networking with enhanced connectivity
+  - Security management with comprehensive protection
+  - UI enhancements and modern components
+  - Performance monitoring and optimization
+  - Memory management and crash reporting
+  - Analytics, bookmarks, passwords, and more
+
+### Enhanced Activities & UI (NEW)
+- **CacheManagementActivity**: Comprehensive cache administration
+- **DeepLinkHandlerActivity**: Advanced deep link processing
+- **EnhancedImageViewerActivity**: Feature-rich image viewing
+- **GalleryHistoryActivity**: Gallery viewing history management
+- **ModernBrowserActivity**: Contemporary browser interface
+- **PrivateModeSettingsActivity**: Privacy mode configuration
+- **TabsManagerActivity**: Advanced tab management system
 
 ### Connectivity Features
 - **WiFi Transfer**:

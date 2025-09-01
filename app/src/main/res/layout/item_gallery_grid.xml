@@ -65,7 +65,7 @@
             android:layout_height="match_parent"
             android:background="@drawable/category_badge_grid_cartoon"
             android:gravity="center"
-            style="@style/TextAppearance.CartoonCaption"
+            style="@style/TextAppearance.ModernCaption"
             android:textColor="@android:color/white"
             android:textAllCaps="true" />
 
@@ -89,8 +89,8 @@
             android:gravity="center"
             android:paddingLeft="@dimen/spacing_small"
             android:paddingRight="@dimen/spacing_small"
-            style="@style/TextAppearance.CartoonCaption"
-            android:textColor="@color/cartoon_title_color"
+            style="@style/TextAppearance.ModernCaption"
+            android:textColor="@color/modern_on_surface"
             tools:ignore="SpUsage"/>
 
     </FrameLayout>

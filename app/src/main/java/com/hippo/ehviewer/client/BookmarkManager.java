@@ -175,6 +175,14 @@ public class BookmarkManager {
     }
 
     /**
+     * 清空所有书签
+     */
+    public boolean clearAllBookmarks() {
+        SQLiteDatabase db = mDbHelper.getWritableDatabase();
+        return db.delete(TABLE_BOOKMARKS, null, null) > 0;
+    }
+
+    /**
      * 将Cursor转换为BookmarkInfo
      */
     private BookmarkInfo cursorToBookmark(Cursor cursor) {

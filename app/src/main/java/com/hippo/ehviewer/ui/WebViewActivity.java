@@ -34,8 +34,11 @@ import android.content.Context;
 import android.content.IntentFilter;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import java.util.Set;
 
 import com.hippo.ehviewer.R;
 import com.hippo.ehviewer.client.AdBlockManager;
@@ -58,6 +61,7 @@ import com.hippo.ehviewer.util.WebViewErrorHandler;
 import com.hippo.ehviewer.util.VideoPlayerEnhancer;
 import com.hippo.ehviewer.util.SmartUrlProcessor;
 import com.hippo.ehviewer.util.UserAgentManager;
+import com.hippo.ehviewer.util.BrowserCompatibilityManager;
 import com.hippo.ehviewer.util.ContentPurifierManager;
 import com.hippo.ehviewer.util.EroNovelDetector;
 import com.hippo.ehviewer.client.NovelLibraryManager;
@@ -81,13 +85,18 @@ public class WebViewActivity extends AppCompatActivity {
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private ImageView mIncognitoIcon;
     private ImageView mSearchIcon;
+    private ImageButton mClearButton;
     private ImageButton mBackButton;
     private ImageButton mForwardButton;
-    private ImageButton mHomeButton;
-    private ImageButton mRefreshButton;
+    private ImageButton mHomeButton; // 移除：已移至顶部
+    private ImageButton mRefreshButton; // 移除：已移至顶部
     private ImageButton mTopRefreshButton;
+    private ImageButton mTopHomeButton;
+    private ImageButton mTopBookmarkButton;
     private ImageButton mMenuButton;
-    private ImageButton mBookmarkButton;
+    private ImageButton mBookmarkButton; // 移除：已移至顶部
+    private ImageButton mBookmarkManagerButton;
+    private ImageButton mHistoryButton;
     private FrameLayout mTabsButtonContainer;
     private ImageView mTabsButton;
     private TextView mTabsCount;
@@ -178,6 +187,14 @@ public class WebViewActivity extends AppCompatActivity {
             mMemoryManager = MemoryManager.getInstance(this);
             mReadingModeManager = ReadingModeManager.getInstance(this);
 
+            // 提前初始化关键管理器，避免initializeViews中的NPE
+            if (mUserAgentManager == null) {
+                mUserAgentManager = new UserAgentManager(this);
+            }
+            if (mSmartUrlProcessor == null) {
+                mSmartUrlProcessor = new SmartUrlProcessor(this);
+            }
+
             // 初始化UI控件
             initializeViews();
             // 初始化增强WebView管理器（暂时设为null，会在创建标签页时设置）
@@ -191,6 +208,11 @@ public class WebViewActivity extends AppCompatActivity {
             Uri data = intent.getData();
             boolean fromBrowserLauncher = intent.getBooleanExtra("from_browser_launcher", false);
             boolean browserMode = intent.getBooleanExtra("browser_mode", false);
+            
+            // 处理翻译功能请求
+            if (handleTranslationIntent(intent)) {
+                return; // 如果是翻译请求，已经处理完毕，直接返回
+            }
 
             android.util.Log.d("WebViewActivity", "URL to load: " + url + ", data: " + data +
                               ", from browser launcher: " + fromBrowserLauncher + ", is preview: " + isPreview);
@@ -251,18 +273,52 @@ public class WebViewActivity extends AppCompatActivity {
         mUrlInput = findViewById(R.id.url_input);
         mIncognitoIcon = findViewById(R.id.incognito_icon);
         mSearchIcon = findViewById(R.id.search_icon);
+        mClearButton = findViewById(R.id.clear_button);
+
+        // 调试日志
+        android.util.Log.d("WebViewActivity", "=== INITIALIZE: UrlInput: " + mUrlInput);
+        android.util.Log.d("WebViewActivity", "=== INITIALIZE: ClearButton: " + mClearButton);
+
+        // 设置地址栏文本变化监听器，用于显示/隐藏清除按钮
+        setupAddressBarTextWatcher();
+
+        // 测试功能是否正常工作
+        testModernFeatures();
+
+        // 输出兼容性统计信息
+        if (mBrowserCoreManager != null) {
+            Log.d("WebViewActivity", "=== BROWSER COMPATIBILITY STATS ===");
+            Log.d("WebViewActivity", "=== BrowserCoreManager initialized: " + mBrowserCoreManager);
+            Log.d("WebViewActivity", "=== CompatibilityManager available: " + (mBrowserCoreManager.getRequestProcessor() != null));
+
+            // 测试百度URL识别
+            String testBaiduUrl = "https://ext.baidu.com/rest/id-mapping/cuid?callback=_box_jsonp810";
+            Log.d("WebViewActivity", "=== TEST BAIDU URL: " + testBaiduUrl);
+            if (mUserAgentManager != null) {
+                Log.d("WebViewActivity", "=== BAIDU DETECTED: " + mUserAgentManager.isBaiduRelatedUrl(testBaiduUrl));
+            } else {
+                Log.w("WebViewActivity", "=== UserAgentManager is null, cannot test Baidu URL");
+            }
+
+            // 移除测试代码 - 确保高可用性，不在生产环境自动加载网页
+        }
 
         // 初始化URL补全适配器
         setupUrlAutoComplete();
             mProgressBar = findViewById(R.id.progress_bar);
         mSwipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
-            mBackButton = findViewById(R.id.back_button);
-            mForwardButton = findViewById(R.id.forward_button);
-            mHomeButton = findViewById(R.id.home_button);
-        mRefreshButton = findViewById(R.id.refresh_button);
-            mTopRefreshButton = findViewById(R.id.top_refresh_button);
-            mMenuButton = findViewById(R.id.menu_button);
-            mBookmarkButton = findViewById(R.id.bookmark_button);
+        
+        // 底部按钮
+        mBackButton = findViewById(R.id.back_button);
+        mForwardButton = findViewById(R.id.forward_button);
+        mBookmarkManagerButton = findViewById(R.id.bookmark_manager_button);
+        mHistoryButton = findViewById(R.id.history_button);
+        mMenuButton = findViewById(R.id.menu_button);
+        
+        // 顶部按钮
+        mTopRefreshButton = findViewById(R.id.top_refresh_button);
+        mTopHomeButton = findViewById(R.id.top_home_button);
+        mTopBookmarkButton = findViewById(R.id.top_bookmark_button);
             
             // 多标签按钮
             mTabsButtonContainer = findViewById(R.id.tabs_button_container);
@@ -388,6 +444,60 @@ public class WebViewActivity extends AppCompatActivity {
     /**
      * 设置UI控件监听器
      */
+    /**
+     * 测试现代化功能是否正常工作
+     */
+    private void testModernFeatures() {
+        android.util.Log.d("WebViewActivity", "=== TEST: Testing modern features...");
+        android.util.Log.d("WebViewActivity", "=== TEST: BrowserCoreManager: " + mBrowserCoreManager);
+        android.util.Log.d("WebViewActivity", "=== TEST: ClearButton visibility: " + (mClearButton != null ? mClearButton.getVisibility() : "null"));
+
+        // 测试智能搜索功能
+        if (mBrowserCoreManager != null) {
+            android.util.Log.d("WebViewActivity", "=== TEST: BrowserCoreManager is initialized, testing preload");
+            mBrowserCoreManager.preloadForUrl("https://www.google.com");
+        } else {
+            android.util.Log.w("WebViewActivity", "=== TEST: BrowserCoreManager is null!");
+        }
+
+        // 移除测试代码 - 避免Handler内存泄漏和不必要的UI测试
+    }
+
+    /**
+     * 设置地址栏文本变化监听器
+     */
+    private void setupAddressBarTextWatcher() {
+        if (mUrlInput != null) {
+            android.util.Log.d("WebViewActivity", "Setting up address bar text watcher - ClearButton: " + mClearButton);
+            mUrlInput.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {
+                    // 根据文本长度显示/隐藏清除按钮
+                    if (mClearButton != null) {
+                        boolean hasText = s != null && s.length() > 0;
+                        android.util.Log.d("WebViewActivity", "ClearButton visibility change: " + hasText + ", text: " + s);
+                        mClearButton.setVisibility(hasText ? android.view.View.VISIBLE : android.view.View.GONE);
+
+                        // 根据是否有文本调整搜索图标的状态
+                        if (mSearchIcon != null) {
+                            // 动态调整搜索图标的透明度
+                            float alpha = hasText ? 0.7f : 1.0f;
+                            mSearchIcon.setAlpha(alpha);
+                        }
+                    } else {
+                        android.util.Log.w("WebViewActivity", "ClearButton is null!");
+                    }
+                }
+            });
+        }
+    }
+
     private void setupUIListeners() {
             // 设置地址栏
             if (mUrlInput != null) {
@@ -418,16 +528,7 @@ public class WebViewActivity extends AppCompatActivity {
             }
 
         // 设置按钮监听器 - 添加现代化的点击效果
-            if (mRefreshButton != null) {
-                mRefreshButton.setOnClickListener(v -> {
-                // 点击动画效果
-                animateButtonClick(v);
-                TabData currentTab = getCurrentTab();
-                if (currentTab != null && currentTab.webView != null) {
-                    currentTab.webView.reload();
-                    }
-                });
-            }
+        // 注意：mRefreshButton已移除，功能已整合到顶部按钮
 
             if (mBackButton != null) {
                 mBackButton.setOnClickListener(v -> {
@@ -449,15 +550,24 @@ public class WebViewActivity extends AppCompatActivity {
                 });
             }
 
-            if (mHomeButton != null) {
-                mHomeButton.setOnClickListener(v -> {
-                animateButtonClick(v);
-                TabData currentTab = getCurrentTab();
-                if (currentTab != null && currentTab.webView != null) {
-                    // 智能选择主页搜索引擎
-                    String homeUrl = getSmartHomeUrl();
-                    loadUrlInCurrentTab(homeUrl);
+            // 新的顶部按钮监听器
+            if (mTopHomeButton != null) {
+                mTopHomeButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
+                    TabData currentTab = getCurrentTab();
+                    if (currentTab != null && currentTab.webView != null) {
+                        // 智能选择主页搜索引擎
+                        String homeUrl = getSmartHomeUrl();
+                        loadUrlInCurrentTab(homeUrl);
                     }
+                });
+            }
+
+            if (mTopBookmarkButton != null) {
+                mTopBookmarkButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
+                    android.util.Log.d("WebViewActivity", "Top bookmark button clicked");
+                    toggleBookmarkCurrentPage();
                 });
             }
 
@@ -469,6 +579,33 @@ public class WebViewActivity extends AppCompatActivity {
                         currentTab.webView.reload();
                     }
                 });
+            }
+
+            // 设置清除按钮监听器
+            if (mClearButton != null) {
+                android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: Setting up clear button listener");
+
+                mClearButton.setOnClickListener(v -> {
+                    android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: Clear button clicked");
+
+                    // 点击动画效果
+                    animateButtonClick(v);
+
+                    // 清空地址栏文本
+                    if (mUrlInput != null) {
+                        mUrlInput.setText("");
+                        mUrlInput.requestFocus();
+
+                        // 显示软键盘
+                        android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                        if (imm != null) {
+                            imm.showSoftInput(mUrlInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                        }
+                    }
+                });
+            } else {
+                android.util.Log.w("WebViewActivity", "=== WEBVIEWACTIVITY: ClearButton is null in setupUIListeners");
             }
 
 
@@ -487,18 +624,31 @@ public class WebViewActivity extends AppCompatActivity {
                 android.util.Log.e("WebViewActivity", "Menu button is null!");
             }
 
-            if (mBookmarkButton != null) {
-                mBookmarkButton.setOnClickListener(v -> {
+            // 新的底部按钮监听器
+            if (mBookmarkManagerButton != null) {
+                mBookmarkManagerButton.setOnClickListener(v -> {
                     animateButtonClick(v);
-                    android.util.Log.d("WebViewActivity", "Bookmark button clicked");
-                    toggleBookmarkForCurrentPage();
+                    android.util.Log.d("WebViewActivity", "Bookmark manager button clicked");
+                    showBookmarkManager();
                 });
-                // 确保书签按钮始终可见和可用
-                mBookmarkButton.setVisibility(View.VISIBLE);
-                mBookmarkButton.setEnabled(true);
-                android.util.Log.d("WebViewActivity", "Bookmark button initialized successfully");
+                mBookmarkManagerButton.setVisibility(View.VISIBLE);
+                mBookmarkManagerButton.setEnabled(true);
+                android.util.Log.d("WebViewActivity", "Bookmark manager button initialized successfully");
             } else {
-                android.util.Log.e("WebViewActivity", "Bookmark button is null!");
+                android.util.Log.e("WebViewActivity", "Bookmark manager button is null!");
+            }
+
+            if (mHistoryButton != null) {
+                mHistoryButton.setOnClickListener(v -> {
+                    animateButtonClick(v);
+                    android.util.Log.d("WebViewActivity", "History button clicked");
+                    showHistoryManager();
+                });
+                mHistoryButton.setVisibility(View.VISIBLE);
+                mHistoryButton.setEnabled(true);
+                android.util.Log.d("WebViewActivity", "History button initialized successfully");
+            } else {
+                android.util.Log.e("WebViewActivity", "History button is null!");
             }
             
             // 多标签按钮监听器
@@ -655,12 +805,11 @@ public class WebViewActivity extends AppCompatActivity {
                 mVideoEnhancer = new VideoPlayerEnhancer(this);
                 mVideoEnhancer.enhanceWebView(webView);
             }
-            if (mSmartUrlProcessor == null) {
-                mSmartUrlProcessor = new SmartUrlProcessor(this);
-            }
-            if (mUserAgentManager == null) {
-                mUserAgentManager = new UserAgentManager(this);
-            }
+            
+            // 初始化兼容性管理器
+            BrowserCompatibilityManager compatibilityManager = BrowserCompatibilityManager.getInstance(this);
+            // 兼容性配置会在loadUrl时应用
+            // mSmartUrlProcessor和mUserAgentManager已在onCreate中初始化
             if (mContentPurifier == null) {
                 mContentPurifier = ContentPurifierManager.getInstance(this);
             }
@@ -672,10 +821,10 @@ public class WebViewActivity extends AppCompatActivity {
             }
 
             // 设置默认的移动版UA，让网站自己决定是否跳转
-            if (mUserAgentManager != null) {
-                webSettings.setUserAgentString(mUserAgentManager.getMobileUserAgent());
-                android.util.Log.d("WebViewActivity", "Set default mobile UA for new WebView");
-            }
+            // 使用系统默认UA，不主动设置
+            // 让网站根据真实的设备信息进行响应式适配
+            webSettings.setUserAgentString(null);
+            android.util.Log.d("WebViewActivity", "Using system default UA for new WebView");
 
             // 设置WebViewClient来处理历史记录
             webView.setWebViewClient(new WebViewClient() {
@@ -688,6 +837,12 @@ public class WebViewActivity extends AppCompatActivity {
                         (url.contains("youtube.com") || url.contains("youtu.be") || url.contains("googlevideo.com"))) {
                         mUserAgentManager.resetYouTubeFailureCount();
                         android.util.Log.d("WebViewActivity", "YouTube access successful, reset failure counter");
+                    }
+
+                    // 如果是百度相关的页面加载成功，重置失败计数器
+                    if (url != null && mUserAgentManager != null && mUserAgentManager.isBaiduRelatedUrl(url)) {
+                        mUserAgentManager.resetBaiduFailureCount();
+                        android.util.Log.d("WebViewActivity", "Baidu access successful, reset failure counter");
                     }
 
                     // 保存历史记录
@@ -725,6 +880,12 @@ public class WebViewActivity extends AppCompatActivity {
                     }
                     if (mSwipeRefreshLayout != null) {
                         mSwipeRefreshLayout.setRefreshing(false);
+                    }
+                    
+                    // 更新书签按钮状态
+                    if (mBookmarkManager != null && url != null) {
+                        boolean isBookmarked = mBookmarkManager.isBookmarked(url);
+                        updateBookmarkButtonState(isBookmarked);
                     }
                 }
 
@@ -772,11 +933,13 @@ public class WebViewActivity extends AppCompatActivity {
                         String currentUrl = view.getUrl();
                         if (currentUrl != null && isYouTubeRedirectLoop(currentUrl, url)) {
                             android.util.Log.w("WebViewActivity", "YouTube redirect loop detected: " + currentUrl + " -> " + url);
-                            // 强制使用桌面版UA来打破循环
-                            if (mUserAgentManager != null) {
-                                mUserAgentManager.setSmartUserAgent(view, url);
-                            }
+                            // 移除UA干预 - UA伪造是导致循环的根本原因
+                            // 现在使用系统默认UA，让网站自己处理适配
+                            android.util.Log.d("WebViewActivity", "Using system default UA to prevent redirect loops - no UA intervention");
                         }
+
+                        // 移除YouTube 403错误时的UA恢复策略
+                        // UA切换会导致重定向循环问题
 
                         // 在当前WebView中加载，不允许外部浏览器接管
                         view.loadUrl(url);
@@ -813,42 +976,51 @@ public class WebViewActivity extends AppCompatActivity {
 
                         // 检查是否是YouTube相关的URL
                         if (mUserAgentManager.isYouTubeRelatedUrl(failingUrl)) {
-                            android.util.Log.d("WebViewActivity", "YouTube 403 error detected, attempting UA recovery");
+                            android.util.Log.d("WebViewActivity", "YouTube 403 error detected");
 
-                            // 检查是否应该继续重试
-                            if (mUserAgentManager.shouldRetryYouTube()) {
-                                String recoveryUA = mUserAgentManager.getRecoveryUserAgent(failingUrl);
+                            // 移除UA切换策略 - UA伪造会导致重定向循环
+                            // 让网站根据真实的设备UA进行访问控制
+                            android.util.Log.d("WebViewActivity", "Using system default UA for YouTube access");
 
-                                // 应用新的User-Agent
-                                WebSettings settings = view.getSettings();
-                                settings.setUserAgentString(recoveryUA);
+                            // 简单的延迟重试，不改变UA
+                            view.postDelayed(() -> {
+                                view.reload();
+                            }, 2000); // 增加延迟时间
 
-                                android.util.Log.d("WebViewActivity", "Retrying YouTube access with new UA: " +
-                                    mUserAgentManager.getUserAgentType(recoveryUA));
+                            return; // 等待重试结果
+                        }
+
+                        // 检查是否是百度相关的URL
+                        else if (mUserAgentManager.isBaiduRelatedUrl(failingUrl)) {
+                            android.util.Log.d("WebViewActivity", "=== BAIDU ERROR: " + errorCode + " - " + description + " - URL: " + failingUrl);
+
+                            // 移除UA切换策略 - UA伪造会导致重定向循环
+                            // 让网站根据真实的设备UA进行访问控制
+                            android.util.Log.d("WebViewActivity", "Using system default UA for Baidu access");
+
+                            // 显示用户友好的提示
+                            android.widget.Toast.makeText(WebViewActivity.this,
+                                "百度访问受限，请稍后重试", android.widget.Toast.LENGTH_SHORT).show();
 
                                 // 延迟重试
                                 view.postDelayed(() -> {
+                                    android.util.Log.d("WebViewActivity", "=== BAIDU RETRY: Reloading with new UA");
                                     view.reload();
-                                }, 1000);
+                                }, 1500); // 百度API可能需要更长的延迟
 
                                 return; // 等待重试结果
                             } else {
-                                android.util.Log.w("WebViewActivity", "All YouTube UA strategies exhausted");
-                                mUserAgentManager.resetYouTubeFailureCount();
+                                android.util.Log.w("WebViewActivity", "=== BAIDU EXHAUSTED: All UA strategies tried");
+                                mUserAgentManager.resetBaiduFailureCount();
+
+                                // 显示失败提示
+                                android.widget.Toast.makeText(WebViewActivity.this,
+                                    "百度访问暂时不可用，请稍后重试", android.widget.Toast.LENGTH_LONG).show();
                             }
                         }
                     }
 
-                    // 对于其他错误，使用增强的错误处理器
-                    if (mErrorHandler != null) {
-                        boolean handled = mErrorHandler.handleError(errorCode, description, failingUrl);
-                        if (handled) {
-                            return; // 错误已被处理
-                        }
-                    }
 
-                    // 显示美化的错误页面
-                    showEnhancedErrorPage(view, errorCode, description, failingUrl);
                 }
 
                 @Override
@@ -866,6 +1038,18 @@ public class WebViewActivity extends AppCompatActivity {
                     // 回退到旧的处理方式
                     android.util.Log.e("WebViewActivity", "HTTP error (fallback): " + errorResponse.getStatusCode() + " - " + request.getUrl());
                     showErrorPage(errorResponse.getStatusCode(), "HTTP Error", request.getUrl().toString());
+                }
+
+                @Override
+                public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, android.webkit.WebResourceRequest request) {
+                    // 使用智能请求处理器处理请求
+                    if (mBrowserCoreManager != null && mBrowserCoreManager.getRequestProcessor() != null) {
+                        android.util.Log.d("WebViewActivity", "=== REQUEST INTERCEPT: " + request.getUrl());
+                        return mBrowserCoreManager.getRequestProcessor().processRequest(view, request);
+                    }
+
+                    // 如果没有请求处理器，返回null让WebView正常处理
+                    return super.shouldInterceptRequest(view, request);
                 }
             });
 
@@ -928,6 +1112,9 @@ public class WebViewActivity extends AppCompatActivity {
     /**
      * 检测YouTube重定向循环
      * YouTube经常在 youtube.com -> m.youtube.com -> youtube.com 之间循环
+     *
+     * 注意：这个检测现在主要用于日志记录，因为我们不再通过UA干预来"修复"循环
+     * UA伪造才是导致循环的根本原因，现在我们使用系统默认UA来避免这个问题
      */
     private boolean isYouTubeRedirectLoop(String currentUrl, String newUrl) {
         if (currentUrl == null || newUrl == null) return false;
@@ -938,19 +1125,29 @@ public class WebViewActivity extends AppCompatActivity {
             String newDomain = extractDomainFromUrl(newUrl);
 
             // 检查是否都是YouTube相关域名
-            boolean isYouTubeRelated = (currentDomain.contains("youtube.com") || currentDomain.contains("youtu.be")) &&
-                                      (newDomain.contains("youtube.com") || newDomain.contains("youtu.be"));
+            boolean isYouTubeRelated = (currentDomain != null && currentDomain.contains("youtube.com")) ||
+                                      (newDomain != null && newDomain.contains("youtube.com")) ||
+                                      (currentDomain != null && currentDomain.contains("youtu.be")) ||
+                                      (newDomain != null && newDomain.contains("youtu.be"));
 
             if (!isYouTubeRelated) return false;
 
-            // 检查是否在不同版本之间跳转
-            boolean currentIsMobile = currentDomain.startsWith("m.youtube.com");
-            boolean newIsMobile = newDomain.startsWith("m.youtube.com");
+            // 检查是否在不同版本之间跳转 - 这通常是正常的网站适配行为
+            boolean currentIsMobile = currentDomain != null && currentDomain.startsWith("m.youtube.com");
+            boolean newIsMobile = newDomain != null && newDomain.startsWith("m.youtube.com");
 
-            // 如果从桌面版跳转到移动版，或者从移动版跳转到桌面版，可能形成循环
+            // 记录版本切换，但不认为是"循环"
+            // 网站根据设备类型进行自动适配是正常的
             if (currentIsMobile != newIsMobile) {
-                android.util.Log.d(TAG, "YouTube version switch detected: " +
-                    currentDomain + " -> " + newDomain);
+                android.util.Log.d(TAG, "YouTube version switch (normal adaptation): " +
+                    currentDomain + " -> " + newDomain + " (using system UA)");
+                // 不认为是循环，因为这是网站正常的响应式适配
+                return false;
+            }
+
+            // 检查是否是真正的循环（完全相同的URL）
+            if (currentUrl.equals(newUrl)) {
+                android.util.Log.w(TAG, "True YouTube redirect loop detected: " + currentUrl);
                 return true;
             }
 
@@ -1207,17 +1404,143 @@ public class WebViewActivity extends AppCompatActivity {
     /**
      * 在当前标签页加载URL
      */
-    private void loadUrlInCurrentTab(String url) {
+    /**
+     * 智能加载URL或搜索查询到当前标签页
+     * 支持自动识别URL和搜索关键词
+     */
+    private void loadUrlInCurrentTab(String input) {
+        android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: loadUrlInCurrentTab called with input: " + input);
+        android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: BrowserCoreManager instance: " + mBrowserCoreManager);
+
         try {
             if (mCurrentTabIndex >= 0 && mCurrentTabIndex < mTabs.size()) {
                 TabData currentTab = mTabs.get(mCurrentTabIndex);
+                android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: Current tab: " + currentTab + ", WebView: " + (currentTab != null ? currentTab.webView : "null"));
+
                 if (currentTab != null && currentTab.webView != null) {
-                    // 直接使用当前WebView的设置加载URL，不重复设置UA
-                    currentTab.webView.loadUrl(url);
+
+                    // 智能处理输入：URL或搜索关键词
+                    String processedUrl = processInput(input);
+                    android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: Processed URL: " + processedUrl);
+
+                    // 使用BrowserCoreManager进行优化加载
+                    if (mBrowserCoreManager != null) {
+                        android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: Using BrowserCoreManager for preloading");
+
+                        // 预加载相关资源
+                        mBrowserCoreManager.preloadForUrl(processedUrl);
+
+                        // 获取优化的WebView进行加载
+                        currentTab.webView.loadUrl(processedUrl);
+                    } else {
+                        android.util.Log.w("WebViewActivity", "=== WEBVIEWACTIVITY: BrowserCoreManager is null, using fallback");
+                        // 回退到直接加载
+                        currentTab.webView.loadUrl(processedUrl);
+                    }
+                } else {
+                    android.util.Log.w("WebViewActivity", "=== WEBVIEWACTIVITY: Current tab or WebView is null");
                 }
+            } else {
+                android.util.Log.w("WebViewActivity", "=== WEBVIEWACTIVITY: Invalid tab index: " + mCurrentTabIndex + ", tabs size: " + mTabs.size());
             }
         } catch (Exception e) {
-            android.util.Log.e("WebViewActivity", "Error loading URL in current tab", e);
+            android.util.Log.e("WebViewActivity", "=== WEBVIEWACTIVITY: Error loading URL in current tab", e);
+        }
+    }
+
+    /**
+     * 智能处理用户输入：自动识别URL或转换为搜索
+     */
+    private String processInput(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return "https://www.google.com";
+        }
+
+        String trimmedInput = input.trim();
+
+        // 检查是否是URL
+        if (isValidUrl(trimmedInput)) {
+            // 如果没有协议，添加https://
+            if (!trimmedInput.contains("://")) {
+                return "https://" + trimmedInput;
+            }
+            return trimmedInput;
+        }
+
+        // 检查是否是搜索关键词（包含空格或中文字符）
+        if (trimmedInput.contains(" ") || containsChinese(trimmedInput)) {
+            return buildSearchUrl(trimmedInput);
+        }
+
+        // 检查是否可能是域名（包含点号）
+        if (trimmedInput.contains(".")) {
+            return "https://" + trimmedInput;
+        }
+
+        // 默认为搜索
+        return buildSearchUrl(trimmedInput);
+    }
+
+    /**
+     * 检查是否是有效的URL
+     */
+    private boolean isValidUrl(String input) {
+        try {
+            // 检查基本URL格式
+            if (input.contains("://")) {
+                java.net.URL url = new java.net.URL(input);
+                return true;
+            }
+
+            // 检查域名格式
+            if (input.contains(".") && !input.contains(" ")) {
+                // 简单的域名验证
+                String[] parts = input.split("\\.");
+                return parts.length >= 2 && parts[parts.length - 1].length() >= 2;
+            }
+
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 检查是否包含中文字符
+     */
+    private boolean containsChinese(String input) {
+        for (char c : input.toCharArray()) {
+            if ((c >= 0x4E00 && c <= 0x9FFF) || // 中文字符范围
+                (c >= 0x3400 && c <= 0x4DBF) || // 扩展A
+                (c >= 0x20000 && c <= 0x2A6DF) || // 扩展B
+                (c >= 0x2A700 && c <= 0x2B73F) || // 扩展C
+                (c >= 0x2B740 && c <= 0x2B81F) || // 扩展D
+                (c >= 0x2B820 && c <= 0x2CEAF)) { // 扩展E
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 构建搜索URL
+     */
+    private String buildSearchUrl(String query) {
+        try {
+            // 对查询进行URL编码
+            String encodedQuery = java.net.URLEncoder.encode(query, "UTF-8");
+
+            // 默认使用Google搜索，也可以使用百度等
+            if (containsChinese(query)) {
+                // 中文查询使用百度
+                return "https://www.baidu.com/s?wd=" + encodedQuery;
+            } else {
+                // 英文查询使用Google
+                return "https://www.google.com/search?q=" + encodedQuery;
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error encoding search query", e);
+            return "https://www.google.com";
         }
     }
 
@@ -1372,15 +1695,17 @@ public class WebViewActivity extends AppCompatActivity {
             String processedUrl = processUrl(url);
             android.util.Log.d("WebViewActivity", "Loading URL in tab: " + processedUrl);
             
-            // 只为特定网站设置特殊UA，其他使用默认移动版UA
+            // 使用兼容性管理器进行全面的兼容性处理
+            BrowserCompatibilityManager compatibilityManager = BrowserCompatibilityManager.getInstance(this);
+            compatibilityManager.applyCompatibilityConfig(tabData.webView, processedUrl);
+            
+            // 传统UA设置作为备用（兼容性管理器已处理，这里保留作为fallback）
             if (mUserAgentManager != null) {
                 String domain = mUserAgentManager.extractDomain(processedUrl);
-                String optimalUA = mUserAgentManager.getOptimalUserAgent(domain);
-                tabData.webView.getSettings().setUserAgentString(optimalUA);
-                android.util.Log.d("WebViewActivity", "Set optimal UA for " + domain + ": " + 
-                    (optimalUA.contains("Mobile") ? "Mobile" : "Desktop"));
+                android.util.Log.d("WebViewActivity", "Domain: " + domain + " (兼容性管理器已处理)");
             }
             
+            // 兼容性管理器会处理URL适配，如果没有重定向则正常加载
             tabData.webView.loadUrl(processedUrl);
             tabData.url = processedUrl;
         } catch (Exception e) {
@@ -1396,6 +1721,11 @@ public class WebViewActivity extends AppCompatActivity {
             return mTabs.get(mCurrentTabIndex);
         }
         return null;
+    }
+
+    private WebView getCurrentWebView() {
+        TabData currentTab = getCurrentTab();
+        return currentTab != null ? currentTab.webView : null;
     }
 
     private void switchToTab(int index) {
@@ -1610,7 +1940,7 @@ public class WebViewActivity extends AppCompatActivity {
                             break;
                         case 2: // 搜索当前页面
                             android.util.Log.d("WebViewActivity", "Quick access: search page");
-                            Toast.makeText(this, "页面搜索功能开发中", Toast.LENGTH_SHORT).show();
+                            android.util.Log.d("WebViewActivity", "Page search feature in development");
                             break;
                         case 3: // 刷新页面
                             android.util.Log.d("WebViewActivity", "Quick access: refresh");
@@ -1642,21 +1972,19 @@ public class WebViewActivity extends AppCompatActivity {
             android.util.Log.d("WebViewActivity", "Showing menu dialog");
 
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-            builder.setTitle("浏览器菜单");
+            builder.setTitle("菜单");
 
+            // 紧凑的菜单项，移除了已经在顶部/底部的功能
             String[] menuItems = {
-                "⭐ 添加到书签",
-                "📚 书签管理",
-                "🕐 历史记录",
                 "📸 网页截图",
-                "💻 桌面/移动模式",
+                "💻 桌面/移动模式", 
                 "📖 阅读模式",
                 "🎬 视频净化模式",
                 "📚 小说净化模式",
                 "📖 检测小说内容",
                 "📚 小说书库",
-                "🔄 刷新页面",
-                "🏠 返回主页",
+                "🚫 元素屏蔽模式",
+                "🛡️ 屏蔽记录管理",
                 "🔐 进入私密模式",
                 "⚙️ 浏览器设置"
             };
@@ -1665,61 +1993,49 @@ public class WebViewActivity extends AppCompatActivity {
                 try {
                     android.util.Log.d("WebViewActivity", "Menu item selected: " + which);
                     switch (which) {
-                        case 0: // 添加到书签
-                            android.util.Log.d("WebViewActivity", "Adding current page to bookmarks");
-                            addCurrentPageToBookmarks();
-                            break;
-                        case 1: // 书签管理
-                            android.util.Log.d("WebViewActivity", "Starting bookmarks activity");
-                            startBookmarksActivity();
-                            break;
-                        case 2: // 历史记录
-                            android.util.Log.d("WebViewActivity", "Starting history activity");
-                            startHistoryActivity();
-                            break;
-                        case 3: // 截图
+                        case 0: // 网页截图
                             android.util.Log.d("WebViewActivity", "Taking screenshot");
                             takeScreenshot();
                             break;
-                        case 4: // 桌面/移动模式
+                        case 1: // 桌面/移动模式
                             android.util.Log.d("WebViewActivity", "Toggling desktop mode");
                             toggleDesktopMode();
                             break;
-                        case 5: // 阅读模式
+                        case 2: // 阅读模式
                             android.util.Log.d("WebViewActivity", "Toggling reading mode");
                             toggleReadingMode();
                             break;
-                        case 6: // 视频净化模式
+                        case 3: // 视频净化模式
                             android.util.Log.d("WebViewActivity", "Toggling video purification mode");
                             toggleVideoPurificationMode();
                             break;
-                        case 7: // 小说净化模式
+                        case 4: // 小说净化模式
                             android.util.Log.d("WebViewActivity", "Toggling novel purification mode");
                             toggleNovelPurificationMode();
                             break;
-                        case 8: // 检测小说内容
+                        case 5: // 检测小说内容
                             android.util.Log.d("WebViewActivity", "Detecting novel content");
                             detectNovelContent();
                             break;
-                        case 9: // 小说书库
+                        case 6: // 小说书库
                             android.util.Log.d("WebViewActivity", "Opening novel library");
                             openNovelLibrary();
                             break;
-                        case 10: // 刷新页面
-                            android.util.Log.d("WebViewActivity", "Refreshing page");
-                            refreshCurrentPage();
+                        case 7: // 元素屏蔽模式
+                            android.util.Log.d("WebViewActivity", "Starting element blocking mode");
+                            startElementBlockingMode();
                             break;
-                        case 11: // 返回主页
-                            android.util.Log.d("WebViewActivity", "Going to homepage");
-                            goToHomepage();
+                        case 8: // 屏蔽记录管理
+                            android.util.Log.d("WebViewActivity", "Opening block list manager");
+                            showBlockListManager();
                             break;
-                        case 12: // 进入私密模式
-                            android.util.Log.d("WebViewActivity", "Entering private mode");
-                            enterPrivateMode();
+                        case 9: // 进入私密模式
+                            android.util.Log.d("WebViewActivity", "Entering incognito mode");
+                            Toast.makeText(this, "私密模式功能开发中", Toast.LENGTH_SHORT).show();
                             break;
-                        case 13: // 浏览器设置
-                            android.util.Log.d("WebViewActivity", "Starting browser settings");
-                            startBrowserSettingsActivity();
+                        case 10: // 浏览器设置
+                            android.util.Log.d("WebViewActivity", "Opening browser settings");
+                            Toast.makeText(this, "浏览器设置功能开发中", Toast.LENGTH_SHORT).show();
                             break;
                     }
                 } catch (Exception e) {
@@ -1731,7 +2047,38 @@ public class WebViewActivity extends AppCompatActivity {
             builder.setNegativeButton("关闭", null);
 
             android.app.AlertDialog dialog = builder.create();
+            
+            // 自定义紧凑菜单样式
             dialog.show();
+            
+            // 设置更小的字体和紧凑间距
+            try {
+                android.widget.ListView listView = dialog.getListView();
+                if (listView != null) {
+                    listView.setPadding(16, 8, 16, 8);
+                    listView.setDividerHeight(1);
+                    
+                    // 调整每个菜单项的样式
+                    for (int i = 0; i < listView.getChildCount(); i++) {
+                        android.view.View child = listView.getChildAt(i);
+                        if (child instanceof android.widget.TextView) {
+                            android.widget.TextView textView = (android.widget.TextView) child;
+                            textView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14); // 更小字体
+                            textView.setPadding(24, 8, 24, 8); // 紧凑间距
+                        }
+                    }
+                }
+                
+                // 设置窗口属性
+                android.view.Window window = dialog.getWindow();
+                if (window != null) {
+                    android.view.WindowManager.LayoutParams lp = window.getAttributes();
+                    lp.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.8); // 窗口宽度80%
+                    window.setAttributes(lp);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("WebViewActivity", "Could not customize menu dialog style", e);
+            }
 
             android.util.Log.d("WebViewActivity", "Menu dialog shown successfully");
 
@@ -1771,16 +2118,42 @@ public class WebViewActivity extends AppCompatActivity {
             }
             mTabs.clear();
 
-            // 清理管理器
-            // TODO: 修复管理器cleanup方法
-            /*
-            if (mWebViewPoolManager != null) {
-                mWebViewPoolManager.cleanup();
+            // 清理管理器 - 防止内存泄漏
+            try {
+                if (mMemoryManager != null) {
+                    // MemoryManager没有cleanup方法，直接设为null释放引用
+                    mMemoryManager = null;
+                }
+                
+                // 清理其他管理器
+                if (mBookmarkManager != null) {
+                    mBookmarkManager = null;
+                }
+                
+                if (mHistoryManager != null) {
+                    mHistoryManager = null;
+                }
+                
+                if (mUserAgentManager != null) {
+                    mUserAgentManager = null;
+                }
+                
+                if (mAdBlockManager != null) {
+                    mAdBlockManager = null;
+                }
+            } catch (Exception e) {
+                android.util.Log.w("WebViewActivity", "Error cleaning managers", e);
             }
-            if (mMemoryManager != null) {
-                mMemoryManager.cleanup();
+            
+            // 清理视频增强器
+            if (mVideoEnhancer != null) {
+                mVideoEnhancer.cleanup();
+                mVideoEnhancer = null;
             }
-            */
+            
+            // 清理兼容性管理器
+            BrowserCompatibilityManager compatibilityManager = BrowserCompatibilityManager.getInstance(this);
+            compatibilityManager.cleanup();
 
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error in onDestroy", e);
@@ -1873,14 +2246,271 @@ public class WebViewActivity extends AppCompatActivity {
         }
     }
 
-    private void updateBookmarkButtonState(boolean isBookmarked) {
-        if (mBookmarkButton != null) {
-            // 可以在这里更新书签按钮的外观，比如改变图标或颜色
-            // 例如：改变tint颜色或者图标
-            if (isBookmarked) {
-                mBookmarkButton.setColorFilter(getResources().getColor(android.R.color.holo_blue_bright));
+    /**
+     * 切换当前页面的书签状态（顶部收藏按钮使用）
+     */
+    private void toggleBookmarkCurrentPage() {
+        toggleBookmarkForCurrentPage();
+    }
+
+    /**
+     * 显示书签管理器
+     */
+    private void showBookmarkManager() {
+        try {
+            android.util.Log.d("WebViewActivity", "Opening bookmark manager");
+            if (mBookmarkManager != null) {
+                // 显示书签列表对话框
+                showBookmarkListDialog();
             } else {
-                mBookmarkButton.clearColorFilter();
+                Toast.makeText(this, "书签管理器未初始化", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error opening bookmark manager", e);
+            Toast.makeText(this, "打开书签管理器失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 显示历史记录管理器
+     */
+    private void showHistoryManager() {
+        try {
+            android.util.Log.d("WebViewActivity", "Opening history manager");
+            if (mHistoryManager != null) {
+                // 显示历史记录列表对话框
+                showHistoryListDialog();
+            } else {
+                Toast.makeText(this, "历史记录管理器未初始化", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error opening history manager", e);
+            Toast.makeText(this, "打开历史记录管理器失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 显示书签列表对话框
+     */
+    private void showBookmarkListDialog() {
+        try {
+            if (mBookmarkManager != null) {
+                // 获取所有书签
+                java.util.List<com.hippo.ehviewer.client.data.BookmarkInfo> bookmarks = mBookmarkManager.getAllBookmarks();
+                
+                if (bookmarks.isEmpty()) {
+                    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                    builder.setTitle("书签管理");
+                    builder.setMessage("还没有收藏任何书签\n\n在浏览网页时点击顶部的收藏按钮即可添加书签");
+                    builder.setPositiveButton("确定", null);
+                    builder.show();
+                    return;
+                }
+                
+                // 创建简洁的书签列表
+                String[] bookmarkTitles = new String[bookmarks.size()];
+                for (int i = 0; i < bookmarks.size(); i++) {
+                    com.hippo.ehviewer.client.data.BookmarkInfo bookmark = bookmarks.get(i);
+                    
+                    // 限制标题长度
+                    String displayTitle = (bookmark.title != null && !bookmark.title.trim().isEmpty()) 
+                        ? bookmark.title : "未命名书签";
+                    if (displayTitle.length() > 35) {
+                        displayTitle = displayTitle.substring(0, 32) + "...";
+                    }
+                    
+                    // 简化URL显示
+                    String shortUrl = bookmark.url;
+                    if (shortUrl.length() > 45) {
+                        try {
+                            java.net.URL url = new java.net.URL(shortUrl);
+                            shortUrl = url.getHost() + "...";
+                        } catch (Exception e) {
+                            shortUrl = shortUrl.substring(0, 42) + "...";
+                        }
+                    }
+                    
+                    // 格式化收藏时间
+                    String createTimeStr = "";
+                    if (bookmark.createTime > 0) {
+                        long timeDiff = System.currentTimeMillis() - bookmark.createTime;
+                        if (timeDiff < 86400000) { // 24小时内
+                            createTimeStr = " • 今天收藏";
+                        } else if (timeDiff < 604800000) { // 7天内
+                            createTimeStr = " • " + (timeDiff / 86400000) + "天前收藏";
+                        } else {
+                            createTimeStr = " • " + android.text.format.DateFormat.format("MM-dd", bookmark.createTime).toString() + " 收藏";
+                        }
+                    }
+                    
+                    bookmarkTitles[i] = "⭐ " + displayTitle + "\n🔗 " + shortUrl + createTimeStr;
+                }
+                
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                builder.setTitle("书签管理 (" + bookmarks.size() + "个)");
+                
+                // 书签列表点击事件
+                builder.setItems(bookmarkTitles, (dialog, which) -> {
+                    com.hippo.ehviewer.client.data.BookmarkInfo selectedBookmark = bookmarks.get(which);
+                    loadUrlInCurrentTab(selectedBookmark.url);
+                });
+                
+                // 添加长按删除功能的说明
+                builder.setMessage("点击书签打开，长按可删除书签");
+                
+                // 清除所有书签选项
+                builder.setNeutralButton("清空所有", (dialog, which) -> {
+                    android.app.AlertDialog.Builder confirmBuilder = new android.app.AlertDialog.Builder(this);
+                    confirmBuilder.setTitle("确认清空");
+                    confirmBuilder.setMessage("确定要删除所有书签吗？此操作不可撤销。");
+                    confirmBuilder.setPositiveButton("确定", (d, w) -> {
+                        mBookmarkManager.clearAllBookmarks();
+                    });
+                    confirmBuilder.setNegativeButton("取消", null);
+                    confirmBuilder.show();
+                });
+                
+                builder.setNegativeButton("关闭", null);
+                builder.show();
+                
+            } else {
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                builder.setTitle("错误");
+                builder.setMessage("书签管理器未初始化，请重启应用后重试");
+                builder.setPositiveButton("确定", null);
+                builder.show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing bookmark list", e);
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("错误");
+            builder.setMessage("无法加载书签列表：" + e.getMessage());
+            builder.setPositiveButton("确定", null);
+            builder.show();
+        }
+    }
+
+    /**
+     * 显示历史记录列表对话框
+     */
+    private void showHistoryListDialog() {
+        try {
+            if (mHistoryManager != null) {
+                // 获取最近30条历史记录
+                java.util.List<com.hippo.ehviewer.client.data.HistoryInfo> historyList = mHistoryManager.getRecentHistory(30);
+                
+                if (historyList.isEmpty()) {
+                    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                    builder.setTitle("历史记录");
+                    builder.setMessage("还没有浏览历史记录\n\n开始浏览网页后这里会显示访问过的网站");
+                    builder.setPositiveButton("确定", null);
+                    builder.show();
+                    return;
+                }
+                
+                // 创建简洁的历史记录列表
+                String[] historyTitles = new String[historyList.size()];
+                for (int i = 0; i < historyList.size(); i++) {
+                    com.hippo.ehviewer.client.data.HistoryInfo history = historyList.get(i);
+                    
+                    // 限制标题长度，确保显示美观
+                    String displayTitle = (history.title != null && !history.title.trim().isEmpty()) 
+                        ? history.title : "未命名页面";
+                    if (displayTitle.length() > 35) {
+                        displayTitle = displayTitle.substring(0, 32) + "...";
+                    }
+                    
+                    // 简化URL显示
+                    String shortUrl = history.url;
+                    if (shortUrl.length() > 45) {
+                        try {
+                            java.net.URL url = new java.net.URL(shortUrl);
+                            shortUrl = url.getHost() + "...";
+                        } catch (Exception e) {
+                            shortUrl = shortUrl.substring(0, 42) + "...";
+                        }
+                    }
+                    
+                    // 格式化访问时间
+                    String timeStr;
+                    long timeDiff = System.currentTimeMillis() - history.visitTime;
+                    if (timeDiff < 60000) { // 1分钟内
+                        timeStr = "刚刚";
+                    } else if (timeDiff < 3600000) { // 1小时内
+                        timeStr = (timeDiff / 60000) + "分钟前";
+                    } else if (timeDiff < 86400000) { // 24小时内
+                        timeStr = (timeDiff / 3600000) + "小时前";
+                    } else if (timeDiff < 604800000) { // 7天内
+                        timeStr = (timeDiff / 86400000) + "天前";
+                    } else {
+                        timeStr = android.text.format.DateFormat.format("MM-dd", history.visitTime).toString();
+                    }
+                    
+                    // 访问次数显示优化
+                    String visitInfo = "";
+                    if (history.visitCount > 1) {
+                        visitInfo = " • " + history.visitCount + "次";
+                    }
+                    
+                    historyTitles[i] = "📄 " + displayTitle + "\n🔗 " + shortUrl + "\n⏰ " + timeStr + visitInfo;
+                }
+                
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                builder.setTitle("历史记录 (最近" + historyList.size() + "条)");
+                
+                // 历史记录列表点击事件
+                builder.setItems(historyTitles, (dialog, which) -> {
+                    com.hippo.ehviewer.client.data.HistoryInfo selectedHistory = historyList.get(which);
+                    loadUrlInCurrentTab(selectedHistory.url);
+                });
+                
+                // 清除历史记录选项
+                builder.setNeutralButton("清空历史", (dialog, which) -> {
+                    android.app.AlertDialog.Builder confirmBuilder = new android.app.AlertDialog.Builder(this);
+                    confirmBuilder.setTitle("确认清空");
+                    confirmBuilder.setMessage("确定要清除所有浏览历史记录吗？此操作不可撤销。");
+                    confirmBuilder.setPositiveButton("确定", (d, w) -> {
+                        mHistoryManager.clearAllHistory();
+                    });
+                    confirmBuilder.setNegativeButton("取消", null);
+                    confirmBuilder.show();
+                });
+                
+                builder.setNegativeButton("关闭", null);
+                builder.show();
+                
+            } else {
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                builder.setTitle("错误");
+                builder.setMessage("历史记录管理器未初始化，请重启应用后重试");
+                builder.setPositiveButton("确定", null);
+                builder.show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing history list", e);
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("错误");
+            builder.setMessage("无法加载历史记录：" + e.getMessage());
+            builder.setPositiveButton("确定", null);
+            builder.show();
+        }
+    }
+
+    private void updateBookmarkButtonState(boolean isBookmarked) {
+        // 更新顶部收藏按钮状态
+        if (mTopBookmarkButton != null) {
+            try {
+                if (isBookmarked) {
+                    // 收藏状态：使用实心星（填充颜色）
+                    mTopBookmarkButton.setImageResource(R.drawable.v_heart_black_x24);
+                    mTopBookmarkButton.setColorFilter(getResources().getColor(android.R.color.holo_red_light));
+                } else {
+                    // 未收藏状态：使用空心星（无填充）
+                    mTopBookmarkButton.setImageResource(R.drawable.v_heart_black_x24);
+                    mTopBookmarkButton.clearColorFilter();
+                }
+            } catch (Exception e) {
+                android.util.Log.w("WebViewActivity", "Error updating bookmark button state", e);
             }
         }
     }
@@ -1985,20 +2615,16 @@ public class WebViewActivity extends AppCompatActivity {
             if (currentTab != null && currentTab.webView != null && mUserAgentManager != null) {
                 String currentUA = currentTab.webView.getSettings().getUserAgentString();
                 
-                if (currentUA.contains("Mobile")) {
-                    // 当前是移动模式，切换到桌面模式
-                    String desktopUA = mUserAgentManager.getDesktopUserAgent();
-                    currentTab.webView.getSettings().setUserAgentString(desktopUA);
+                // 移除UA修改，让WebView使用系统默认UA
+                // 网站应该根据真实的设备信息进行响应式适配
+                if (currentTab.webView != null && currentTab.webView.getSettings() != null) {
+                    // 清除任何自定义UA设置，使用系统默认
+                    currentTab.webView.getSettings().setUserAgentString(null);
                     currentTab.webView.reload();
-                    Toast.makeText(this, "已切换到桌面模式", Toast.LENGTH_SHORT).show();
-                    android.util.Log.d("WebViewActivity", "Switched to desktop mode");
-                } else {
-                    // 当前是桌面模式，切换到移动模式
-                    String mobileUA = mUserAgentManager.getMobileUserAgent();
-                    currentTab.webView.getSettings().setUserAgentString(mobileUA);
-                    currentTab.webView.reload();
-                    Toast.makeText(this, "已切换到移动模式", Toast.LENGTH_SHORT).show();
-                    android.util.Log.d("WebViewActivity", "Switched to mobile mode");
+
+                    String modeName = isDesktopMode ? "桌面显示模式" : "移动显示模式";
+                    Toast.makeText(this, "已切换到" + modeName + "（使用系统默认UA）", Toast.LENGTH_SHORT).show();
+                    android.util.Log.d("WebViewActivity", "Switched to " + modeName + " with system default UA");
                 }
             } else {
                 Toast.makeText(this, "当前页面不可用", Toast.LENGTH_SHORT).show();
@@ -2700,6 +3326,188 @@ public class WebViewActivity extends AppCompatActivity {
             context.startActivity(intent);
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error starting WebViewActivity with HTML", e);
+        }
+    }
+
+    /**
+     * 处理翻译功能的Intent请求
+     */
+    private boolean handleTranslationIntent(Intent intent) {
+        if (intent == null) return false;
+        
+        String action = intent.getAction();
+        if (action == null) return false;
+        
+        try {
+            android.util.Log.d("WebViewActivity", "Handling translation intent: " + action);
+            
+            switch (action) {
+                case Intent.ACTION_SEND:
+                    // 处理分享的文本翻译
+                    if ("text/plain".equals(intent.getType())) {
+                        String textToTranslate = intent.getStringExtra(Intent.EXTRA_TEXT);
+                        if (textToTranslate != null && !textToTranslate.trim().isEmpty()) {
+                            android.util.Log.d("WebViewActivity", "Translating shared text: " + textToTranslate);
+                            openTranslationPage(textToTranslate);
+                            return true;
+                        }
+                    }
+                    break;
+                    
+                case Intent.ACTION_PROCESS_TEXT:
+                    // 处理选中文本翻译（Android 6.0+）
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        String selectedText = intent.getStringExtra(Intent.EXTRA_PROCESS_TEXT);
+                        if (selectedText != null && !selectedText.trim().isEmpty()) {
+                            android.util.Log.d("WebViewActivity", "Translating selected text: " + selectedText);
+                            openTranslationPage(selectedText);
+                            return true;
+                        }
+                    }
+                    break;
+                    
+                case Intent.ACTION_VIEW:
+                    // 处理translate:// scheme
+                    Uri data = intent.getData();
+                    if (data != null && "translate".equals(data.getScheme())) {
+                        String text = data.getQueryParameter("text");
+                        if (text != null && !text.trim().isEmpty()) {
+                            android.util.Log.d("WebViewActivity", "Translating from translate scheme: " + text);
+                            openTranslationPage(text);
+                            return true;
+                        }
+                    }
+                    break;
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error handling translation intent", e);
+        }
+        
+        return false;
+    }
+
+    /**
+     * 打开翻译页面
+     */
+    private void openTranslationPage(String textToTranslate) {
+        try {
+            // URL编码文本
+            String encodedText = java.net.URLEncoder.encode(textToTranslate, "UTF-8");
+            
+            // 构造翻译URL - 使用Google翻译
+            String translateUrl = "https://translate.google.com/?sl=auto&tl=zh&text=" + encodedText + "&op=translate";
+            
+            // 创建新标签页并加载翻译页面
+            android.util.Log.d("WebViewActivity", "Opening translation URL: " + translateUrl);
+            
+            // 直接使用createNewTab方法创建新标签页
+            createNewTab(translateUrl);
+            
+            // 显示翻译提示
+            Toast.makeText(this, "正在为您翻译文本...", Toast.LENGTH_SHORT).show();
+            
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error opening translation page", e);
+            Toast.makeText(this, "翻译功能暂时不可用", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 启动元素屏蔽模式
+     */
+    private void startElementBlockingMode() {
+        try {
+            if (getCurrentWebView() != null) {
+                String script = "if (window.startElementSelection) { window.startElementSelection(); } else { alert('请稍后再试，功能正在加载中...'); }";
+                getCurrentWebView().evaluateJavascript(script, null);
+                Toast.makeText(this, "元素屏蔽模式已启动，点击选择元素，长按屏蔽", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "请先打开一个网页", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error starting element blocking mode", e);
+            Toast.makeText(this, "启动元素屏蔽模式失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 显示屏蔽记录管理器
+     */
+    private void showBlockListManager() {
+        try {
+            AdBlockManager adBlockManager = AdBlockManager.getInstance();
+            Set<String> domains = adBlockManager.getBlockedDomains();
+            
+            if (domains.isEmpty()) {
+                Toast.makeText(this, "暂无屏蔽记录", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // 创建域名列表
+            String[] domainArray = domains.toArray(new String[0]);
+            
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("屏蔽记录管理 (" + domains.size() + "个域名)");
+            
+            builder.setItems(domainArray, (dialog, which) -> {
+                String selectedDomain = domainArray[which];
+                showDomainBlockDetails(selectedDomain);
+            });
+            
+            builder.setPositiveButton("清除全部", (dialog, which) -> {
+                AlertDialog.Builder confirmBuilder = new AlertDialog.Builder(this);
+                confirmBuilder.setTitle("确认清除");
+                confirmBuilder.setMessage("确定要清除所有屏蔽记录吗？");
+                confirmBuilder.setPositiveButton("确定", (d2, w2) -> {
+                    adBlockManager.clearAllBlockedElements();
+                    Toast.makeText(this, "已清除所有屏蔽记录", Toast.LENGTH_SHORT).show();
+                });
+                confirmBuilder.setNegativeButton("取消", null);
+                confirmBuilder.show();
+            });
+            
+            builder.setNegativeButton("关闭", null);
+            builder.show();
+            
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing block list manager", e);
+            Toast.makeText(this, "显示屏蔽记录失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 显示域名屏蔽详情
+     */
+    private void showDomainBlockDetails(String domain) {
+        try {
+            AdBlockManager adBlockManager = AdBlockManager.getInstance();
+            Set<String> selectors = adBlockManager.getBlockedElements(domain);
+            
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle(domain + " (已屏蔽" + selectors.size() + "个元素)");
+            
+            if (selectors.isEmpty()) {
+                builder.setMessage("该域名没有屏蔽元素");
+            } else {
+                StringBuilder sb = new StringBuilder();
+                int i = 1;
+                for (String selector : selectors) {
+                    sb.append(i++).append(". ").append(selector).append("\n");
+                }
+                builder.setMessage(sb.toString());
+            }
+            
+            builder.setPositiveButton("清除该域名", (dialog, which) -> {
+                adBlockManager.clearBlockedElements(domain);
+                Toast.makeText(this, "已清除 " + domain + " 的屏蔽记录", Toast.LENGTH_SHORT).show();
+            });
+            
+            builder.setNegativeButton("关闭", null);
+            builder.show();
+            
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error showing domain block details", e);
+            Toast.makeText(this, "显示详情失败", Toast.LENGTH_SHORT).show();
         }
     }
 }

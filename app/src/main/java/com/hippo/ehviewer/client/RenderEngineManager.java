@@ -262,9 +262,9 @@ public class RenderEngineManager {
         // 设置用户代理（如果需要）
         // settings.setUserAgentString("Custom User Agent");
 
-        // 启用安全浏览
+        // 彻底禁用安全浏览功能，确保最大兼容性
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            settings.setSafeBrowsingEnabled(true);
+            settings.setSafeBrowsingEnabled(false);
         }
 
         Log.d(TAG, "Common optimizations applied");

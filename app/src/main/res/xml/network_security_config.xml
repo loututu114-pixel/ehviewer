@@ -16,7 +16,7 @@
   -->
 
 <network-security-config>
-    <base-config>
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
             <certificates src="user"/>
@@ -25,5 +25,11 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">ehtracker.org</domain>
     </domain-config>
-<!--    <base-config cleartextTrafficPermitted="true"/>-->
+    <!-- 允许浏览器访问HTTP网站 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+    </domain-config>
 </network-security-config>

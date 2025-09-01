@@ -50,6 +50,33 @@ public class UserAgentManager {
     public static final String UA_CHROME_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
     public static final String UA_CHROME_LINUX = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
 
+    // 百度专用User-Agent - 模拟真实百度用户访问模式
+    public static final String UA_BAIDU_CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    public static final String UA_BAIDU_MOBILE = "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+    public static final String UA_BAIDU_API = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+    // 百度增强版User-Agent - 更接近真实用户
+    public static final String UA_BAIDU_REAL_CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    public static final String UA_BAIDU_REAL_EDGE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
+    public static final String UA_BAIDU_REAL_FIREFOX = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0";
+
+    // 百度访问失败计数器和轮换策略
+    private int baiduFailureCount = 0;
+    private int currentBaiduUAIndex = 0;
+
+    // 百度专用User-Agent轮换列表 - 增强版
+    private final String[] baiduUserAgents = {
+        UA_BAIDU_REAL_CHROME,
+        UA_BAIDU_REAL_EDGE,
+        UA_BAIDU_REAL_FIREFOX,
+        UA_BAIDU_CHROME,
+        UA_BAIDU_MOBILE,
+        UA_BAIDU_API,
+        UA_CHROME_MAC,
+        UA_CHROME_LINUX,
+        UA_EDGE_DESKTOP
+    };
+
     // 网站特定的User-Agent映射
     private final Map<String, String> siteSpecificUAs = new HashMap<String, String>() {{
         // YouTube - 使用专门优化的UA避免403错误
@@ -71,6 +98,18 @@ public class UserAgentManager {
 
         // Instagram - 移动优先平台
         put("instagram.com", UA_CHROME_MOBILE);
+        
+        // 视频网站 - 使用桌面版以获得更好的视频支持
+        put("xvideos.com", UA_CHROME_DESKTOP);
+        put("www.xvideos.com", UA_CHROME_DESKTOP);
+        put("pornhub.com", UA_CHROME_DESKTOP);
+        put("www.pornhub.com", UA_CHROME_DESKTOP);
+        put("redtube.com", UA_CHROME_DESKTOP);
+        put("xhamster.com", UA_CHROME_DESKTOP);
+        
+        // 其他视频平台
+        put("vimeo.com", UA_CHROME_DESKTOP);
+        put("dailymotion.com", UA_CHROME_DESKTOP);
 
         // LinkedIn - 桌面版
         put("linkedin.com", UA_CHROME_DESKTOP);
@@ -126,9 +165,16 @@ public class UserAgentManager {
         put("duckduckgo.com", UA_CHROME_MOBILE);
         put("yahoo.com", UA_CHROME_MOBILE);
 
-        // 百度 - 移动版（中国用户）
-        put("baidu.com", UA_CHROME_MOBILE);
-        put("m.baidu.com", UA_CHROME_MOBILE);
+        // 百度 - 专用策略（避免API访问被拒绝）
+        put("baidu.com", UA_BAIDU_CHROME);
+        put("www.baidu.com", UA_BAIDU_CHROME);
+        put("m.baidu.com", UA_BAIDU_MOBILE);
+        put("ext.baidu.com", UA_BAIDU_API);
+        put("api.baidu.com", UA_BAIDU_API);
+        put("rest.baidu.com", UA_BAIDU_API);
+        put("sp0.baidu.com", UA_BAIDU_API);
+        put("sp1.baidu.com", UA_BAIDU_API);
+        put("sp2.baidu.com", UA_BAIDU_API);
 
         // 微博 - 移动版
         put("weibo.com", UA_CHROME_MOBILE);
@@ -196,34 +242,63 @@ public class UserAgentManager {
     }
 
     /**
-     * 为WebView设置智能User-Agent
+     * 最小化UA干预策略
+     * 原则：不主动设置UA，只在极少数兼容性问题时进行必要调整
      */
     public void setSmartUserAgent(WebView webView, String url) {
         if (webView == null || url == null) return;
 
         String domain = extractDomain(url);
-        String userAgent = getOptimalUserAgent(domain);
-
         WebSettings settings = webView.getSettings();
-        settings.setUserAgentString(userAgent);
 
-        Log.d(TAG, "Set UA for " + domain + ": " + userAgent.substring(0, 50) + "...");
-        Log.d(TAG, "Full UA for " + domain + ": " + userAgent);
-        
-        // 验证UA是否设置成功
-        String actualUA = settings.getUserAgentString();
-        if (actualUA != null && actualUA.equals(userAgent)) {
-            Log.d(TAG, "✓ UA successfully set for " + domain);
+        // 优先使用系统默认UA
+        settings.setUserAgentString(null);
+
+        // 只对极少数已知问题网站进行特殊处理
+        if (needsMinimalUAIntervention(domain)) {
+            String specialUA = getMinimalSpecialUA(domain);
+            if (specialUA != null) {
+                settings.setUserAgentString(specialUA);
+                Log.d(TAG, "Applied minimal UA intervention for " + domain + " (compatibility)");
+            } else {
+                Log.d(TAG, "Using system default UA for " + domain);
+            }
         } else {
-            Log.w(TAG, "✗ UA setting failed for " + domain + ". Expected: " + userAgent + ", Actual: " + actualUA);
+            Log.d(TAG, "Using system default UA for " + domain + " (recommended)");
         }
-        
-        // 为移动端优化设置额外的WebView参数
-        if (userAgent.equals(UA_CHROME_MOBILE)) {
-            optimizeForMobile(settings);
-        } else {
-            optimizeForDesktop(settings);
+
+        // 移除UA相关的WebView优化设置，让网站自己处理适配
+        // 网站应该根据真实的设备UA进行响应式设计
+    }
+
+    /**
+     * 检查是否需要最小的UA干预（只对已知问题网站）
+     */
+    private boolean needsMinimalUAIntervention(String domain) {
+        // 只对极少数经过验证有问题的网站进行UA调整
+        return domain.equals("youtube.com") ||
+               domain.equals("www.youtube.com") ||
+               domain.equals("m.youtube.com") ||
+               domain.contains("baidu.com") ||
+               domain.equals("mp.weixin.qq.com"); // 微信公众号文章
+    }
+
+    /**
+     * 获取最小的特殊UA调整
+     */
+    private String getMinimalSpecialUA(String domain) {
+        if (domain.contains("youtube")) {
+            // YouTube的移动端适配问题（如果有的话）
+            return UA_CHROME_MOBILE;
+        } else if (domain.contains("baidu")) {
+            // 百度搜索的兼容性
+            return UA_CHROME_MOBILE;
+        } else if (domain.equals("mp.weixin.qq.com")) {
+            // 微信公众号文章
+            return UA_CHROME_MOBILE;
         }
+
+        return null; // 不进行UA干预
     }
     
     /**
@@ -249,38 +324,56 @@ public class UserAgentManager {
     
     /**
      * 移动端优化设置
+     * 重要：避免与EnhancedWebViewManager的连接稳定性设置冲突
      */
     private void optimizeForMobile(WebSettings settings) {
-        // 移动端优化：启用缩放，优化文字大小
-        settings.setSupportZoom(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
-        
-        // 移动端通常需要更高的文字缩放
-        settings.setTextZoom(110);
-        
-        // 启用自适应布局
-        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+        try {
+            // 移动端优化：启用缩放，优化文字大小
+            settings.setSupportZoom(true);
+            settings.setBuiltInZoomControls(true);
+            settings.setDisplayZoomControls(false);
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+
+            // 移动端通常需要更高的文字缩放
+            settings.setTextZoom(110);
+
+            // 启用自适应布局 - 仅在支持时设置，避免与连接稳定性设置冲突
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.KITKAT) {
+                settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+            }
+
+            Log.d(TAG, "Applied mobile optimizations");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to apply mobile optimizations", e);
+        }
     }
     
     /**
-     * 桌面端优化设置  
+     * 桌面端优化设置
+     * 重要：避免与EnhancedWebViewManager的连接稳定性设置冲突
      */
     private void optimizeForDesktop(WebSettings settings) {
-        // 桌面端优化：更宽的视口
-        settings.setSupportZoom(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
-        
-        // 桌面端保持标准文字大小
-        settings.setTextZoom(100);
-        
-        // 使用标准布局算法
-        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+        try {
+            // 桌面端优化：更宽的视口
+            settings.setSupportZoom(true);
+            settings.setBuiltInZoomControls(true);
+            settings.setDisplayZoomControls(false);
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+
+            // 桌面端保持标准文字大小
+            settings.setTextZoom(100);
+
+            // 使用标准布局算法 - 仅在支持时设置，避免冲突
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.KITKAT) {
+                settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+            }
+
+            Log.d(TAG, "Applied desktop optimizations");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to apply desktop optimizations", e);
+        }
     }
     
 
@@ -578,6 +671,60 @@ public class UserAgentManager {
     }
 
     /**
+     * 获取下一个百度User-Agent（轮换策略）
+     */
+    public String getNextBaiduUserAgent() {
+        baiduFailureCount++;
+        currentBaiduUAIndex = (currentBaiduUAIndex + 1) % baiduUserAgents.length;
+
+        String nextUA = baiduUserAgents[currentBaiduUAIndex];
+        Log.d(TAG, "Baidu access failed " + baiduFailureCount + " times, trying UA: " + getUserAgentType(nextUA));
+
+        return nextUA;
+    }
+
+    /**
+     * 重置百度失败计数器（访问成功时调用）
+     */
+    public void resetBaiduFailureCount() {
+        if (baiduFailureCount > 0) {
+            Log.d(TAG, "Baidu access successful after " + baiduFailureCount + " failures");
+            baiduFailureCount = 0;
+        }
+    }
+
+    /**
+     * 检查是否应该继续重试百度访问
+     */
+    public boolean shouldRetryBaidu() {
+        return baiduFailureCount < baiduUserAgents.length;
+    }
+
+    /**
+     * 获取百度专用User-Agent（带轮换策略）
+     */
+    public String getBaiduUserAgent() {
+        if (baiduFailureCount == 0) {
+            return UA_BAIDU_CHROME; // 默认使用Chrome
+        } else {
+            return baiduUserAgents[currentBaiduUAIndex];
+        }
+    }
+
+    /**
+     * 检查是否是百度相关的URL
+     */
+    public boolean isBaiduRelatedUrl(String url) {
+        if (url == null) return false;
+
+        String lowerUrl = url.toLowerCase();
+        return lowerUrl.contains("baidu.com") ||
+               lowerUrl.contains("baidustatic.com") ||
+               lowerUrl.contains("bdstatic.com") ||
+               lowerUrl.contains("bdimg.com");
+    }
+
+    /**
      * 处理403错误的智能恢复
      */
     public String getRecoveryUserAgent(String failedUrl) {
@@ -585,8 +732,19 @@ public class UserAgentManager {
             return getNextYouTubeUserAgent();
         }
 
+        if (isBaiduRelatedUrl(failedUrl)) {
+            return getNextBaiduUserAgent();
+        }
+
         // 对于其他网站，使用备用策略
         return UA_CHROME_MAC; // 使用Mac版Chrome作为备用
+    }
+
+    /**
+     * 获取百度失败统计信息
+     */
+    public String getBaiduFailureStats() {
+        return "Baidu failures: " + baiduFailureCount + ", current UA index: " + currentBaiduUAIndex;
     }
 
     /**
