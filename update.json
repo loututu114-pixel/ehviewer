@@ -1,9 +1,9 @@
 {
-  "version": "1.9.9.17",
-  "versionCode": 111,
+  "version": "1.9.9.18",
+  "versionCode": 189918,
   "mustUpdate": false,
   "updateContent": {
-    "title": "EhViewer TUTU v1.9.9.17",
+    "title": "EhViewer TUTU v1.9.9.18",
     "content": [
       "🎨 全新的TUTU风格UI设计",
       "📱 完美适配手机、平板等多屏幕设备",
@@ -11,8 +11,10 @@
       "⚡ 提升加载速度和响应体验",
       "🎯 改进用户界面和交互体验",
       "📦 集成完整的漫画阅读功能",
-      "🌟 支持多种主题和自定义选项"
+      "🌟 支持多种主题和自定义选项",
+      "🔒 修复更新检查功能",
+      "📥 优化APK下载体验"
     ],
-    "fileDownloadUrl": "https://github.com/loututu114-pixel/ehviewer/releases/download/v1.9.9.17/EhViewer_TUTU_v1.9.9.17.apk"
+    "fileDownloadUrl": "https://github.com/loututu114-pixel/ehviewer/releases/download/v1.9.9.18/EhViewer_TUTU_v1.9.9.18.apk"
   }
 }
