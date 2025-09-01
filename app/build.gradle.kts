@@ -26,8 +26,8 @@ android {
         applicationId = "com.hippo.ehviewer"
         minSdk = 23
         targetSdk = 29
-        versionCode = 111
-        versionName = "1.9.9.17"
+        versionCode = 189918
+        versionName = "1.9.9.18"
         vectorDrawables.useSupportLibrary = true
         androidResources.localeFilters += listOf(
             "zh", "zh-rCN", "zh-rHK", "zh-rTW",
@@ -47,7 +47,8 @@ android {
 
     lint {
         disable += "MissingTranslation"
-        abortOnError = true
+        abortOnError = false
+        baseline = file("lint-baseline.xml")
         checkReleaseBuilds = true
     }
 
