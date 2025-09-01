@@ -21,6 +21,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.hippo.ehviewer.client.data.HistoryInfo;
@@ -36,8 +37,8 @@ public class HistoryManager {
     private static final int DATABASE_VERSION = 1;
     private static final String TABLE_HISTORY = "history";
 
-    // 历史记录最大数量
-    private static final int MAX_HISTORY_COUNT = 1000;
+    // 历史记录最大数量 - 限制为30条，保持历史记录简洁
+    private static final int MAX_HISTORY_COUNT = 30;
 
     private static HistoryManager sInstance;
     private final DatabaseHelper mDbHelper;
@@ -109,6 +110,14 @@ public class HistoryManager {
     public void clearAllHistory() {
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
         db.delete(TABLE_HISTORY, null, null);
+        Log.d("HistoryManager", "All history records cleared");
+    }
+
+    /**
+     * 获取历史记录限制数量
+     */
+    public int getMaxHistoryCount() {
+        return MAX_HISTORY_COUNT;
     }
 
     /**
@@ -199,12 +208,30 @@ public class HistoryManager {
 
     /**
      * 清理超出数量的历史记录
+     * 只保留最近的30条记录，自动删除更早的记录
      */
     private void cleanOldHistory(SQLiteDatabase db) {
-        // 保留最近的记录，删除超出数量的旧记录
-        String deleteSql = "DELETE FROM " + TABLE_HISTORY + " WHERE id NOT IN (" +
-                "SELECT id FROM " + TABLE_HISTORY + " ORDER BY visit_time DESC LIMIT " + MAX_HISTORY_COUNT + ")";
-        db.execSQL(deleteSql);
+        try {
+            // 检查当前记录数量
+            Cursor countCursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_HISTORY, null);
+            int currentCount = 0;
+            if (countCursor.moveToFirst()) {
+                currentCount = countCursor.getInt(0);
+            }
+            countCursor.close();
+
+            if (currentCount > MAX_HISTORY_COUNT) {
+                // 保留最近的记录，删除超出数量的旧记录
+                String deleteSql = "DELETE FROM " + TABLE_HISTORY + " WHERE id NOT IN (" +
+                        "SELECT id FROM " + TABLE_HISTORY + " ORDER BY visit_time DESC LIMIT " + MAX_HISTORY_COUNT + ")";
+                db.execSQL(deleteSql);
+
+                Log.d("HistoryManager", "Cleaned old history records: removed " + (currentCount - MAX_HISTORY_COUNT) +
+                      " records, kept " + MAX_HISTORY_COUNT + " recent records");
+            }
+        } catch (Exception e) {
+            Log.e("HistoryManager", "Error cleaning old history records", e);
+        }
     }
 
     /**

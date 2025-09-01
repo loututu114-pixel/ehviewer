@@ -183,20 +183,18 @@ public class TabsAdapter extends RecyclerView.Adapter<TabsAdapter.TabViewHolder>
         }
         
         /**
-         * 显示标签页上下文菜单
+         * 显示简单的标签页操作菜单
          */
         private void showTabContextMenu(TabsManagerActivity.TabInfo tab) {
             try {
                 String[] menuItems = {
-                    "关闭标签",
-                    "复制链接",
-                    "刷新页面",
-                    tab.isIncognito ? "移至普通标签" : "移至无痕标签"
+                    "关闭标签页",
+                    "复制链接"
                 };
-                
+
                 android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(mContext);
                 builder.setTitle(tab.title);
-                
+
                 builder.setItems(menuItems, (dialog, which) -> {
                     switch (which) {
                         case 0: // 关闭标签
@@ -207,17 +205,12 @@ public class TabsAdapter extends RecyclerView.Adapter<TabsAdapter.TabViewHolder>
                         case 1: // 复制链接
                             copyUrlToClipboard(tab.url);
                             break;
-                        case 2: // 刷新页面
-                            // TODO: 实现刷新功能
-                            break;
-                        case 3: // 切换模式
-                            // TODO: 实现模式切换
-                            break;
                     }
                 });
-                
+
+                builder.setNegativeButton("取消", null);
                 builder.show();
-                
+
             } catch (Exception e) {
                 Log.e(TAG, "Error showing context menu", e);
             }

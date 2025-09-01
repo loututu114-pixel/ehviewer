@@ -396,8 +396,8 @@
 
     <!-- 更新元数据 -->
     <string-array name="update_metadata">
-        <item>https://github.com/loututu114-pixel/ehviewer/releases/latest</item>
         <item>EhViewer</item>
+        <item>https://raw.githubusercontent.com/loututu114-pixel/ehviewer/main/update.json</item>
     </string-array>
 
     <!-- 历史记录保留时间选项 -->

@@ -22,10 +22,16 @@ import java.util.Map;
  * 3. 资源加载优化
  * 4. 安全策略执行
  * 5. 隐私保护
- * 6. 广告过滤
+ * 6. 广告过滤 (已禁用，避免过度拦截导致网页无法打开)
+ *
+ * 重要修改 (2024):
+ * - 默认禁用广告拦截，避免影响正常网站功能
+ * - 注释掉通用的广告域名拦截规则
+ * - 添加拦截器状态测试方法
+ * - 降低拦截强度以提高兼容性
  *
  * @author EhViewer Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class SmartRequestProcessor {
 
@@ -97,10 +103,12 @@ public class SmartRequestProcessor {
         requestRules.put("youtube.com", new RequestRule(true, true, videoHeaders, false));
         requestRules.put("googlevideo.com", new RequestRule(true, true, videoHeaders, false));
 
-        // 广告过滤规则
-        requestRules.put("adsystem.", new RequestRule(false, false, null, true));
-        requestRules.put("doubleclick.", new RequestRule(false, false, null, true));
-        requestRules.put("googlesyndication.", new RequestRule(false, false, null, true));
+        // 广告过滤规则 - 只拦截明确的广告域名，避免过度拦截
+        // 这些规则现在被禁用，因为可能导致正常网站功能异常
+        // 如需要恢复，请谨慎测试每个域名的影响
+        // requestRules.put("adsystem.amazon.com", new RequestRule(false, false, null, true));
+        // requestRules.put("doubleclick.net", new RequestRule(false, false, null, true));
+        // requestRules.put("googlesyndication.com", new RequestRule(false, false, null, true));
 
         Log.d(TAG, "Request rules initialized: " + requestRules.size() + " rules");
     }
@@ -327,5 +335,21 @@ public class SmartRequestProcessor {
     public void addRequestRule(String domain, RequestRule rule) {
         requestRules.put(domain, rule);
         Log.d(TAG, "Added custom request rule for: " + domain);
+    }
+
+    /**
+     * 测试方法：检查当前拦截器状态
+     */
+    public void testInterceptorStatus() {
+        Log.d(TAG, "=== INTERCEPTOR STATUS TEST ===");
+        Log.d(TAG, "AdBlock enabled: " + (adBlockManager != null ? adBlockManager.isAdBlockEnabled() : "null"));
+        Log.d(TAG, "Request rules count: " + requestRules.size());
+        Log.d(TAG, "Blocking rules:");
+        for (Map.Entry<String, RequestRule> entry : requestRules.entrySet()) {
+            if (entry.getValue().blockIfMatch) {
+                Log.d(TAG, "  BLOCK: " + entry.getKey());
+            }
+        }
+        Log.d(TAG, "=== END INTERCEPTOR STATUS TEST ===");
     }
 }

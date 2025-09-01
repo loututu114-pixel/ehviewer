@@ -65,6 +65,8 @@ import com.hippo.ehviewer.util.UserAgentManager;
 import com.hippo.ehviewer.util.BrowserCompatibilityManager;
 import com.hippo.ehviewer.util.ContentPurifierManager;
 import com.hippo.ehviewer.util.EroNovelDetector;
+import com.hippo.ehviewer.util.InterceptorDebugger;
+import com.hippo.ehviewer.util.HistoryLimitTester;
 import com.hippo.ehviewer.client.NovelLibraryManager;
 import com.hippo.util.ExceptionUtils;
 
@@ -119,6 +121,8 @@ public class WebViewActivity extends AppCompatActivity {
     private MemoryManager mMemoryManager;
     private ReadingModeManager mReadingModeManager;
     private EnhancedWebViewManager mEnhancedWebViewManager;
+    private InterceptorDebugger mInterceptorDebugger;
+    private HistoryLimitTester mHistoryTester;
 
     // 标签页管理
     private List<TabData> mTabs = new ArrayList<>();
@@ -192,6 +196,17 @@ public class WebViewActivity extends AppCompatActivity {
             // 注意：WebViewPoolManager.getInstance方法不存在，使用BrowserCoreManager替代
             mBrowserCoreManager = BrowserCoreManager.getInstance(this);
             mJavaScriptOptimizer = JavaScriptOptimizer.getInstance();
+
+            // 测试拦截器状态（用于调试）
+            if (mBrowserCoreManager.getRequestProcessor() != null) {
+                mBrowserCoreManager.getRequestProcessor().testInterceptorStatus();
+            }
+
+            // 初始化拦截器调试工具
+            mInterceptorDebugger = new InterceptorDebugger(this);
+
+            // 初始化历史记录测试工具
+            mHistoryTester = new HistoryLimitTester(this);
             mWebViewCacheManager = WebViewCacheManager.getInstance(this);
             mImageLazyLoader = ImageLazyLoader.getInstance();
             mMemoryManager = MemoryManager.getInstance(this);
@@ -1891,30 +1906,72 @@ public class WebViewActivity extends AppCompatActivity {
         if (manager == null) return;
 
         try {
-            // 暂时注释掉回调设置，避免接口兼容性问题
-            // TODO: 修复回调接口定义
-            /*
-            // 设置进度回调
-            manager.setProgressCallback((progress) -> {
-                runOnUiThread(() -> {
-                    if (mProgressBar != null) {
-                        mProgressBar.setProgress(progress);
-                        if (progress >= 100) {
-                            mProgressBar.setVisibility(View.GONE);
-                        } else {
-                            mProgressBar.setVisibility(View.VISIBLE);
+            // 设置进度回调 - 修复历史记录和标签标题问题
+            manager.setProgressCallback(new EnhancedWebViewManager.ProgressCallback() {
+                @Override
+                public void onProgressChanged(int progress) {
+                    runOnUiThread(() -> {
+                        if (mProgressBar != null) {
+                            mProgressBar.setProgress(progress);
+                            if (progress >= 100) {
+                                mProgressBar.setVisibility(View.GONE);
+                            } else {
+                                mProgressBar.setVisibility(View.VISIBLE);
+                            }
                         }
-                    }
-                });
+                    });
+                }
+
+                @Override
+                public void onPageStarted(String url) {
+                    runOnUiThread(() -> {
+                        android.util.Log.d("WebViewActivity", "Page started: " + url);
+                    });
+                }
+
+                @Override
+                public void onPageFinished(String url, String title) {
+                    runOnUiThread(() -> {
+                        android.util.Log.d("WebViewActivity", "Page finished: " + url + " Title: " + title);
+                        // 更新当前标签页的标题和URL
+                        updateCurrentTabInfo(url, title);
+                    });
+                }
+
+                @Override
+                public void onReceivedTitle(String title) {
+                    runOnUiThread(() -> {
+                        android.util.Log.d("WebViewActivity", "Received title: " + title);
+                        // 更新当前标签页的标题
+                        updateCurrentTabTitle(title);
+                    });
+                }
+
+                @Override
+                public void onReceivedFavicon(android.graphics.Bitmap favicon) {
+                    runOnUiThread(() -> {
+                        android.util.Log.d("WebViewActivity", "Received favicon");
+                        // 可以在这里处理favicon
+                    });
+                }
             });
 
             // 设置错误回调
-            manager.setErrorCallback((error) -> {
-                runOnUiThread(() -> {
-                    android.util.Log.e("WebViewActivity", "WebView error: " + error);
-                });
+            manager.setErrorCallback(new EnhancedWebViewManager.ErrorCallback() {
+                @Override
+                public void onReceivedError(int errorCode, String description, String failingUrl) {
+                    runOnUiThread(() -> {
+                        android.util.Log.e("WebViewActivity", "WebView error: " + errorCode + " - " + description + " - " + failingUrl);
+                    });
+                }
+
+                @Override
+                public void onReceivedHttpError(int statusCode, String reasonPhrase, String url) {
+                    runOnUiThread(() -> {
+                        android.util.Log.e("WebViewActivity", "HTTP error: " + statusCode + " - " + reasonPhrase + " - " + url);
+                    });
+                }
             });
-            */
 
             // 设置视频播放回调
             manager.setVideoPlaybackCallback(new EnhancedWebViewManager.VideoPlaybackCallback() {
@@ -2672,9 +2729,14 @@ public class WebViewActivity extends AppCompatActivity {
     private void showHistoryListDialog() {
         try {
             if (mHistoryManager != null) {
+                // 显示历史记录统计信息
+                int totalHistory = mHistoryManager.getHistoryCount();
+                int maxHistory = mHistoryManager.getMaxHistoryCount();
+                android.util.Log.d("WebViewActivity", "History stats: " + totalHistory + "/" + maxHistory + " records");
+
                 // 获取最近30条历史记录
                 java.util.List<com.hippo.ehviewer.client.data.HistoryInfo> historyList = mHistoryManager.getRecentHistory(30);
-                
+
                 if (historyList.isEmpty()) {
                     android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
                     builder.setTitle("历史记录");
@@ -2683,6 +2745,9 @@ public class WebViewActivity extends AppCompatActivity {
                     builder.show();
                     return;
                 }
+
+                // 创建带统计信息的标题
+                String titleWithStats = "历史记录 (" + totalHistory + "/" + maxHistory + ")";
                 
                 // 创建简洁的历史记录列表
                 String[] historyTitles = new String[historyList.size()];
@@ -2732,7 +2797,7 @@ public class WebViewActivity extends AppCompatActivity {
                 }
                 
                 android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-                builder.setTitle("历史记录 (最近" + historyList.size() + "条)");
+                builder.setTitle(titleWithStats);
                 
                 // 历史记录列表点击事件
                 builder.setItems(historyTitles, (dialog, which) -> {
@@ -3467,6 +3532,49 @@ public class WebViewActivity extends AppCompatActivity {
         } catch (Exception e) {
             android.util.Log.e("WebViewActivity", "Error creating tab with HTML content", e);
             ExceptionUtils.throwIfFatal(e);
+        }
+    }
+
+    /**
+     * 更新当前标签页的标题和URL
+     */
+    private void updateCurrentTabInfo(String url, String title) {
+        try {
+            if (mCurrentTabIndex >= 0 && mCurrentTabIndex < mTabs.size()) {
+                TabData currentTab = mTabs.get(mCurrentTabIndex);
+                if (currentTab != null) {
+                    currentTab.url = url;
+                    currentTab.title = title != null && !title.isEmpty() ? title : url;
+
+                    android.util.Log.d("WebViewActivity", "Updated tab info - Title: " + currentTab.title + ", URL: " + currentTab.url);
+
+                    // 更新UI显示
+                    updateTabUI();
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error updating current tab info", e);
+        }
+    }
+
+    /**
+     * 更新当前标签页的标题
+     */
+    private void updateCurrentTabTitle(String title) {
+        try {
+            if (mCurrentTabIndex >= 0 && mCurrentTabIndex < mTabs.size()) {
+                TabData currentTab = mTabs.get(mCurrentTabIndex);
+                if (currentTab != null) {
+                    currentTab.title = title != null && !title.isEmpty() ? title : currentTab.url;
+
+                    android.util.Log.d("WebViewActivity", "Updated tab title: " + currentTab.title);
+
+                    // 更新UI显示
+                    updateTabUI();
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error updating current tab title", e);
         }
     }
 
