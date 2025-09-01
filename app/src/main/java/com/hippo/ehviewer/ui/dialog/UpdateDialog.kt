@@ -105,7 +105,8 @@ class UpdateDialog(private val activity: Activity) {
         downloadUrl: String,
         version: String
     ) {
-        val uri = GITHUB_README_URL.toUri()
+        // 直接跳转到下载链接，让用户手动下载
+        val uri = downloadUrl.toUri()
         val intent = Intent(Intent.ACTION_VIEW, uri)
         activity.startActivity(intent)
         dialog?.dismiss()
