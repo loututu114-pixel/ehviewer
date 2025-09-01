@@ -144,9 +144,10 @@ public class UserAgentManager {
         put("hulu.com", UA_CHROME_DESKTOP);
 
         // 成人网站 - 移动版（根据统计数据，移动设备占比80-90%）
-        put("pornhub.com", UA_CHROME_MOBILE);
-        put("xvideos.com", UA_CHROME_MOBILE);
-        put("xhamster.com", UA_CHROME_MOBILE);
+        // 注意：xvideos.com, pornhub.com, xhamster.com 已在上面的视频网站部分定义为桌面版
+        // put("pornhub.com", UA_CHROME_MOBILE); // 重复定义，已删除
+        // put("xvideos.com", UA_CHROME_MOBILE); // 重复定义，已删除
+        // put("xhamster.com", UA_CHROME_MOBILE); // 重复定义，已删除
         put("xnxx.com", UA_CHROME_MOBILE);
         put("onlyfans.com", UA_CHROME_MOBILE);
         put("xvideos.es", UA_CHROME_MOBILE);
