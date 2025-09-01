@@ -20,6 +20,12 @@ import com.hippo.util.ExceptionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import com.google.android.material.tabs.TabLayout;
 
 /**
  * 多标签管理界面
@@ -55,7 +61,14 @@ public class TabsManagerActivity extends AppCompatActivity {
     private List<TabInfo> mIncognitoTabs = new ArrayList<>();
     private boolean mShowingIncognito = false;
     
-    // 标签页数据类
+    // 分组和分类功能
+    private TabLayout mCategoryTabs;
+    private Spinner mGroupSpinner;
+    private String mCurrentCategory = "all";
+    private String mCurrentGroup = "";
+    private boolean mGroupingMode = false;
+    
+    // 增强的标签页数据类
     public static class TabInfo {
         public String title = "新标签页";
         public String url = "about:blank";
@@ -64,9 +77,52 @@ public class TabsManagerActivity extends AppCompatActivity {
         public boolean isIncognito = false;
         public boolean isActive = false;
         public int tabId;
+        public String category = "default";  // 分类
+        public String group = "";  // 组
+        public int color = 0;  // 标签颜色
+        public long createTime = System.currentTimeMillis();
+        public long lastVisitTime = System.currentTimeMillis();
         
         public TabInfo(int tabId) {
             this.tabId = tabId;
+        }
+        
+        // 获取域名
+        public String getDomain() {
+            if (url == null || url.isEmpty() || url.equals("about:blank")) {
+                return "";
+            }
+            try {
+                java.net.URL urlObj = new java.net.URL(url);
+                return urlObj.getHost();
+            } catch (Exception e) {
+                return url;
+            }
+        }
+        
+        // 获取智能分类
+        public String getSmartCategory() {
+            String domain = getDomain();
+            if (domain.isEmpty()) {
+                return "default";
+            }
+            
+            if (domain.contains("youtube.com") || domain.contains("youtu.be") || 
+                domain.contains("bilibili.com") || domain.contains("tiktok.com")) {
+                return "video";
+            } else if (domain.contains("github.com") || domain.contains("stackoverflow.com") ||
+                      domain.contains("developer")) {
+                return "development";
+            } else if (domain.contains("news") || domain.contains("新闻")) {
+                return "news";
+            } else if (domain.contains("shop") || domain.contains("buy") ||
+                      domain.contains("mall") || domain.contains("购物")) {
+                return "shopping";
+            } else if (domain.contains("social") || domain.contains("facebook") ||
+                      domain.contains("twitter") || domain.contains("weibo")) {
+                return "social";
+            }
+            return "default";
         }
     }
     
@@ -120,6 +176,16 @@ public class TabsManagerActivity extends AppCompatActivity {
         
         mCloseAllButton = findViewById(R.id.close_all_button);
         mNewIncognitoTabButton = findViewById(R.id.new_incognito_tab_button);
+        
+        // 初始化分组和分类控件
+        mCategoryTabs = findViewById(R.id.category_tabs);
+        mGroupSpinner = findViewById(R.id.group_spinner);
+        
+        // 初始化分类标签
+        setupCategoryTabs();
+        
+        // 初始化分组选择器
+        setupGroupSpinner();
         
         Log.d(TAG, "Views initialized");
     }
@@ -237,9 +303,9 @@ public class TabsManagerActivity extends AppCompatActivity {
                 mBottomActions.setVisibility(View.VISIBLE);
             }
             
-            // 更新适配器
+            // 更新适配器（使用过滤后的数据）
             if (mTabsAdapter != null) {
-                mTabsAdapter.updateTabs(currentTabs);
+                updateFilteredTabs(); // 使用过滤系统而不是直接更新
             }
             
             Log.d(TAG, "UI updated: " + tabCount + " tabs, showing incognito: " + mShowingIncognito);
@@ -387,7 +453,9 @@ public class TabsManagerActivity extends AppCompatActivity {
             String[] menuItems = {
                 "关闭所有标签",
                 "关闭其他标签", 
+                "自动智能分组",
                 "新建无痕标签",
+                "清除所有分组",
                 "设置"
             };
             
@@ -402,10 +470,16 @@ public class TabsManagerActivity extends AppCompatActivity {
                     case 1: // 关闭其他标签
                         closeOtherTabs();
                         break;
-                    case 2: // 新建无痕标签
+                    case 2: // 自动智能分组
+                        autoGroupSimilarTabs();
+                        break;
+                    case 3: // 新建无痕标签
                         createNewTab(true);
                         break;
-                    case 3: // 设置
+                    case 4: // 清除所有分组
+                        clearAllGroups();
+                        break;
+                    case 5: // 设置
                         // TODO: 打开设置页面
                         break;
                 }
@@ -449,6 +523,198 @@ public class TabsManagerActivity extends AppCompatActivity {
             
         } catch (Exception e) {
             Log.e(TAG, "Error closing other tabs", e);
+        }
+    }
+    
+    /**
+     * 初始化分类标签
+     */
+    private void setupCategoryTabs() {
+        try {
+            mCategoryTabs.removeAllTabs();
+            
+            // 添加基础分类
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("全部").setTag("all"));
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("默认").setTag("default"));
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("视频").setTag("video"));
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("开发").setTag("development"));
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("新闻").setTag("news"));
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("购物").setTag("shopping"));
+            mCategoryTabs.addTab(mCategoryTabs.newTab().setText("社交").setTag("social"));
+            
+            // 设置选中监听器
+            mCategoryTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+                @Override
+                public void onTabSelected(TabLayout.Tab tab) {
+                    mCurrentCategory = (String) tab.getTag();
+                    updateFilteredTabs();
+                }
+                
+                @Override
+                public void onTabUnselected(TabLayout.Tab tab) {}
+                
+                @Override
+                public void onTabReselected(TabLayout.Tab tab) {}
+            });
+            
+            Log.d(TAG, "Category tabs setup completed");
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up category tabs", e);
+        }
+    }
+    
+    /**
+     * 初始化分组选择器
+     */
+    private void setupGroupSpinner() {
+        try {
+            List<String> groups = new ArrayList<>();
+            groups.add("全部分组");
+            
+            // 获取所有分组
+            List<TabInfo> currentTabs = getCurrentTabsList();
+            Map<String, Integer> groupCounts = new HashMap<>();
+            for (TabInfo tab : currentTabs) {
+                if (tab.group != null && !tab.group.isEmpty()) {
+                    groupCounts.put(tab.group, groupCounts.getOrDefault(tab.group, 0) + 1);
+                }
+            }
+            
+            for (Map.Entry<String, Integer> entry : groupCounts.entrySet()) {
+                groups.add(entry.getKey() + " (" + entry.getValue() + ")");
+            }
+            
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, 
+                android.R.layout.simple_spinner_item, groups);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            mGroupSpinner.setAdapter(adapter);
+            
+            // 设置选中监听器
+            mGroupSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
+                    if (position == 0) {
+                        mCurrentGroup = "";
+                    } else {
+                        String selectedItem = (String) parent.getItemAtPosition(position);
+                        mCurrentGroup = selectedItem.split(" ")[0]; // 只取分组名，去除数量
+                    }
+                    updateFilteredTabs();
+                }
+                
+                @Override
+                public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            });
+            
+            Log.d(TAG, "Group spinner setup completed");
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up group spinner", e);
+        }
+    }
+    
+    /**
+     * 根据分类和分组过滤标签页
+     */
+    private void updateFilteredTabs() {
+        try {
+            List<TabInfo> allTabs = getCurrentTabsList();
+            List<TabInfo> filteredTabs = new ArrayList<>();
+            
+            for (TabInfo tab : allTabs) {
+                boolean matchCategory = true;
+                boolean matchGroup = true;
+                
+                // 分类过滤
+                if (!"all".equals(mCurrentCategory)) {
+                    String tabCategory = tab.category != null ? tab.category : tab.getSmartCategory();
+                    matchCategory = mCurrentCategory.equals(tabCategory);
+                }
+                
+                // 分组过滤
+                if (!mCurrentGroup.isEmpty()) {
+                    matchGroup = mCurrentGroup.equals(tab.group);
+                }
+                
+                if (matchCategory && matchGroup) {
+                    filteredTabs.add(tab);
+                }
+            }
+            
+            if (mTabsAdapter != null) {
+                mTabsAdapter.updateTabs(filteredTabs);
+            }
+            
+            // 更新空状态
+            if (filteredTabs.isEmpty()) {
+                mTabsRecyclerView.setVisibility(View.GONE);
+                mEmptyState.setVisibility(View.VISIBLE);
+                mBottomActions.setVisibility(View.GONE);
+            } else {
+                mTabsRecyclerView.setVisibility(View.VISIBLE);
+                mEmptyState.setVisibility(View.GONE);
+                mBottomActions.setVisibility(View.VISIBLE);
+            }
+            
+            Log.d(TAG, "Filtered tabs: " + filteredTabs.size() + " / " + allTabs.size());
+        } catch (Exception e) {
+            Log.e(TAG, "Error filtering tabs", e);
+        }
+    }
+    
+    /**
+     * 自动分组相似标签页
+     */
+    private void autoGroupSimilarTabs() {
+        try {
+            List<TabInfo> currentTabs = getCurrentTabsList();
+            Map<String, List<TabInfo>> domainMap = new HashMap<>();
+            
+            // 按域名分组
+            for (TabInfo tab : currentTabs) {
+                String domain = tab.getDomain();
+                if (!domain.isEmpty()) {
+                    domainMap.computeIfAbsent(domain, k -> new ArrayList<>()).add(tab);
+                }
+            }
+            
+            // 为有多个标签页的域名创建分组
+            for (Map.Entry<String, List<TabInfo>> entry : domainMap.entrySet()) {
+                List<TabInfo> tabs = entry.getValue();
+                if (tabs.size() >= 2) {
+                    String groupName = entry.getKey();
+                    for (TabInfo tab : tabs) {
+                        tab.group = groupName;
+                    }
+                    Log.d(TAG, "Auto-grouped " + tabs.size() + " tabs under '" + groupName + "'");
+                }
+            }
+            
+            // 重新初始化分组选择器和更新UI
+            setupGroupSpinner();
+            updateFilteredTabs();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error auto-grouping tabs", e);
+        }
+    }
+    
+    /**
+     * 清除所有分组
+     */
+    private void clearAllGroups() {
+        try {
+            List<TabInfo> currentTabs = getCurrentTabsList();
+            for (TabInfo tab : currentTabs) {
+                tab.group = "";
+            }
+            
+            // 重新初始化分组选择器和更新UI
+            setupGroupSpinner();
+            updateFilteredTabs();
+            
+            Log.d(TAG, "All groups cleared");
+        } catch (Exception e) {
+            Log.e(TAG, "Error clearing groups", e);
         }
     }
     

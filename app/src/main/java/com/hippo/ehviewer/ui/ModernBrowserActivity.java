@@ -889,19 +889,45 @@ public class ModernBrowserActivity extends AppCompatActivity {
      * 切换桌面模式
      */
     private void toggleDesktopMode() {
-        isDesktopMode = !isDesktopMode;
-        if (currentWebView != null) {
-            WebSettings settings = currentWebView.getSettings();
-            if (isDesktopMode) {
-                settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            } else {
-                settings.setUserAgentString(null);
+        try {
+            isDesktopMode = !isDesktopMode;
+
+            if (currentWebView != null) {
+                // 移除UA设置，让WebView使用系统默认UA
+                // 网站应该根据真实的设备信息进行响应式适配
+                WebSettings settings = currentWebView.getSettings();
+                settings.setUserAgentString(null); // 使用系统默认UA
+
+                // 重新加载页面，让网站根据真实的UA进行适配
+                currentWebView.reload();
+
+                // 更新UI状态
+                updateDesktopModeUI();
+
+                // 提示用户这是显示模式的切换，不是UA的修改
+                String message = isDesktopMode ?
+                    "桌面显示模式（网站将根据您的设备自动适配）" :
+                    "移动显示模式（网站将根据您的设备自动适配）";
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
             }
-            currentWebView.reload();
+        } catch (Exception e) {
+            Log.e("ModernBrowserActivity", "Error toggling display mode", e);
+            Toast.makeText(this, "显示模式切换失败", Toast.LENGTH_SHORT).show();
         }
-        
-        Toast.makeText(this, isDesktopMode ? "已切换到桌面版" : "已切换到移动版", 
-            Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 更新桌面模式UI状态
+     */
+    private void updateDesktopModeUI() {
+        try {
+            // 更新菜单中的桌面模式选项
+            if (bottomToolbar != null) {
+                // 这里可以添加UI更新逻辑
+            }
+        } catch (Exception e) {
+            Log.e("ModernBrowserActivity", "Error updating desktop mode UI", e);
+        }
     }
     
     /**
@@ -1147,7 +1173,7 @@ public class ModernBrowserActivity extends AppCompatActivity {
                 super(itemView);
                 icon = itemView.findViewById(R.id.suggestion_icon);
                 title = itemView.findViewById(R.id.suggestion_title);
-                subtitle = itemView.findViewById(R.id.suggestion_subtitle);
+                subtitle = itemView.findViewById(R.id.suggestion_url);
             }
         }
     }

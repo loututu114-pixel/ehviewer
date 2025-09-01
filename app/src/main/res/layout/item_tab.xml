@@ -2,13 +2,13 @@
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="120dp"
-    android:layout_marginStart="4dp"
-    android:layout_marginEnd="4dp"
+    android:layout_height="88dp"
+    android:layout_marginStart="6dp"
+    android:layout_marginEnd="6dp"
     android:layout_marginTop="4dp"
     android:layout_marginBottom="4dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="3dp"
     app:cardBackgroundColor="?android:attr/colorBackground">
 
     <RelativeLayout
@@ -22,29 +22,29 @@
         <ImageView
             android:id="@+id/tab_preview"
             android:layout_width="match_parent"
-            android:layout_height="80dp"
+            android:layout_height="52dp"
             android:layout_alignParentTop="true"
             android:scaleType="centerCrop"
-            android:background="#F5F5F5"
+            android:background="#F8F9FA"
             android:contentDescription="页面预览" />
 
         <!-- 无痕模式遮罩 -->
         <View
             android:id="@+id/incognito_overlay"
             android:layout_width="match_parent"
-            android:layout_height="80dp"
+            android:layout_height="52dp"
             android:layout_alignParentTop="true"
-            android:background="#CC333333"
+            android:background="#DD2C2C2C"
             android:visibility="gone" />
 
         <!-- 无痕模式图标 -->
         <ImageView
             android:id="@+id/incognito_icon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_centerInParent="true"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_centerHorizontal="true"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="17dp"
             android:src="@drawable/ic_lock"
             android:tint="@android:color/white"
             android:visibility="gone"
@@ -53,34 +53,34 @@
         <!-- 关闭按钮 -->
         <ImageButton
             android:id="@+id/close_button"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
-            android:layout_margin="4dp"
+            android:layout_margin="6dp"
             android:background="@drawable/tab_close_background"
             android:contentDescription="关闭标签"
             android:src="@drawable/v_close_dark_x24"
             android:tint="@android:color/white"
             android:scaleType="centerInside"
-            android:padding="6dp" />
+            android:padding="4dp" />
 
         <!-- 底部信息区域 -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
             android:layout_alignParentBottom="true"
             android:background="?android:attr/colorBackground"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp">
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
 
             <!-- 网站图标 -->
             <ImageView
                 android:id="@+id/tab_favicon"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:layout_marginEnd="8dp"
                 android:src="@drawable/ic_web"
                 android:scaleType="centerInside"
@@ -91,14 +91,15 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:layout_centerVertical="true">
 
                 <TextView
                     android:id="@+id/tab_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="新标签页"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="?android:attr/textColorPrimary"
                     android:singleLine="true"
@@ -113,16 +114,17 @@
                     android:textColor="?android:attr/textColorSecondary"
                     android:singleLine="true"
                     android:ellipsize="end"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="1dp"
+                    android:alpha="0.8" />
 
             </LinearLayout>
 
             <!-- 活跃标识 -->
             <View
                 android:id="@+id/active_indicator"
-                android:layout_width="4dp"
-                android:layout_height="20dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="3dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="6dp"
                 android:background="?attr/colorPrimary"
                 android:visibility="gone" />
 

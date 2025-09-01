@@ -1,64 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="?android:attr/windowBackground">
 
-    <!-- 标题栏 -->
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
+    <!-- App Bar Layout -->
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
+        android:layout_height="wrap_content"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:popupTheme="?attr/toolbarPopupTheme"
-        android:elevation="4dp" />
+        app:elevation="2dp">
 
-    <!-- 历史记录列表 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_view"
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:popupTheme="?attr/toolbarPopupTheme"
+            app:titleTextColor="@android:color/white" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- 主内容区域 -->
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:scrollbars="vertical"
-        android:padding="8dp" />
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- 历史记录列表 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:scrollbars="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="16dp"
+            android:clipToPadding="false" />
+
+    </androidx.core.widget.NestedScrollView>
 
     <!-- 空状态 -->
     <LinearLayout
         android:id="@+id/empty_view"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
         android:padding="32dp"
-        android:visibility="gone">
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:src="@drawable/v_history_black_x24"
-            android:alpha="0.5"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@drawable/ic_history"
+            android:tint="?android:attr/textColorTertiary"
+            android:alpha="0.6"
             android:layout_marginBottom="16dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/no_browser_history"
+            android:text="暂无浏览历史"
             android:textSize="18sp"
             android:textColor="?android:attr/textColorSecondary"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="8dp"
+            android:fontFamily="sans-serif-medium" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/no_browser_history_hint"
+            android:text="开始浏览网页后，此处将显示你的访问记录"
             android:textSize="14sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:gravity="center" />
+            android:textColor="?android:attr/textColorTertiary"
+            android:gravity="center"
+            android:alpha="0.8" />
 
     </LinearLayout>
 
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

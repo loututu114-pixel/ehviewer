@@ -72,31 +72,31 @@ public class SecurityManager {
         try {
             WebSettings settings = webView.getSettings();
 
-            // 基础安全设置
-            settings.setAllowFileAccess(false);
-            settings.setAllowFileAccessFromFileURLs(false);
-            settings.setAllowUniversalAccessFromFileURLs(false);
-            settings.setAllowContentAccess(false);
+            // 关闭限制性安全设置，确保最大兼容性
+            settings.setAllowFileAccess(true);
+            settings.setAllowFileAccessFromFileURLs(true);
+            settings.setAllowUniversalAccessFromFileURLs(true);
+            settings.setAllowContentAccess(true);
 
-            // JavaScript安全
-            settings.setJavaScriptEnabled(true); // 启用但会过滤恶意代码
-            settings.setJavaScriptCanOpenWindowsAutomatically(false);
+            // JavaScript安全（允许完全支持）
+            settings.setJavaScriptEnabled(true);
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
 
-            // 插件安全
-            settings.setPluginState(WebSettings.PluginState.OFF);
+            // 插件安全（允许插件以提高兼容性）
+            settings.setPluginState(WebSettings.PluginState.ON);
 
             // 数据库和存储安全
             settings.setDatabaseEnabled(true);
             settings.setDomStorageEnabled(true);
 
-            // 地理位置安全（默认禁用，需要用户授权）
-            settings.setGeolocationEnabled(false);
+            // 地理位置安全（允许以提高兼容性）
+            settings.setGeolocationEnabled(true);
 
-            // 混合内容处理
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+            // 混合内容处理（允许所有混合内容以确保兼容性）
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-            // 密码保存安全
-            settings.setSavePassword(false);
+            // 密码保存安全（允许以提高用户体验）
+            settings.setSavePassword(true);
             settings.setSaveFormData(false);
 
             // 第三方Cookie控制

@@ -17,6 +17,7 @@
 package com.hippo.ehviewer.client;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -24,8 +25,13 @@ import android.webkit.WebViewClient;
 import androidx.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 /**
  * 广告拦截管理器
@@ -286,8 +292,21 @@ public class AdBlockManager {
 
     private static AdBlockManager sInstance;
     private boolean mAdBlockEnabled = true;
+    private Context mContext;
+    
+    // 元素屏蔽相关
+    private Map<String, Set<String>> mBlockedElements = new HashMap<>(); // domain -> set of CSS selectors
+    private SharedPreferences mPrefs;
+    private static final String PREF_NAME = "ad_block_elements";
+    private static final String PREF_KEY_PREFIX = "blocked_";
 
     private AdBlockManager() {
+    }
+    
+    public void initialize(Context context) {
+        mContext = context.getApplicationContext();
+        mPrefs = mContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        loadBlockedElements();
     }
 
     public static synchronized AdBlockManager getInstance() {
@@ -349,6 +368,208 @@ public class AdBlockManager {
         }
 
         return false;
+    }
+    
+    /**
+     * 添加被屏蔽的元素
+     */
+    public void addBlockedElement(String domain, String cssSelector) {
+        if (domain == null || cssSelector == null || cssSelector.trim().isEmpty()) {
+            return;
+        }
+        
+        domain = normalizeDomain(domain);
+        
+        Set<String> selectors = mBlockedElements.get(domain);
+        if (selectors == null) {
+            selectors = new HashSet<>();
+            mBlockedElements.put(domain, selectors);
+        }
+        
+        selectors.add(cssSelector.trim());
+        saveBlockedElements(domain);
+        
+        android.util.Log.d(TAG, "Added blocked element for " + domain + ": " + cssSelector);
+    }
+    
+    /**
+     * 移除被屏蔽的元素
+     */
+    public void removeBlockedElement(String domain, String cssSelector) {
+        if (domain == null || cssSelector == null) {
+            return;
+        }
+        
+        domain = normalizeDomain(domain);
+        
+        Set<String> selectors = mBlockedElements.get(domain);
+        if (selectors != null) {
+            selectors.remove(cssSelector.trim());
+            if (selectors.isEmpty()) {
+                mBlockedElements.remove(domain);
+                mPrefs.edit().remove(PREF_KEY_PREFIX + domain).apply();
+            } else {
+                saveBlockedElements(domain);
+            }
+        }
+        
+        android.util.Log.d(TAG, "Removed blocked element for " + domain + ": " + cssSelector);
+    }
+    
+    /**
+     * 获取某个域名的所有被屏蔽元素
+     */
+    public Set<String> getBlockedElements(String domain) {
+        if (domain == null) {
+            return new HashSet<>();
+        }
+        
+        domain = normalizeDomain(domain);
+        Set<String> selectors = mBlockedElements.get(domain);
+        return selectors != null ? new HashSet<>(selectors) : new HashSet<>();
+    }
+    
+    /**
+     * 获取所有被屏蔽元素的域名列表
+     */
+    public Set<String> getBlockedDomains() {
+        return new HashSet<>(mBlockedElements.keySet());
+    }
+    
+    /**
+     * 清除所有被屏蔽的元素
+     */
+    public void clearAllBlockedElements() {
+        mBlockedElements.clear();
+        // 清除SharedPreferences中的所有屏蔽元素数据
+        SharedPreferences.Editor editor = mPrefs.edit();
+        Map<String, ?> allPrefs = mPrefs.getAll();
+        for (String key : allPrefs.keySet()) {
+            if (key.startsWith(PREF_KEY_PREFIX)) {
+                editor.remove(key);
+            }
+        }
+        editor.apply();
+        
+        android.util.Log.d(TAG, "Cleared all blocked elements");
+    }
+    
+    /**
+     * 清除某个域名的所有被屏蔽元素
+     */
+    public void clearBlockedElements(String domain) {
+        if (domain == null) {
+            return;
+        }
+        
+        domain = normalizeDomain(domain);
+        
+        if (mBlockedElements.containsKey(domain)) {
+            mBlockedElements.remove(domain);
+            mPrefs.edit().remove(PREF_KEY_PREFIX + domain).apply();
+            android.util.Log.d(TAG, "Cleared blocked elements for domain: " + domain);
+        }
+    }
+    
+    /**
+     * 生成CSS屏蔽代码
+     */
+    public String generateBlockCSS(String domain) {
+        if (domain == null) {
+            return "";
+        }
+        
+        domain = normalizeDomain(domain);
+        Set<String> selectors = mBlockedElements.get(domain);
+        
+        if (selectors == null || selectors.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder css = new StringBuilder();
+        for (String selector : selectors) {
+            css.append(selector).append(",\n");
+        }
+        
+        // 移除最后的逗号和换行
+        if (css.length() > 0) {
+            css.setLength(css.length() - 2);
+            css.append(" { display: none !important; visibility: hidden !important; }");
+        }
+        
+        return css.toString();
+    }
+    
+    /**
+     * 标准化域名
+     */
+    public String normalizeDomain(String domain) {
+        if (domain == null) {
+            return "";
+        }
+        
+        // 移除协议和路径
+        domain = domain.replaceAll("^https?://", "");
+        domain = domain.replaceAll("/.*$", "");
+        
+        // 移除www前缀
+        if (domain.startsWith("www.")) {
+            domain = domain.substring(4);
+        }
+        
+        return domain.toLowerCase();
+    }
+    
+    /**
+     * 加载被屏蔽元素
+     */
+    private void loadBlockedElements() {
+        Map<String, ?> allPrefs = mPrefs.getAll();
+        for (Map.Entry<String, ?> entry : allPrefs.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(PREF_KEY_PREFIX)) {
+                String domain = key.substring(PREF_KEY_PREFIX.length());
+                String selectorsStr = (String) entry.getValue();
+                
+                Set<String> selectors = new HashSet<>();
+                if (selectorsStr != null && !selectorsStr.isEmpty()) {
+                    String[] selectorArray = selectorsStr.split("\\|\\|\\|"); // 使用三个管道符作为分隔符
+                    for (String selector : selectorArray) {
+                        if (!selector.trim().isEmpty()) {
+                            selectors.add(selector.trim());
+                        }
+                    }
+                }
+                
+                if (!selectors.isEmpty()) {
+                    mBlockedElements.put(domain, selectors);
+                }
+            }
+        }
+        
+        android.util.Log.d(TAG, "Loaded blocked elements for " + mBlockedElements.size() + " domains");
+    }
+    
+    /**
+     * 保存被屏蔽元素
+     */
+    private void saveBlockedElements(String domain) {
+        Set<String> selectors = mBlockedElements.get(domain);
+        if (selectors == null || selectors.isEmpty()) {
+            mPrefs.edit().remove(PREF_KEY_PREFIX + domain).apply();
+            return;
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (String selector : selectors) {
+            sb.append(selector).append("|||"); // 使用三个管道符作为分隔符
+        }
+        
+        if (sb.length() > 0) {
+            sb.setLength(sb.length() - 3); // 移除最后的分隔符
+        }
+        
+        mPrefs.edit().putString(PREF_KEY_PREFIX + domain, sb.toString()).apply();
     }
 
     /**

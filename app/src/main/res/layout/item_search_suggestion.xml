@@ -34,12 +34,23 @@
             android:ellipsize="end" />
         
         <TextView
-            android:id="@+id/suggestion_subtitle"
+            android:id="@+id/suggestion_url"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="www.example.com"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            android:visibility="gone" />
+            
+        <TextView
+            android:id="@+id/suggestion_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Description"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
             android:singleLine="true"
             android:ellipsize="end"
             android:visibility="gone" />

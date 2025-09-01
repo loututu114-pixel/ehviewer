@@ -23,38 +23,30 @@
     <!-- TextAppearance -->
     <style name="TextAppearance" parent="TextAppearance.AppCompat"></style>
 
-    <!-- 🎨 卡通风格字体样式 -->
-    <style name="TextAppearance.CartoonTitle" parent="TextAppearance.AppCompat">
+    <!-- 🎨 现代化纯色字体样式 -->
+    <style name="TextAppearance.ModernTitle" parent="TextAppearance.AppCompat">
         <item name="android:textSize">@dimen/text_cartoon_title</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/cartoon_title_color</item>
-        <item name="android:letterSpacing">0.03</item>
-        <item name="android:lineSpacingExtra">4dp</item>
-        <item name="android:shadowColor">@color/cartoon_shadow</item>
-        <item name="android:shadowDx">1</item>
-        <item name="android:shadowDy">1</item>
-        <item name="android:shadowRadius">2</item>
+        <item name="android:textColor">@color/modern_on_surface</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:lineSpacingExtra">2dp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
-    <style name="TextAppearance.CartoonSubtitle" parent="TextAppearance.AppCompat">
+    <style name="TextAppearance.ModernSubtitle" parent="TextAppearance.AppCompat">
         <item name="android:textSize">@dimen/text_cartoon_subtitle</item>
         <item name="android:textStyle">normal</item>
-        <item name="android:textColor">@color/cartoon_subtitle_color</item>
-        <item name="android:letterSpacing">0.02</item>
-        <item name="android:lineSpacingExtra">2dp</item>
-        <item name="android:shadowColor">@color/cartoon_shadow_light</item>
-        <item name="android:shadowDx">0.5</item>
-        <item name="android:shadowDy">0.5</item>
-        <item name="android:shadowRadius">1</item>
-        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="android:textColor">@color/modern_on_surface_variant</item>
+        <item name="android:letterSpacing">0.005</item>
+        <item name="android:lineSpacingExtra">1dp</item>
+        <item name="android:fontFamily">sans-serif</item>
     </style>
 
-    <style name="TextAppearance.CartoonCaption" parent="TextAppearance.AppCompat">
+    <style name="TextAppearance.ModernCaption" parent="TextAppearance.AppCompat">
         <item name="android:textSize">@dimen/text_cartoon_caption</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/cartoon_caption_color</item>
-        <item name="android:letterSpacing">0.04</item>
+        <item name="android:textColor">@color/modern_on_surface_variant</item>
+        <item name="android:letterSpacing">0.01</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
@@ -64,11 +56,7 @@
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">@android:color/white</item>
         <item name="android:textAllCaps">false</item>
-        <item name="android:letterSpacing">0.02</item>
-        <item name="android:shadowColor">@color/cartoon_shadow_dark</item>
-        <item name="android:shadowDx">1</item>
-        <item name="android:shadowDy">1</item>
-        <item name="android:shadowRadius">1</item>
+        <item name="android:letterSpacing">0.01</item>
     </style>
 
     <style name="TextAppearance.ButtonSecondary">
@@ -79,17 +67,13 @@
         <item name="android:letterSpacing">0.01</item>
     </style>
 
-    <!-- 卡通按钮样式 -->
-    <style name="TextAppearance.CartoonButton">
+    <!-- 现代化按钮样式 -->
+    <style name="TextAppearance.ModernButton">
         <item name="android:textSize">@dimen/text_cartoon_button</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">?android:attr/textColorPrimary</item>
         <item name="android:textAllCaps">false</item>
-        <item name="android:letterSpacing">0.02</item>
-        <item name="android:shadowColor">@color/cartoon_shadow_light</item>
-        <item name="android:shadowDx">1</item>
-        <item name="android:shadowDy">1</item>
-        <item name="android:shadowRadius">2</item>
+        <item name="android:letterSpacing">0.01</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 

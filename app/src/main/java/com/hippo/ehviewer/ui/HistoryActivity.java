@@ -317,6 +317,7 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
             private final TextView mTitleView;
             private final TextView mUrlView;
             private final TextView mTimeView;
+            private final ImageView mMenuButton;
 
             HistoryViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -324,6 +325,7 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
                 mTitleView = itemView.findViewById(R.id.title_view);
                 mUrlView = itemView.findViewById(R.id.url_view);
                 mTimeView = itemView.findViewById(R.id.time_view);
+                mMenuButton = itemView.findViewById(R.id.menu_button);
 
                 itemView.setOnClickListener(v -> {
                     int position = getAdapterPosition();
@@ -342,15 +344,27 @@ public class HistoryActivity extends AppCompatActivity implements SearchView.OnQ
                     }
                     return true;
                 });
+
+                mMenuButton.setOnClickListener(v -> {
+                    int position = getAdapterPosition();
+                    if (position != RecyclerView.NO_POSITION) {
+                        HistoryInfo history = mFilteredHistory.get(position);
+                        showHistoryMenu(history);
+                    }
+                });
             }
 
             void bind(HistoryInfo history) {
                 mTitleView.setText(history.getDisplayTitle());
-                mUrlView.setText(history.url);
+                
+                // 只显示域名，不显示完整URL
+                String domain = history.getDomain();
+                mUrlView.setText(domain != null ? domain : history.url);
+                
                 mTimeView.setText(history.getRelativeTime());
 
-                // 设置默认图标
-                mFaviconView.setImageResource(R.mipmap.ic_launcher);
+                // 设置网页图标
+                mFaviconView.setImageResource(R.drawable.ic_web);
             }
         }
     }

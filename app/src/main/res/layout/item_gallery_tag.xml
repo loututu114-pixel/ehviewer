@@ -25,9 +25,9 @@
     android:paddingTop="@dimen/spacing_xsmall"
     android:paddingBottom="@dimen/spacing_xsmall"
     android:textColor="@android:color/white"
-    style="@style/TextAppearance.CartoonCaption"
+    style="@style/TextAppearance.ModernCaption"
     android:background="@drawable/tag_cartoon_background"
-    android:shadowColor="@color/cartoon_shadow_dark"
+    android:shadowColor="@color/modern_on_surface"
     android:shadowDx="1"
     android:shadowDy="1"
     android:shadowRadius="2" />

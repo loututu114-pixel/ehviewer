@@ -139,7 +139,7 @@ public class SearchSuggestionAdapter extends RecyclerView.Adapter<SearchSuggesti
             super(itemView);
             icon = itemView.findViewById(R.id.suggestion_icon);
             title = itemView.findViewById(R.id.suggestion_title);
-            subtitle = itemView.findViewById(R.id.suggestion_subtitle);
+            subtitle = itemView.findViewById(R.id.suggestion_url);
         }
     }
 }

@@ -77,13 +77,10 @@ public class YouTubeCompatibilityManager {
         try {
             WebSettings settings = webView.getSettings();
 
-            // 1. 使用智能UA管理器设置User-Agent
-            if (uaManager != null) {
-                uaManager.setSmartUserAgent(webView, url);
-            } else {
-                // 回退到默认桌面版UA
-                settings.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-            }
+            // 1. 移除UA干预 - 使用系统默认UA
+            // UA伪造是导致重定向循环的根本原因，现在我们信任系统UA
+            settings.setUserAgentString(null); // 使用系统默认UA
+            Log.d(TAG, "Using system default UA for YouTube (removed UA intervention)");
 
             // 2. 启用JavaScript（YouTube需要）
             settings.setJavaScriptEnabled(true);
@@ -237,44 +234,34 @@ public class YouTubeCompatibilityManager {
     }
 
     /**
-     * 应用Firefox User-Agent（备选方案）
+     * 移除所有UA设置方法 - UA伪造会导致重定向循环
+     * 现在只使用系统默认UA
      */
+    @Deprecated
     public static void applyFirefoxUserAgent(WebView webView) {
         if (webView == null) return;
-
-        try {
-            webView.getSettings().setUserAgentString(FIREFOX_USER_AGENT);
-            Log.d(TAG, "Applied Firefox User-Agent");
-        } catch (Exception e) {
-            Log.e(TAG, "Error applying Firefox User-Agent", e);
-        }
+        Log.w(TAG, "Firefox UA application deprecated - using system default UA");
+        applySystemDefaultUA(webView);
     }
 
-    /**
-     * 应用Safari User-Agent（备选方案）
-     */
+    @Deprecated
     public static void applySafariUserAgent(WebView webView) {
         if (webView == null) return;
-
-        try {
-            webView.getSettings().setUserAgentString(SAFARI_USER_AGENT);
-            Log.d(TAG, "Applied Safari User-Agent");
-        } catch (Exception e) {
-            Log.e(TAG, "Error applying Safari User-Agent", e);
-        }
+        Log.w(TAG, "Safari UA application deprecated - using system default UA");
+        applySystemDefaultUA(webView);
     }
 
     /**
-     * 重置为默认User-Agent
+     * 应用系统默认UA（推荐方法）
      */
-    public static void resetToDefaultUserAgent(WebView webView) {
+    public static void applySystemDefaultUA(WebView webView) {
         if (webView == null) return;
 
         try {
-            webView.getSettings().setUserAgentString(MOBILE_USER_AGENT);
-            Log.d(TAG, "Reset to default mobile User-Agent");
+            webView.getSettings().setUserAgentString(null); // 系统默认UA
+            Log.d(TAG, "Applied system default User-Agent");
         } catch (Exception e) {
-            Log.e(TAG, "Error resetting User-Agent", e);
+            Log.e(TAG, "Error applying system default User-Agent", e);
         }
     }
 
@@ -293,32 +280,17 @@ public class YouTubeCompatibilityManager {
     }
 
     /**
-     * 尝试不同的User-Agent策略
+     * 移除UA切换策略 - UA伪造会导致重定向循环
+     * 现在统一使用系统默认UA
      */
+    @Deprecated
     public static void tryDifferentUserAgents(WebView webView, String url) {
         if (webView == null || url == null) return;
 
-        try {
-            String currentUA = getCurrentUserAgent(webView);
+        Log.w(TAG, "UA switching deprecated - UA changes cause redirect loops");
 
-            // 如果当前是移动版，切换到桌面版
-            if (currentUA != null && currentUA.contains("Mobile")) {
-                applyYouTubeCompatibility(webView, url, null);
-                Log.d(TAG, "Switched from mobile to desktop UA for: " + url);
-            }
-            // 如果当前是桌面版，尝试Firefox
-            else if (currentUA != null && currentUA.contains("Chrome")) {
-                applyFirefoxUserAgent(webView);
-                Log.d(TAG, "Switched to Firefox UA for: " + url);
-            }
-            // 最后尝试Safari
-            else {
-                applySafariUserAgent(webView);
-                Log.d(TAG, "Switched to Safari UA for: " + url);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error trying different User-Agents", e);
-        }
+        // 统一使用系统默认UA，不进行任何UA切换
+        applySystemDefaultUA(webView);
+        Log.d(TAG, "Applied system default UA (no UA switching) for: " + url);
     }
 }

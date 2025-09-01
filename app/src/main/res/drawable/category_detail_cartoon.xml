@@ -18,7 +18,7 @@
             <corners android:radius="@dimen/radius_large" />
             <stroke
                 android:width="2dp"
-                android:color="@color/cartoon_accent_yellow" />
+                android:color="@color/modern_secondary" />
         </shape>
     </item>
 
@@ -27,7 +27,7 @@
         android:left="4dp"
         android:top="2dp">
         <shape android:shape="oval">
-            <solid android:color="@color/cartoon_accent_yellow" />
+            <solid android:color="@color/modern_secondary" />
             <size android:width="4dp" android:height="4dp" />
         </shape>
     </item>
@@ -36,7 +36,7 @@
         android:right="4dp"
         android:top="2dp">
         <shape android:shape="oval">
-            <solid android:color="@color/cartoon_accent_pink" />
+            <solid android:color="@color/modern_accent" />
             <size android:width="4dp" android:height="4dp" />
         </shape>
     </item>
@@ -46,7 +46,7 @@
         android:left="0dp"
         android:top="12dp">
         <shape android:shape="rectangle">
-            <solid android:color="@color/cartoon_accent_blue" />
+            <solid android:color="@color/modern_primary" />
             <size android:height="1dp" />
         </shape>
     </item>

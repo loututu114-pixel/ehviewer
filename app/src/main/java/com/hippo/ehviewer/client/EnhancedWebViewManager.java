@@ -29,6 +29,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
@@ -68,6 +69,7 @@ public class EnhancedWebViewManager {
     private WebChromeClient mWebChromeClient;
     private HistoryManager mHistoryManager;
     private PasswordManager mPasswordManager;
+    private ConnectionRetryManager mRetryManager;
 
     // 文件选择回调
     private ValueCallback<Uri[]> mFilePathCallback;
@@ -128,6 +130,7 @@ public class EnhancedWebViewManager {
         this.mContext = context;
         this.mWebView = webView;
         this.mHistoryManager = historyManager;
+        this.mRetryManager = new ConnectionRetryManager();
 
         // 添加null检查
         if (mWebView == null) {
@@ -200,9 +203,10 @@ public class EnhancedWebViewManager {
             webSettings.setLoadsImagesAutomatically(true);
         }
 
-        // User Agent设置 - 使用桌面版UA以提高兼容性
-        String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 EhViewer/2.0";
-        webSettings.setUserAgentString(userAgent);
+        // User Agent设置 - 避免与桌面/移动模式切换冲突
+        // 不在这里设置固定的UA，让上层Activity根据用户选择设置
+        // String userAgent = "Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 EhViewer/2.0";
+        // webSettings.setUserAgentString(userAgent);
 
         // 编码设置
         webSettings.setDefaultTextEncodingName("UTF-8");
@@ -247,9 +251,23 @@ public class EnhancedWebViewManager {
         // 视频缓存设置
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
-        // 允许通过网络加载资源
+        // 允许通过网络加载资源 - 增强连接稳定性
         webSettings.setBlockNetworkLoads(false);
         webSettings.setBlockNetworkImage(false);
+        
+        // 彻底禁用所有安全浏览功能，确保最大兼容性
+        disableAllSafeBrowsingFeatures(webSettings);
+        
+        // 增强连接稳定性设置
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webSettings.setSafeBrowsingEnabled(false); // 关闭安全浏览可能的干扰
+        }
+
+        // 设置缓存模式以提升连接稳定性
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // 增强连接稳定性 - 新增设置
+        enhanceConnectionStability(webSettings);
 
             // 添加JavaScript接口
         mWebView.addJavascriptInterface(new JavaScriptInterface(), "EhViewer");
@@ -259,6 +277,306 @@ public class EnhancedWebViewManager {
 
         // 设置密码管理器引用
         mPasswordManager = PasswordManager.getInstance(mContext);
+        
+        // 初始化广告拦截管理器
+        AdBlockManager adBlockManager = AdBlockManager.getInstance();
+        adBlockManager.initialize(mContext);
+    }
+    
+    /**
+     * 彻底禁用所有安全浏览功能
+     */
+    private void disableAllSafeBrowsingFeatures(WebSettings webSettings) {
+        try {
+            // 禁用安全浏览
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                webSettings.setSafeBrowsingEnabled(false);
+            }
+            
+            // 允许所有混合内容
+            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            
+            // 允许所有文件访问
+            webSettings.setAllowFileAccess(true);
+            webSettings.setAllowFileAccessFromFileURLs(true);
+            webSettings.setAllowUniversalAccessFromFileURLs(true);
+            
+            // 允许JavaScript全功能
+            webSettings.setJavaScriptEnabled(true);
+            webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+            
+            // 禁用网络封锁
+            webSettings.setBlockNetworkLoads(false);
+            webSettings.setBlockNetworkImage(false);
+            
+            Log.d(TAG, "All safe browsing features disabled for maximum compatibility");
+        } catch (Exception e) {
+            Log.e(TAG, "Error disabling safe browsing features", e);
+        }
+    }
+
+    /**
+     * 增强连接稳定性设置
+     */
+    private void enhanceConnectionStability(WebSettings webSettings) {
+        try {
+            // 设置连接超时和读取超时
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                // 允许混合内容以避免SSL重定向问题
+                webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            }
+
+            // 启用应用缓存以减少网络请求
+            try {
+                java.lang.reflect.Method setAppCacheEnabled = webSettings.getClass().getMethod("setAppCacheEnabled", boolean.class);
+                java.lang.reflect.Method setAppCachePath = webSettings.getClass().getMethod("setAppCachePath", String.class);
+                java.lang.reflect.Method setAppCacheMaxSize = webSettings.getClass().getMethod("setAppCacheMaxSize", long.class);
+
+                setAppCacheEnabled.invoke(webSettings, true);
+                setAppCachePath.invoke(webSettings, mContext.getCacheDir().getAbsolutePath());
+                setAppCacheMaxSize.invoke(webSettings, 50 * 1024 * 1024L); // 50MB缓存
+            } catch (Exception e) {
+                Log.w(TAG, "App cache settings not available", e);
+            }
+
+            // 设置DNS预解析
+            webSettings.setLoadsImagesAutomatically(true);
+
+            // 优化缓存策略
+            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+
+            // 设置数据库和本地存储
+            webSettings.setDatabaseEnabled(true);
+            webSettings.setDomStorageEnabled(true);
+
+            // 允许地理位置（某些网站需要）
+            webSettings.setGeolocationEnabled(true);
+
+            // 设置更长的超时时间
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                // 这些设置可能在不同Android版本中有不同的表现
+                try {
+                    java.lang.reflect.Field field = webSettings.getClass().getDeclaredField("mMaximumDecodedImageSizeBytes");
+                    field.setAccessible(true);
+                    field.setLong(webSettings, 10 * 1024 * 1024L); // 10MB
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to set maximum decoded image size", e);
+                }
+            }
+
+            Log.d(TAG, "Connection stability enhancements applied");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to enhance connection stability", e);
+        }
+    }
+
+    /**
+     * 处理URL scheme
+     */
+    private boolean handleUrlScheme(WebView view, String url) {
+        try {
+            return AppLauncher.handleUniversalUrl(mContext, url);
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling URL scheme: " + url, e);
+            return false;
+        }
+    }
+    
+    /**
+     * 从自定义scheme中提取HTTP URL
+     */
+    private String extractHttpFromCustomScheme(String url) {
+        try {
+            if (url == null || url.isEmpty()) {
+                return null;
+            }
+            
+            // 处理TikTok scheme
+            if (url.contains("snssdk1180://") || url.contains("tiktok://")) {
+                // 提取参数中的URL
+                if (url.contains("url=")) {
+                    String[] parts = url.split("url=");
+                    if (parts.length > 1) {
+                        String extractedUrl = java.net.URLDecoder.decode(parts[1], "UTF-8");
+                        if (extractedUrl.startsWith("http")) {
+                            return extractedUrl;
+                        }
+                    }
+                }
+                // 默认跳转到TikTok网页版
+                return "https://www.tiktok.com";
+            }
+            
+            // 处理其他常见scheme
+            if (url.startsWith("intent://")) {
+                try {
+                    android.content.Intent intent = android.content.Intent.parseUri(url, android.content.Intent.URI_INTENT_SCHEME);
+                    String fallbackUrl = intent.getStringExtra("S.browser_fallback_url");
+                    if (fallbackUrl != null && fallbackUrl.startsWith("http")) {
+                        return fallbackUrl;
+                    }
+                } catch (Exception e) {
+                    Log.d(TAG, "Failed to parse intent URL: " + url);
+                }
+            }
+            
+            // 查找内嵌HTTP URL
+            if (url.contains("http://") || url.contains("https://")) {
+                int httpIndex = url.indexOf("http");
+                String candidate = url.substring(httpIndex);
+                // 去除可能的参数
+                if (candidate.contains("&")) {
+                    candidate = candidate.split("&")[0];
+                }
+                if (candidate.contains("?") && candidate.indexOf("?") > candidate.indexOf("://")) {
+                    // 保留查询参数
+                }
+                return candidate;
+            }
+            
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting HTTP URL from scheme: " + url, e);
+            return null;
+        }
+    }
+    
+    /**
+     * 注入元素选择和屏蔽JavaScript
+     */
+    public void injectElementBlockingScript(String currentDomain) {
+        if (mWebView == null) return;
+        
+        AdBlockManager adBlockManager = AdBlockManager.getInstance();
+        String domain = adBlockManager.normalizeDomain(currentDomain != null ? currentDomain : mWebView.getUrl());
+        
+        String script = generateElementBlockingScript(domain);
+        
+        mWebView.evaluateJavascript(script, null);
+        Log.d(TAG, "Injected element blocking script for domain: " + domain);
+    }
+    
+    /**
+     * 应用CSS屏蔽规则
+     */
+    public void applyElementBlocking(String currentDomain) {
+        if (mWebView == null) return;
+        
+        AdBlockManager adBlockManager = AdBlockManager.getInstance();
+        String domain = adBlockManager.normalizeDomain(currentDomain != null ? currentDomain : mWebView.getUrl());
+        String css = adBlockManager.generateBlockCSS(domain);
+        
+        if (!css.isEmpty()) {
+            String script = "(function() {" +
+                "var style = document.createElement('style');" +
+                "style.type = 'text/css';" +
+                "style.innerHTML = '" + css.replace("'", "\\\\''") + "';" +
+                "document.head.appendChild(style);" +
+                "})();";
+            
+            mWebView.evaluateJavascript(script, null);
+            Log.d(TAG, "Applied element blocking CSS for domain: " + domain);
+        }
+    }
+    
+    /**
+     * 生成元素选择和屏蔽JavaScript代码
+     */
+    private String generateElementBlockingScript(String domain) {
+        return "(function() {" +
+            "var isSelectionMode = false;" +
+            "var overlay = null;" +
+            "var selectedElement = null;" +
+            "var originalStyles = new Map();" +
+            "\n" +
+            "function createOverlay() {" +
+            "  overlay = document.createElement('div');" +
+            "  overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.1); z-index: 999999; pointer-events: none; display: none;';" +
+            "  document.body.appendChild(overlay);" +
+            "}" +
+            "\n" +
+            "function highlightElement(element) {" +
+            "  if (selectedElement && originalStyles.has(selectedElement)) {" +
+            "    selectedElement.style.outline = originalStyles.get(selectedElement);" +
+            "  }" +
+            "  selectedElement = element;" +
+            "  originalStyles.set(element, element.style.outline || '');" +
+            "  element.style.outline = '3px solid red';" +
+            "}" +
+            "\n" +
+            "function generateCSSSelector(element) {" +
+            "  if (element.id) {" +
+            "    return '#' + element.id;" +
+            "  }" +
+            "  if (element.className && typeof element.className === 'string') {" +
+            "    var classes = element.className.trim().split(/\\s+/);" +
+            "    if (classes.length > 0) {" +
+            "      return '.' + classes.join('.');" +
+            "    }" +
+            "  }" +
+            "  var tag = element.tagName.toLowerCase();" +
+            "  var parent = element.parentElement;" +
+            "  if (parent) {" +
+            "    var siblings = Array.from(parent.children).filter(e => e.tagName === element.tagName);" +
+            "    if (siblings.length > 1) {" +
+            "      var index = siblings.indexOf(element) + 1;" +
+            "      return generateCSSSelector(parent) + ' > ' + tag + ':nth-child(' + index + ')';" +
+            "    } else {" +
+            "      return generateCSSSelector(parent) + ' > ' + tag;" +
+            "    }" +
+            "  }" +
+            "  return tag;" +
+            "}" +
+            "\n" +
+            "function handleElementClick(event) {" +
+            "  if (!isSelectionMode) return;" +
+            "  event.preventDefault();" +
+            "  event.stopPropagation();" +
+            "  highlightElement(event.target);" +
+            "}" +
+            "\n" +
+            "function handleLongPress(event) {" +
+            "  if (!isSelectionMode || !selectedElement) return;" +
+            "  event.preventDefault();" +
+            "  event.stopPropagation();" +
+            "  \n" +
+            "  var cssSelector = generateCSSSelector(selectedElement);" +
+            "  if (confirm('确定要永久屏蔽这个元素吗？\\n选择器：' + cssSelector)) {" +
+            "    EhViewer.blockElement('" + domain + "', cssSelector);" +
+            "    selectedElement.style.display = 'none';" +
+            "    exitSelectionMode();" +
+            "  }" +
+            "}" +
+            "\n" +
+            "function enterSelectionMode() {" +
+            "  isSelectionMode = true;" +
+            "  if (!overlay) createOverlay();" +
+            "  overlay.style.display = 'block';" +
+            "  document.addEventListener('click', handleElementClick, true);" +
+            "  document.addEventListener('contextmenu', handleLongPress, true);" +
+            "  document.body.style.userSelect = 'none';" +
+            "}" +
+            "\n" +
+            "function exitSelectionMode() {" +
+            "  isSelectionMode = false;" +
+            "  if (overlay) overlay.style.display = 'none';" +
+            "  document.removeEventListener('click', handleElementClick, true);" +
+            "  document.removeEventListener('contextmenu', handleLongPress, true);" +
+            "  if (selectedElement && originalStyles.has(selectedElement)) {" +
+            "    selectedElement.style.outline = originalStyles.get(selectedElement);" +
+            "    originalStyles.delete(selectedElement);" +
+            "  }" +
+            "  selectedElement = null;" +
+            "  document.body.style.userSelect = '';" +
+            "}" +
+            "\n" +
+            "// 全局函数" +
+            "window.startElementSelection = enterSelectionMode;" +
+            "window.stopElementSelection = exitSelectionMode;" +
+            "\n" +
+            "console.log('元素屏蔽功能已加载，调用 startElementSelection() 开始选择');" +
+            "})();";
     }
 
     /**
@@ -294,6 +612,10 @@ public class EnhancedWebViewManager {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                
+                // 清除成功加载页面的重试信息
+                clearRetryInfoOnSuccess(url);
+                
                 if (mProgressCallback != null) {
                     mProgressCallback.onPageFinished(url, view.getTitle());
                 }
@@ -306,17 +628,53 @@ public class EnhancedWebViewManager {
                 
                 // 注入Ajax兼容性脚本
                 injectAjaxCompatibilityScript(view);
+                
+                // 注入广告屏蔽功能
+                view.postDelayed(() -> {
+                    injectElementBlockingScript(url);
+                    applyElementBlocking(url);
+                }, 1000); // 延迟1秒确保页面完全加载
             }
 
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 super.onReceivedError(view, errorCode, description, failingUrl);
+                
+                Log.e(TAG, "WebView error: Code=" + errorCode + ", Description=" + description + ", URL=" + failingUrl);
+                
+                // 处理URL scheme错误
+                if (description.contains("ERR_UNKNOWN_URL_SCHEME") || 
+                    description.contains("net::ERR_UNKNOWN_URL_SCHEME")) {
+                    handleUrlSchemeError(view, failingUrl);
+                    return;
+                }
+                
+                // 增强的连接错误处理，使用智能重试机制
+                if (isConnectionError(errorCode, description)) {
+                    if (mRetryManager.shouldRetry(failingUrl, description)) {
+                        long retryDelay = mRetryManager.getRetryDelay(failingUrl);
+                        int retryCount = mRetryManager.getRetryCount(failingUrl);
+                        
+                        Log.d(TAG, "Scheduling intelligent retry #" + retryCount + " for: " + failingUrl + " after " + retryDelay + "ms");
+                        
+                        view.postDelayed(() -> {
+                            Log.d(TAG, "Performing enhanced retry for: " + failingUrl);
+                            performEnhancedRetry(view, failingUrl);
+                        }, retryDelay);
+                        return;
+                    } else {
+                        Log.w(TAG, "Max retry attempts reached for: " + failingUrl);
+                        mRetryManager.clearRetryInfo(failingUrl);
+                    }
+                }
+                
+                // 通知错误回调
                 if (mErrorCallback != null) {
                     mErrorCallback.onReceivedError(errorCode, description, failingUrl);
                 }
 
-                // 显示错误页面
-                showErrorPage(view, errorCode, description, failingUrl);
+                // 显示增强的错误页面
+                showEnhancedErrorPage(view, errorCode, description, failingUrl);
             }
 
             @Override
@@ -387,14 +745,28 @@ public class EnhancedWebViewManager {
 
 @Override
             public void onPermissionRequest(android.webkit.PermissionRequest request) {
-                // 处理权限请求
+                // 处理权限请求 - 增强视频播放支持
                 String[] resources = request.getResources();
+                java.util.List<String> grantedResources = new java.util.ArrayList<>();
+                
                 for (String resource : resources) {
+                    android.util.Log.d(TAG, "Permission requested: " + resource);
+                    
+                    // 自动授权媒体相关权限
                     if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource) ||
-                        android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
-                        request.grant(resources);
-                        break;
+                        android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource) ||
+                        android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID.equals(resource)) {
+                        grantedResources.add(resource);
+                        android.util.Log.d(TAG, "Auto-granted permission: " + resource);
                     }
+                }
+                
+                if (!grantedResources.isEmpty()) {
+                    request.grant(grantedResources.toArray(new String[0]));
+                } else {
+                    // 如果没有可授权的权限，仍然尝试授权所有请求的权限以支持视频播放
+                    request.grant(resources);
+                    android.util.Log.d(TAG, "Granted all requested permissions for video playback");
                 }
             }
             
@@ -727,16 +1099,58 @@ public class EnhancedWebViewManager {
             "        video.setAttribute('webkit-playsinline', 'true');" +
             "        video.setAttribute('controls', 'true');" +
             "        video.setAttribute('preload', 'metadata');" +
+            "        video.setAttribute('autoplay', 'false');" +
+            "        video.muted = false;" +
             "        " +
             "        // 设置视频样式确保正确显示" +
             "        video.style.width = '100%';" +
             "        video.style.height = 'auto';" +
             "        video.style.maxWidth = '100%';" +
             "        video.style.display = 'block';" +
+            "        video.style.objectFit = 'contain';" +
+            "        " +
+            "        // xvideos特殊处理" +
+            "        if (window.location.hostname.indexOf('xvideos') !== -1) {" +
+            "            console.log('Applying xvideos video enhancements');" +
+            "            video.style.position = 'relative';" +
+            "            video.style.zIndex = '999999';" +
+            "            " +
+            "            // 修复xvideos的CSS冲突" +
+            "            var parent = video.parentElement;" +
+            "            while (parent) {" +
+            "                if (parent.style) {" +
+            "                    parent.style.position = 'relative';" +
+            "                    parent.style.overflow = 'visible';" +
+            "                }" +
+            "                parent = parent.parentElement;" +
+            "            }" +
+            "        }" +
+            "        " +
+            "        // YouTube Shorts特殊处理" +
+            "        if (window.location.hostname.indexOf('youtube') !== -1 || window.location.hostname.indexOf('youtu.be') !== -1) {" +
+            "            console.log('Applying YouTube enhancements');" +
+            "            video.style.maxHeight = '100vh';" +
+            "            " +
+            "            // 强制启用控件" +
+            "            video.controls = true;" +
+            "            video.setAttribute('controlsList', '');" +
+            "            " +
+            "            // 处理YouTube的特殊播放器" +
+            "            setTimeout(function() {" +
+            "                var ytPlayer = document.querySelector('.html5-video-player');" +
+            "                if (ytPlayer) {" +
+            "                    ytPlayer.style.position = 'relative !important';" +
+            "                    ytPlayer.style.zIndex = '999999 !important';" +
+            "                }" +
+            "            }, 1000);" +
+            "        }" +
             "        " +
             "        // 添加全屏双击事件" +
             "        video.addEventListener('dblclick', function(e) {" +
             "            console.log('Video double-clicked for fullscreen');" +
+            "            e.preventDefault();" +
+            "            e.stopPropagation();" +
+            "            " +
             "            if (this.requestFullscreen) {" +
             "                this.requestFullscreen();" +
             "            } else if (this.webkitRequestFullscreen) {" +
@@ -748,21 +1162,39 @@ public class EnhancedWebViewManager {
             "            }" +
             "        });" +
             "        " +
-            "        // 添加点击播放事件" +
+            "        // 添加点击播放事件（避免与双击冲突）" +
+            "        var clickTimer = null;" +
             "        video.addEventListener('click', function(e) {" +
-            "            console.log('Video clicked');" +
-            "            if (this.paused) {" +
-            "                this.play().catch(function(error) {" +
-            "                    console.error('Video play failed:', error);" +
-            "                });" +
-            "            } else {" +
-            "                this.pause();" +
+            "            var self = this;" +
+            "            if (clickTimer) {" +
+            "                clearTimeout(clickTimer);" +
+            "                clickTimer = null;" +
+            "                return; // 双击时不执行单击" +
             "            }" +
+            "            " +
+            "            clickTimer = setTimeout(function() {" +
+            "                console.log('Video single-clicked');" +
+            "                if (self.paused) {" +
+            "                    self.play().catch(function(error) {" +
+            "                        console.error('Video play failed:', error);" +
+            "                        // 尝试绕过autoplay限制" +
+            "                        if (error.name === 'NotAllowedError') {" +
+            "                            self.muted = true;" +
+            "                            self.play().then(function() {" +
+            "                                console.log('Video playing with muted audio');" +
+            "                            });" +
+            "                        }" +
+            "                    });" +
+            "                } else {" +
+            "                    self.pause();" +
+            "                }" +
+            "                clickTimer = null;" +
+            "            }, 200);" +
             "        });" +
             "        " +
             "        // 添加加载事件监听" +
             "        video.addEventListener('loadstart', function() {" +
-            "            console.log('Video loading started');" +
+            "            console.log('Video loading started:', this.src);" +
             "        });" +
             "        " +
             "        video.addEventListener('canplay', function() {" +
@@ -770,8 +1202,30 @@ public class EnhancedWebViewManager {
             "        });" +
             "        " +
             "        video.addEventListener('error', function(e) {" +
-            "            console.error('Video error:', e);" +
+            "            console.error('Video error:', e, 'Source:', this.src);" +
+            "            // 尝试重新加载视频" +
+            "            setTimeout((function(vid) {" +
+            "                return function() {" +
+            "                    console.log('Attempting video reload...');" +
+            "                    vid.load();" +
+            "                };" +
+            "            })(this), 2000);" +
             "        });" +
+            "        " +
+            "        // 监听全屏变化事件" +
+            "        video.addEventListener('fullscreenchange', function() {" +
+            "            console.log('Video fullscreen state changed');" +
+            "        });" +
+            "        " +
+            "        // 强制重新加载有问题的视频" +
+            "        if (video.readyState === 0 && video.src) {" +
+            "            setTimeout(function() {" +
+            "                if (video.readyState === 0) {" +
+            "                    console.log('Forcing video reload due to loading failure');" +
+            "                    video.load();" +
+            "                }" +
+            "            }, 3000);" +
+            "        }" +
             "    }" +
             "}" +
             "" +
@@ -963,6 +1417,293 @@ public class EnhancedWebViewManager {
     }
 
     /**
+     * 处理URL scheme错误
+     */
+    private void handleUrlSchemeError(WebView view, String failingUrl) {
+        Log.d(TAG, "Handling unknown URL scheme: " + failingUrl);
+        
+        // 尝试使用AppLauncher处理特殊scheme
+        if (handleUrlScheme(view, failingUrl)) {
+            Log.d(TAG, "URL scheme handled successfully: " + failingUrl);
+            return;
+        }
+        
+        // 尝试提取HTTP URL
+        String extractedUrl = extractHttpFromCustomScheme(failingUrl);
+        if (extractedUrl != null && !extractedUrl.equals(failingUrl)) {
+            Log.d(TAG, "Extracted HTTP URL: " + extractedUrl);
+            view.loadUrl(extractedUrl);
+            return;
+        }
+        
+        // 如果都失败了，显示错误页面
+        showEnhancedErrorPage(view, WebViewClient.ERROR_UNKNOWN, "Unknown URL scheme", failingUrl);
+    }
+
+    /**
+     * 检查是否为连接错误
+     */
+    private boolean isConnectionError(int errorCode, String description) {
+        return errorCode == WebViewClient.ERROR_CONNECT || 
+               errorCode == WebViewClient.ERROR_TIMEOUT ||
+               errorCode == WebViewClient.ERROR_HOST_LOOKUP ||
+               description.contains("ERR_CONNECTION_CLOSED") ||
+               description.contains("ERR_CONNECTION_RESET") ||
+               description.contains("ERR_CONNECTION_REFUSED") ||
+               description.contains("ERR_NETWORK_CHANGED") ||
+               description.contains("ERR_CLEARTEXT_NOT_PERMITTED") ||
+               description.contains("ERR_CONNECTION_TIMED_OUT") ||
+               description.contains("ERR_NETWORK_ACCESS_DENIED");
+    }
+
+    /**
+     * 执行增强的重试策略
+     */
+    private void performEnhancedRetry(WebView view, String failingUrl) {
+        try {
+            Log.d(TAG, "Starting enhanced retry for: " + failingUrl);
+
+            // 1. 清除各种缓存以获得最佳连接
+            view.clearCache(true);
+            view.clearHistory();
+
+            // 2. 临时调整WebView设置以提高连接成功率
+            WebSettings settings = view.getSettings();
+            int originalCacheMode = settings.getCacheMode();
+            settings.setCacheMode(WebSettings.LOAD_NO_CACHE); // 强制刷新
+
+            // 3. 准备增强的请求头 - 专门针对连接关闭错误优化
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Connection", "keep-alive");
+            headers.put("Cache-Control", "no-cache, no-store, must-revalidate");
+            headers.put("Pragma", "no-cache");
+            headers.put("Expires", "0");
+
+            // 添加Keep-Alive相关头
+            headers.put("Keep-Alive", "timeout=30, max=1000");
+
+            // 添加Accept-Encoding以支持压缩
+            headers.put("Accept-Encoding", "gzip, deflate, br");
+
+            // 4. 使用系统默认UA - 不伪造UA，尊重网站的适配逻辑
+            // 只在必要时添加应用标识，避免干扰网站的正常显示
+            if (view != null && view.getSettings() != null) {
+                String currentUA = view.getSettings().getUserAgentString();
+                if (currentUA != null && !currentUA.isEmpty()) {
+                    // 如果当前有UA，只添加最小标识，不改变UA内容
+                    if (!currentUA.contains("EhViewer")) {
+                        headers.put("User-Agent", currentUA + " EhViewer/2.0");
+                    } else {
+                        headers.put("User-Agent", currentUA);
+                    }
+                } else {
+                    // 使用系统默认UA，不进行任何修改
+                    headers.put("User-Agent", WebSettings.getDefaultUserAgent(view.getContext()));
+                }
+            } else {
+                // 使用系统默认UA
+                headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+            }
+
+            // 5. 对于连接关闭错误，添加特殊的重试策略
+            int retryCount = mRetryManager.getRetryCount(failingUrl);
+            if (retryCount > 1) {
+                // 多次重试后，使用更保守的策略
+                headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+                headers.put("Upgrade-Insecure-Requests", "1");
+
+                // 延迟更长时间
+                long delay = Math.min(5000 + (retryCount * 2000), 30000); // 最大30秒
+                Log.d(TAG, "Using conservative retry strategy with " + delay + "ms delay");
+
+                view.postDelayed(() -> {
+                    try {
+                        Log.d(TAG, "Performing conservative retry #" + retryCount + " for: " + failingUrl);
+                        view.loadUrl(failingUrl, headers);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error during conservative retry", e);
+                    }
+                }, delay);
+            } else {
+                // 首次重试，直接加载
+                Log.d(TAG, "Performing immediate enhanced retry for: " + failingUrl);
+                view.loadUrl(failingUrl, headers);
+            }
+
+            // 6. 恢复原始缓存设置 - 延迟更长时间
+            view.postDelayed(() -> {
+                try {
+                    settings.setCacheMode(originalCacheMode);
+                    Log.d(TAG, "Restored original cache mode after retry");
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to restore cache mode", e);
+                }
+            }, 10000); // 10秒后恢复
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error during enhanced retry", e);
+            // 回退到简单重试
+            view.loadUrl(failingUrl);
+        }
+    }
+
+    /**
+     * 显示增强的错误页面
+     */
+    private void showEnhancedErrorPage(WebView view, int errorCode, String description, String failingUrl) {
+        String errorHtml = generateEnhancedErrorPageHtml(errorCode, description, failingUrl);
+        view.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null);
+    }
+
+    /**
+     * 生成增强的错误页面HTML
+     */
+    private String generateEnhancedErrorPageHtml(int errorCode, String description, String failingUrl) {
+        String errorType = getErrorTypeDescription(errorCode);
+        String errorAdvice = getErrorAdvice(errorCode, description);
+        int retryCount = mRetryManager.getRetryCount(failingUrl);
+        
+        String errorHtml = "<html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><style>" +
+                "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;}" +
+                ".error-container{background:rgba(255,255,255,0.95);padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.2);max-width:500px;width:100%;text-align:center;}" +
+                "h1{color:#e74c3c;font-size:2.5em;margin:0 0 20px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.1);}" +
+                ".error-type{color:#2c3e50;font-size:1.2em;font-weight:bold;margin:15px 0;}" +
+                ".error-desc{color:#7f8c8d;font-size:0.9em;margin:10px 0;line-height:1.4;}" +
+                ".url-container{background:#ecf0f1;padding:10px;border-radius:8px;margin:15px 0;word-break:break-all;font-size:0.8em;color:#34495e;}" +
+                ".button{padding:12px 20px;margin:8px;border:none;border-radius:25px;cursor:pointer;font-size:14px;font-weight:bold;transition:all 0.3s ease;text-decoration:none;display:inline-block;}" +
+                ".btn-primary{background:linear-gradient(45deg,#3498db,#2980b9);color:white;}" +
+                ".btn-secondary{background:linear-gradient(45deg,#95a5a6,#7f8c8d);color:white;}" +
+                ".btn-success{background:linear-gradient(45deg,#27ae60,#229954);color:white;}" +
+                ".btn-warning{background:linear-gradient(45deg,#f39c12,#e67e22);color:white;}" +
+                ".button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,0,0,0.2);}" +
+                ".retry-info{background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:10px;border-radius:8px;margin:15px 0;font-size:0.85em;}" +
+                ".advice{background:#d1ecf1;border:1px solid #bee5eb;color:#0c5460;padding:15px;border-radius:8px;margin:20px 0;font-size:0.9em;text-align:left;}" +
+                "</style></head><body>" +
+                "<div class=\"error-container\">" +
+                "<h1>🌐 连接异常</h1>" +
+                "<div class=\"error-type\">" + errorType + "</div>" +
+                "<div class=\"error-desc\">错误代码: " + errorCode + "</div>" +
+                "<div class=\"error-desc\">" + description + "</div>" +
+                "<div class=\"url-container\">📍 " + failingUrl + "</div>";
+
+        if (retryCount > 0) {
+            errorHtml += "<div class=\"retry-info\">⚠️ 已自动重试 " + retryCount + " 次，仍然无法连接</div>";
+        }
+
+        if (!errorAdvice.isEmpty()) {
+            errorHtml += "<div class=\"advice\">💡 <strong>建议:</strong><br>" + errorAdvice + "</div>";
+        }
+
+        errorHtml += "<div style=\"margin-top:25px;\">" +
+                    "<button class=\"button btn-primary\" onclick=\"smartRetry()\">🔄 智能重试</button>" +
+                    "<button class=\"button btn-secondary\" onclick=\"location.reload()\">⚡ 强制刷新</button><br>" +
+                    "<button class=\"button btn-secondary\" onclick=\"history.back()\">⬅️ 返回上页</button>" +
+                    "<button class=\"button btn-success\" onclick=\"window.location.href='https://www.baidu.com'\">🏠 访问百度</button>" +
+                    "</div>" +
+                    "</div>" +
+                    "<script>" +
+                    "function smartRetry() {" +
+                    "    document.querySelector('.error-container').innerHTML = '<h1>🔄 智能重试中...</h1><p>正在尝试重新连接，请稍候</p>';" +
+                    "    setTimeout(() => {" +
+                    "        const url = '" + failingUrl + "';" +
+                    "        window.location.href = url;" +
+                    "    }, 2000);" +
+                    "}" +
+                    "</script>" +
+                    "</body></html>";
+
+        return errorHtml;
+    }
+
+    /**
+     * 获取错误类型描述
+     */
+    private String getErrorTypeDescription(int errorCode) {
+        switch (errorCode) {
+            case WebViewClient.ERROR_CONNECT:
+                return "连接服务器失败";
+            case WebViewClient.ERROR_TIMEOUT:
+                return "连接超时";
+            case WebViewClient.ERROR_HOST_LOOKUP:
+                return "域名解析失败";
+            case WebViewClient.ERROR_UNKNOWN:
+                return "未知错误";
+            case WebViewClient.ERROR_BAD_URL:
+                return "网址格式错误";
+            case WebViewClient.ERROR_UNSUPPORTED_SCHEME:
+                return "不支持的协议";
+            case WebViewClient.ERROR_FAILED_SSL_HANDSHAKE:
+                return "SSL握手失败";
+            default:
+                return "网络连接异常";
+        }
+    }
+
+    /**
+     * 获取错误建议
+     */
+    private String getErrorAdvice(int errorCode, String description) {
+        if (description.contains("ERR_CONNECTION_CLOSED")) {
+            return "服务器主动关闭连接，可能是服务器繁忙、网络不稳定或连接超时。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 等待30秒后重试<br>" +
+                   "• 检查网络连接稳定性<br>" +
+                   "• 尝试刷新页面<br>" +
+                   "• 如果持续出现，可能是服务器问题";
+        } else if (description.contains("ERR_CONNECTION_RESET")) {
+            return "连接被重置，可能是网络中断、防火墙阻挡或服务器重启。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 检查网络连接<br>" +
+                   "• 尝试切换网络（如从WiFi切换到移动数据）<br>" +
+                   "• 清除浏览器缓存后重试<br>" +
+                   "• 检查是否有VPN或代理干扰";
+        } else if (description.contains("ERR_CLEARTEXT_NOT_PERMITTED")) {
+            return "应用不允许明文HTTP连接。网站可能需要HTTPS访问。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 尝试访问网站的HTTPS版本<br>" +
+                   "• 检查网址是否正确（http:// 改为 https://）<br>" +
+                   "• 如果是本地网站，可能需要配置网络安全策略";
+        } else if (errorCode == WebViewClient.ERROR_TIMEOUT) {
+            return "连接超时，可能是网络较慢、服务器响应缓慢或网络拥堵。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 检查网络连接速度<br>" +
+                   "• 等待网络情况改善后重试<br>" +
+                   "• 尝试在不同时间段访问<br>" +
+                   "• 检查是否需要代理或VPN";
+        } else if (errorCode == WebViewClient.ERROR_HOST_LOOKUP) {
+            return "无法找到服务器地址，可能是DNS解析问题或网址错误。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 检查网址是否正确<br>" +
+                   "• 尝试清除DNS缓存<br>" +
+                   "• 切换DNS服务器（如8.8.8.8）<br>" +
+                   "• 检查网络设置";
+        } else if (errorCode == WebViewClient.ERROR_CONNECT) {
+            return "无法连接到服务器，可能是服务器宕机、网络问题或防火墙阻挡。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 检查服务器是否正常运行<br>" +
+                   "• 尝试不同的网络环境<br>" +
+                   "• 检查防火墙和安全软件设置<br>" +
+                   "• 联系网站管理员";
+        } else {
+            return "发生未知网络错误。<br><br>" +
+                   "建议解决方案：<br>" +
+                   "• 检查网络连接是否正常<br>" +
+                   "• 尝试访问其他网站验证网络状态<br>" +
+                   "• 清除浏览器缓存和历史记录<br>" +
+                   "• 重启应用后重试";
+        }
+    }
+
+    /**
+     * 清除成功加载页面的重试信息
+     */
+    private void clearRetryInfoOnSuccess(String url) {
+        if (mRetryManager != null && url != null) {
+            mRetryManager.clearRetryInfo(url);
+        }
+    }
+
+    /**
      * 截图功能
      */
     public Bitmap captureScreenshot() {
@@ -1114,6 +1855,17 @@ public class EnhancedWebViewManager {
                     }
                 }
             }
+        }
+        
+        @JavascriptInterface
+        public void blockElement(String domain, String cssSelector) {
+            // 处理元素屏蔽请求
+            android.util.Log.d(TAG, "Blocking element for " + domain + ": " + cssSelector);
+            
+            AdBlockManager adBlockManager = AdBlockManager.getInstance();
+            adBlockManager.addBlockedElement(domain, cssSelector);
+            
+            Toast.makeText(mContext, "元素已添加到屏蔽列表", Toast.LENGTH_SHORT).show();
         }
     }
 

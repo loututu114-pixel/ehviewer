@@ -165,6 +165,11 @@ public class TabAdapter extends RecyclerView.Adapter<TabAdapter.TabViewHolder> {
         private boolean isIncognito = false;
         private boolean isLoading = false;
         private Object webView;  // WebView instance
+        private String category = "default";  // 分类
+        private String group = "";  // 组
+        private int color = 0;  // 标签颜色
+        private long createTime = System.currentTimeMillis();  // 创建时间
+        private long lastVisitTime = System.currentTimeMillis();  // 最后访问时间
         
         public String getTitle() {
             return title;
@@ -220,6 +225,85 @@ public class TabAdapter extends RecyclerView.Adapter<TabAdapter.TabViewHolder> {
         
         public void setWebView(Object webView) {
             this.webView = webView;
+        }
+        
+        public String getCategory() {
+            return category;
+        }
+        
+        public void setCategory(String category) {
+            this.category = category != null ? category : "default";
+        }
+        
+        public String getGroup() {
+            return group;
+        }
+        
+        public void setGroup(String group) {
+            this.group = group != null ? group : "";
+        }
+        
+        public int getColor() {
+            return color;
+        }
+        
+        public void setColor(int color) {
+            this.color = color;
+        }
+        
+        public long getCreateTime() {
+            return createTime;
+        }
+        
+        public void setCreateTime(long createTime) {
+            this.createTime = createTime;
+        }
+        
+        public long getLastVisitTime() {
+            return lastVisitTime;
+        }
+        
+        public void setLastVisitTime(long lastVisitTime) {
+            this.lastVisitTime = lastVisitTime;
+        }
+        
+        // 获取域名，用于智能分组
+        public String getDomain() {
+            if (url == null || url.isEmpty()) {
+                return "";
+            }
+            try {
+                java.net.URL urlObj = new java.net.URL(url);
+                return urlObj.getHost();
+            } catch (Exception e) {
+                return url;
+            }
+        }
+        
+        // 获取智能分类
+        public String getSmartCategory() {
+            String domain = getDomain();
+            if (domain.isEmpty()) {
+                return "default";
+            }
+            
+            // 根据域名分类
+            if (domain.contains("youtube.com") || domain.contains("youtu.be") || 
+                domain.contains("bilibili.com") || domain.contains("tiktok.com")) {
+                return "video";
+            } else if (domain.contains("github.com") || domain.contains("stackoverflow.com") ||
+                      domain.contains("developer")) {
+                return "development";
+            } else if (domain.contains("news") || domain.contains("新闻")) {
+                return "news";
+            } else if (domain.contains("shop") || domain.contains("buy") ||
+                      domain.contains("mall") || domain.contains("购物")) {
+                return "shopping";
+            } else if (domain.contains("social") || domain.contains("facebook") ||
+                      domain.contains("twitter") || domain.contains("weibo")) {
+                return "social";
+            }
+            return "default";
         }
     }
 }

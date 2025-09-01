@@ -130,6 +130,67 @@
 
     </LinearLayout>
 
+    <!-- 分类和分组管理 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/colorBackground"
+        android:orientation="vertical"
+        android:elevation="1dp">
+
+        <!-- 分类标签 -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/category_tabs"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?android:attr/colorBackground"
+            app:tabMode="scrollable"
+            app:tabGravity="start"
+            app:tabIndicatorColor="?attr/colorPrimary"
+            app:tabSelectedTextColor="?attr/colorPrimary"
+            app:tabTextColor="?android:attr/textColorSecondary"
+            app:tabIndicatorHeight="2dp"
+            app:tabTextAppearance="@style/TextAppearance.AppCompat.Caption" />
+
+        <!-- 分组筛选器 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:background="?android:attr/colorBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="分组："
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:layout_marginEnd="8dp" />
+
+            <Spinner
+                android:id="@+id/group_spinner"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="16dp" />
+
+            <ImageButton
+                android:id="@+id/group_manage_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_edit"
+                android:tint="?attr/colorPrimary"
+                android:contentDescription="管理分组"
+                android:scaleType="centerInside"
+                android:padding="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
     <!-- 标签页列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/tabs_recycler_view"

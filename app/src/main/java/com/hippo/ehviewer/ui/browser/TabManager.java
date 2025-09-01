@@ -7,6 +7,9 @@ import android.webkit.WebView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 public class TabManager {
     private static final String TAG = "TabManager";
@@ -221,6 +224,104 @@ public class TabManager {
     public void restoreState() {
         // TODO: 实现标签页状态恢复
         // 从SharedPreferences或数据库恢复
+    }
+    
+    // 根据分组获取标签页
+    public List<TabAdapter.BrowserTab> getTabsByGroup(String group, boolean incognito) {
+        List<TabAdapter.BrowserTab> targetList = incognito ? incognitoTabs : normalTabs;
+        List<TabAdapter.BrowserTab> result = new ArrayList<>();
+        
+        for (TabAdapter.BrowserTab tab : targetList) {
+            if ((group == null && (tab.getGroup() == null || tab.getGroup().isEmpty())) ||
+                (group != null && group.equals(tab.getGroup()))) {
+                result.add(tab);
+            }
+        }
+        return result;
+    }
+    
+    // 根据分类获取标签页
+    public List<TabAdapter.BrowserTab> getTabsByCategory(String category, boolean incognito) {
+        List<TabAdapter.BrowserTab> targetList = incognito ? incognitoTabs : normalTabs;
+        List<TabAdapter.BrowserTab> result = new ArrayList<>();
+        
+        for (TabAdapter.BrowserTab tab : targetList) {
+            String tabCategory = tab.getCategory();
+            if (tabCategory == null) {
+                tabCategory = tab.getSmartCategory();
+            }
+            if (category.equals(tabCategory)) {
+                result.add(tab);
+            }
+        }
+        return result;
+    }
+    
+    // 获取所有分组
+    public List<String> getAllGroups(boolean incognito) {
+        List<TabAdapter.BrowserTab> targetList = incognito ? incognitoTabs : normalTabs;
+        List<String> groups = new ArrayList<>();
+        
+        for (TabAdapter.BrowserTab tab : targetList) {
+            String group = tab.getGroup();
+            if (group != null && !group.isEmpty() && !groups.contains(group)) {
+                groups.add(group);
+            }
+        }
+        return groups;
+    }
+    
+    // 获取所有分类及其数量
+    public Map<String, Integer> getCategoryCounts(boolean incognito) {
+        List<TabAdapter.BrowserTab> targetList = incognito ? incognitoTabs : normalTabs;
+        Map<String, Integer> categoryMap = new HashMap<>();
+        
+        for (TabAdapter.BrowserTab tab : targetList) {
+            String category = tab.getCategory();
+            if (category == null) {
+                category = tab.getSmartCategory();
+            }
+            categoryMap.put(category, categoryMap.getOrDefault(category, 0) + 1);
+        }
+        return categoryMap;
+    }
+    
+    // 批量设置分组
+    public void setTabsGroup(List<Integer> tabIndices, String group, boolean incognito) {
+        List<TabAdapter.BrowserTab> targetList = incognito ? incognitoTabs : normalTabs;
+        
+        for (int index : tabIndices) {
+            if (index >= 0 && index < targetList.size()) {
+                targetList.get(index).setGroup(group);
+            }
+        }
+        Log.d(TAG, "Set group '" + group + "' for " + tabIndices.size() + " tabs");
+    }
+    
+    // 自动分组相似标签页
+    public void autoGroupSimilarTabs(boolean incognito) {
+        List<TabAdapter.BrowserTab> targetList = incognito ? incognitoTabs : normalTabs;
+        Map<String, List<TabAdapter.BrowserTab>> domainMap = new HashMap<>();
+        
+        // 按域名分组
+        for (TabAdapter.BrowserTab tab : targetList) {
+            String domain = tab.getDomain();
+            if (!domain.isEmpty()) {
+                domainMap.computeIfAbsent(domain, k -> new ArrayList<>()).add(tab);
+            }
+        }
+        
+        // 为有多个标签页的域名创建分组
+        for (Map.Entry<String, List<TabAdapter.BrowserTab>> entry : domainMap.entrySet()) {
+            List<TabAdapter.BrowserTab> tabs = entry.getValue();
+            if (tabs.size() >= 2) {
+                String groupName = entry.getKey();
+                for (TabAdapter.BrowserTab tab : tabs) {
+                    tab.setGroup(groupName);
+                }
+                Log.d(TAG, "Auto-grouped " + tabs.size() + " tabs under '" + groupName + "'");
+            }
+        }
     }
     
     // 清理资源
