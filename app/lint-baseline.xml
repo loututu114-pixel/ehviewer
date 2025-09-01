@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.12.2" type="baseline" client="gradle" dependencies="false" name="AGP (8.12.2)" variant="fatal" version="8.12.2">
+
+    <issue
+        id="MissingDefaultResource"
+        message="The dimen &quot;card_corner_radius&quot; in values-sw600dp has no declaration in the base `values` folder; this can lead to crashes when the resource is queried in a configuration that does not match this qualifier"
+        errorLine1="    &lt;dimen name=&quot;card_corner_radius&quot;>20dp&lt;/dimen>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values-sw600dp/dimens.xml"
+            line="24"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="MissingDefaultResource"
+        message="The dimen &quot;card_elevation&quot; in values-sw600dp has no declaration in the base `values` folder; this can lead to crashes when the resource is queried in a configuration that does not match this qualifier"
+        errorLine1="    &lt;dimen name=&quot;card_elevation&quot;>8dp&lt;/dimen>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values-sw600dp/dimens.xml"
+            line="25"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="MissingDefaultResource"
+        message="The dimen &quot;card_max_elevation&quot; in values-sw600dp has no declaration in the base `values` folder; this can lead to crashes when the resource is queried in a configuration that does not match this qualifier"
+        errorLine1="    &lt;dimen name=&quot;card_max_elevation&quot;>12dp&lt;/dimen>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values-sw600dp/dimens.xml"
+            line="26"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="MissingDefaultResource"
+        message="The dimen &quot;card_corner_radius&quot; in values-land has no declaration in the base `values` folder; this can lead to crashes when the resource is queried in a configuration that does not match this qualifier"
+        errorLine1="    &lt;dimen name=&quot;card_corner_radius&quot;>16dp&lt;/dimen>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values-land/dimens.xml"
+            line="37"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="MissingDefaultResource"
+        message="The dimen &quot;card_elevation&quot; in values-land has no declaration in the base `values` folder; this can lead to crashes when the resource is queried in a configuration that does not match this qualifier"
+        errorLine1="    &lt;dimen name=&quot;card_elevation&quot;>6dp&lt;/dimen>"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values-land/dimens.xml"
+            line="38"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/thumb` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_toRightOf=&quot;@id/thumb&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="70"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/title` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_below=&quot;@id/title&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="100"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/title` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_alignLeft=&quot;@id/title&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="101"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/title` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_alignLeft=&quot;@id/title&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="112"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/thumb` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_alignBottom=&quot;@id/thumb&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="113"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/title` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_alignLeft=&quot;@id/title&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="130"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotSibling"
+        message="`@id/thumb` is not a sibling in the same `RelativeLayout`"
+        errorLine1="            android:layout_alignBottom=&quot;@id/thumb&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/item_gallery_list.xml"
+            line="138"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="InvalidSetHasFixedSize"
+        message="When using `setHasFixedSize() in an `RecyclerView`, `wrap_content` cannot be used as a value for `size` in the scrolling direction."
+        errorLine1="    recyclerView.setHasFixedSize(true);"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/hippo/ehviewer/ui/HostsActivity.java"
+            line="92"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ExpiredTargetSdkVersion"
+        message="Google Play requires that apps target API level 33 or higher."
+        errorLine1="        targetSdk = 29"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="28"
+            column="9"/>
+    </issue>
+
+</issues>
