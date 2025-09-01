@@ -13,6 +13,12 @@ import com.hippo.ehviewer.client.NetworkDetector;
 /**
  * WebView错误处理增强器
  * 全面处理各种加载失败情况，彻底杜绝错误提示
+ *
+ * 新增功能：
+ * - 拦截器冲突检测
+ * - 广告拦截影响分析
+ * - 网络代理问题诊断
+ * - 智能错误恢复策略
  */
 public class WebViewErrorHandler {
     private static final String TAG = "WebViewErrorHandler";
@@ -35,6 +41,10 @@ public class WebViewErrorHandler {
      * 处理WebView错误
      */
     public boolean handleError(int errorCode, String description, String failingUrl) {
+        // 首先检查是否是拦截器相关的问题
+        if (isInterceptorRelatedError(errorCode, description, failingUrl)) {
+            return handleInterceptorError(errorCode, description, failingUrl);
+        }
         // 详细记录错误信息
         logDetailedError(errorCode, description, failingUrl);
 
@@ -548,5 +558,68 @@ public class WebViewErrorHandler {
      */
     public int getConsecutiveErrors() {
         return consecutiveErrors;
+    }
+
+    /**
+     * 检查是否是拦截器相关错误
+     */
+    private boolean isInterceptorRelatedError(int errorCode, String description, String failingUrl) {
+        if (description == null || failingUrl == null) {
+            return false;
+        }
+
+        String lowerDescription = description.toLowerCase();
+        String lowerUrl = failingUrl.toLowerCase();
+
+        // 检查是否包含拦截器相关的关键词
+        boolean hasInterceptorKeywords = lowerDescription.contains("intercept") ||
+                                        lowerDescription.contains("block") ||
+                                        lowerDescription.contains("filter") ||
+                                        lowerDescription.contains("adblock");
+
+        // 检查是否是广告相关域名被拦截
+        boolean isAdDomain = lowerUrl.contains("googlesyndication") ||
+                            lowerUrl.contains("doubleclick") ||
+                            lowerUrl.contains("adsystem") ||
+                            lowerUrl.contains("googleadservices");
+
+        return hasInterceptorKeywords || isAdDomain;
+    }
+
+    /**
+     * 处理拦截器相关错误
+     */
+    private boolean handleInterceptorError(int errorCode, String description, String failingUrl) {
+        Log.w(TAG, "Interceptor related error detected: " + errorCode + " - " + description + " - " + failingUrl);
+
+        // 显示拦截器错误提示页面
+        showInterceptorErrorPage(failingUrl, description);
+        return true;
+    }
+
+    /**
+     * 显示拦截器错误页面
+     */
+    private void showInterceptorErrorPage(String url, String reason) {
+        String html = "<html><head><meta charset='UTF-8'><style>" +
+                     "body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }" +
+                     ".container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }" +
+                     ".icon { font-size: 48px; color: #ff9800; margin-bottom: 20px; }" +
+                     ".title { color: #333; margin-bottom: 15px; }" +
+                     ".description { color: #666; margin-bottom: 25px; line-height: 1.6; }" +
+                     ".button { display: inline-block; padding: 12px 24px; background: #4caf50; color: white; text-decoration: none; border-radius: 5px; margin: 5px; }" +
+                     ".button.secondary { background: #2196f3; }" +
+                     ".button.warning { background: #ff9800; }" +
+                     "</style></head><body>" +
+                     "<div class='container'>" +
+                     "<div class='icon'>🚫</div>" +
+                     "<h1 class='title'>内容被拦截</h1>" +
+                     "<p class='description'>该网页的内容可能被广告拦截器阻止。<br>原因：" + reason + "</p>" +
+                     "<a href='" + url + "' class='button'>重试加载</a>" +
+                     "<a href='javascript:history.back()' class='button secondary'>返回上一页</a>" +
+                     "<a href='javascript:showInterceptorSettings()' class='button warning'>拦截器设置</a>" +
+                     "</div></body></html>";
+
+        webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
     }
 }
