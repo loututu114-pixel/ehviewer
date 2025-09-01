@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
@@ -311,9 +312,8 @@ public class ModernBrowserActivity extends AppCompatActivity {
         settings.setBlockNetworkLoads(false);
         settings.setLoadsImagesAutomatically(true);
         
-        // 设置User-Agent
-        String userAgent = settings.getUserAgentString();
-        settings.setUserAgentString(userAgent + " EhViewer/1.0");
+        // 使用系统默认User-Agent，不进行UA修改
+        settings.setUserAgentString(null);
         
         // 缓存设置
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);

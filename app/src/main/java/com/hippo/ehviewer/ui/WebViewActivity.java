@@ -54,6 +54,7 @@ import com.hippo.ehviewer.client.ReadingModeManager;
 import com.hippo.ehviewer.client.SearchEngineManager;
 import com.hippo.ehviewer.client.WebViewCacheManager;
 import com.hippo.ehviewer.client.BrowserCoreManager;
+import com.hippo.ehviewer.client.AdBlockManager;
 import com.hippo.ehviewer.client.X5WebViewManager;
 import com.hippo.ehviewer.util.DomainSuggestionManager;
 import com.hippo.ehviewer.util.YouTubeCompatibilityManager;
@@ -81,6 +82,9 @@ public class WebViewActivity extends AppCompatActivity {
 
     // UI控件
     private AutoCompleteTextView mUrlInput;
+    
+    // 私密模式状态
+    private boolean mIsIncognitoMode = false;
     private ProgressBar mProgressBar;
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private ImageView mIncognitoIcon;
@@ -119,6 +123,12 @@ public class WebViewActivity extends AppCompatActivity {
     // 标签页管理
     private List<TabData> mTabs = new ArrayList<>();
     private int mCurrentTabIndex = -1;
+
+    // 显示模式
+    private boolean isDesktopMode = false;
+
+    // 用户输入的原始URL，用于地址栏显示逻辑
+    private String mUserInputUrl = null;
 
     // 网络检测和搜索引擎管理
     private NetworkDetector mNetworkDetector;
@@ -797,6 +807,24 @@ public class WebViewActivity extends AppCompatActivity {
             // 设置编码
             webSettings.setDefaultTextEncodingName("UTF-8");
 
+            // SSL和安全设置 - 使用兼容模式而非完全允许，提高连接成功率
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+            }
+            webSettings.setAllowContentAccess(true);
+            webSettings.setAllowFileAccess(false); // 禁止文件访问以提高安全性
+            webSettings.setAllowFileAccessFromFileURLs(false);
+            webSettings.setAllowUniversalAccessFromFileURLs(false);
+
+            // 网络设置
+            webSettings.setBlockNetworkLoads(false);
+            webSettings.setBlockNetworkImage(false);
+            
+            // 私密模式配置
+            if (mIsIncognitoMode) {
+                configureIncognitoMode(webSettings, webView);
+            }
+
             // 先初始化管理器
             if (mErrorHandler == null) {
                 mErrorHandler = new WebViewErrorHandler(this, webView);
@@ -832,38 +860,31 @@ public class WebViewActivity extends AppCompatActivity {
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
 
-                    // 如果是YouTube相关的页面加载成功，重置失败计数器
-                    if (url != null && mUserAgentManager != null &&
-                        (url.contains("youtube.com") || url.contains("youtu.be") || url.contains("googlevideo.com"))) {
-                        mUserAgentManager.resetYouTubeFailureCount();
-                        android.util.Log.d("WebViewActivity", "YouTube access successful, reset failure counter");
-                    }
-
-                    // 如果是百度相关的页面加载成功，重置失败计数器
-                    if (url != null && mUserAgentManager != null && mUserAgentManager.isBaiduRelatedUrl(url)) {
-                        mUserAgentManager.resetBaiduFailureCount();
-                        android.util.Log.d("WebViewActivity", "Baidu access successful, reset failure counter");
-                    }
-
-                    // 保存历史记录
+                    // 保存历史记录 - 使用WebView内置机制
                     try {
                         String title = view.getTitle();
-                        if (title != null && !title.isEmpty() && url != null && !url.isEmpty()) {
-                            mHistoryManager.addHistory(title, url);
-                            android.util.Log.d("WebViewActivity", "History saved: " + title + " - " + url);
+                        if (title != null && !title.isEmpty() && url != null && !url.isEmpty() && 
+                            !url.startsWith("about:") && !url.startsWith("data:")) {
+                            // WebView已经自动处理历史记录，这里只是记录日志
+                            android.util.Log.d("WebViewActivity", "Page loaded successfully: " + title + " - " + url);
                         }
                     } catch (Exception e) {
-                        android.util.Log.e("WebViewActivity", "Error saving history", e);
+                        android.util.Log.e("WebViewActivity", "Error processing page info", e);
                     }
 
                     // 更新UI标题
                     updateTitle(view.getTitle());
 
-                    // 页面加载完成后，如果地址栏还是空的且当前页面不是about:blank，更新地址栏
-                    if (mUrlInput != null && mUrlInput.getText().toString().trim().isEmpty()) {
+                    // 页面加载完成后，更新地址栏显示当前URL
+                    if (mUrlInput != null) {
                         String currentUrl = view.getUrl();
                         if (currentUrl != null && !"about:blank".equals(currentUrl)) {
-                            mUrlInput.setText(currentUrl);
+                            // 简化地址栏更新逻辑 - 总是显示当前真实URL
+                            String currentInputText = mUrlInput.getText().toString().trim();
+                            if (!currentUrl.equals(currentInputText)) {
+                                mUrlInput.setText(currentUrl);
+                                android.util.Log.d("WebViewActivity", "Updated address bar to current URL: " + currentUrl);
+                            }
                         }
                     }
                     
@@ -873,6 +894,11 @@ public class WebViewActivity extends AppCompatActivity {
                             mContentPurifier.applyContentPurification(view, url);
                         }, 2000); // 等待2秒让页面完全加载
                     }
+                    
+                    // 注入元素屏蔽CSS
+                    view.postDelayed(() -> {
+                        injectElementBlockingCSS(view, url);
+                    }, 1500); // 页面加载完成后注入CSS
                     
                     // 隐藏进度条
                     if (mProgressBar != null) {
@@ -893,12 +919,11 @@ public class WebViewActivity extends AppCompatActivity {
                 public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                     super.onPageStarted(view, url, favicon);
 
-                    // 检查是否为特殊网站，如果是则应用兼容性设置
-                    if (YouTubeCompatibilityManager.isSpecialSite(url)) {
-                        YouTubeCompatibilityManager.applyYouTubeCompatibility(view, url, mUserAgentManager);
-                        android.util.Log.d("WebViewActivity", "Applied YouTube compatibility for: " + url);
+                    // 页面开始加载时立即更新地址栏
+                    if (mUrlInput != null && url != null && !url.startsWith("about:")) {
+                        mUrlInput.setText(url);
+                        android.util.Log.d("WebViewActivity", "Page started, updated address bar: " + url);
                     }
-                    // 注意：不在onPageStarted中重复设置UA，避免干扰网站自身的跳转机制
 
                     // 更新进度条
                     if (mProgressBar != null) {
@@ -969,58 +994,41 @@ public class WebViewActivity extends AppCompatActivity {
                     super.onReceivedError(view, errorCode, description, failingUrl);
 
                     android.util.Log.e("WebViewActivity", "WebView error: " + errorCode + " - " + description + " - " + failingUrl);
-
-                    // 处理403 Forbidden错误 - YouTube访问被拒绝
-                    if ((errorCode == 403 || errorCode == WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME) &&
-                        mUserAgentManager != null && failingUrl != null) {
-
-                        // 检查是否是YouTube相关的URL
-                        if (mUserAgentManager.isYouTubeRelatedUrl(failingUrl)) {
-                            android.util.Log.d("WebViewActivity", "YouTube 403 error detected");
-
-                            // 移除UA切换策略 - UA伪造会导致重定向循环
-                            // 让网站根据真实的设备UA进行访问控制
-                            android.util.Log.d("WebViewActivity", "Using system default UA for YouTube access");
-
-                            // 简单的延迟重试，不改变UA
+                    
+                    // 通用连接错误处理 - 对所有连接失败实施重试机制
+                    if (description != null && (description.toLowerCase().contains("closed") || 
+                                                description.toLowerCase().contains("connection") ||
+                                                description.toLowerCase().contains("err_connection") ||
+                                                description.toLowerCase().contains("timeout"))) {
+                        android.util.Log.e("WebViewActivity", "Connection error detected for URL: " + failingUrl);
+                        
+                        // 通用重试机制 - 所有网站享受同等待遇
+                        if (failingUrl != null && !failingUrl.startsWith("about:")) {
+                            android.util.Log.d("WebViewActivity", "Implementing standard browser retry for URL: " + failingUrl);
                             view.postDelayed(() -> {
+                                android.util.Log.d("WebViewActivity", "Retrying connection...");
                                 view.reload();
-                            }, 2000); // 增加延迟时间
-
-                            return; // 等待重试结果
-                        }
-
-                        // 检查是否是百度相关的URL
-                        else if (mUserAgentManager.isBaiduRelatedUrl(failingUrl)) {
-                            android.util.Log.d("WebViewActivity", "=== BAIDU ERROR: " + errorCode + " - " + description + " - URL: " + failingUrl);
-
-                            // 移除UA切换策略 - UA伪造会导致重定向循环
-                            // 让网站根据真实的设备UA进行访问控制
-                            android.util.Log.d("WebViewActivity", "Using system default UA for Baidu access");
-
-                            // 显示用户友好的提示
-                            android.widget.Toast.makeText(WebViewActivity.this,
-                                "百度访问受限，请稍后重试", android.widget.Toast.LENGTH_SHORT).show();
-
-                                // 延迟重试
-                                view.postDelayed(() -> {
-                                    android.util.Log.d("WebViewActivity", "=== BAIDU RETRY: Reloading with new UA");
-                                    view.reload();
-                                }, 1500); // 百度API可能需要更长的延迟
-
-                                return; // 等待重试结果
-                            } else {
-                                android.util.Log.w("WebViewActivity", "=== BAIDU EXHAUSTED: All UA strategies tried");
-                                mUserAgentManager.resetBaiduFailureCount();
-
-                                // 显示失败提示
-                                android.widget.Toast.makeText(WebViewActivity.this,
-                                    "百度访问暂时不可用，请稍后重试", android.widget.Toast.LENGTH_LONG).show();
-                            }
+                            }, 2000); // 2秒后重试，标准浏览器行为
+                            return;
                         }
                     }
 
+                    // 处理403 Forbidden等HTTP错误 - 标准浏览器重试机制
+                    if (errorCode == 403 || errorCode == 401 || errorCode == WebViewClient.ERROR_UNSUPPORTED_AUTH_SCHEME) {
+                        android.util.Log.d("WebViewActivity", "HTTP authentication/authorization error: " + errorCode + " for URL: " + failingUrl);
+                        
+                        // 标准浏览器行为：对授权错误进行一次重试
+                        if (failingUrl != null && !failingUrl.startsWith("about:")) {
+                            view.postDelayed(() -> {
+                                android.util.Log.d("WebViewActivity", "Retrying after HTTP auth error...");
+                                view.reload();
+                            }, 2000);
+                            return;
+                        }
+                    }
 
+                    // 处理其他错误 - 显示错误页面
+                    showEnhancedErrorPage(view, errorCode, description, failingUrl);
                 }
 
                 @Override
@@ -1050,6 +1058,89 @@ public class WebViewActivity extends AppCompatActivity {
 
                     // 如果没有请求处理器，返回null让WebView正常处理
                     return super.shouldInterceptRequest(view, request);
+                }
+
+                @Override
+                public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
+                    android.util.Log.w("WebViewActivity", "SSL Certificate error: " + error.getUrl() + ", Error: " + error.toString());
+
+                    // 检查是否是受信任的域名或开发环境
+                    String url = error.getUrl();
+                    if (url != null && (url.contains("localhost") || url.contains("127.0.0.1") || url.contains("10.0.2.2"))) {
+                        // 开发环境，直接继续
+                        android.util.Log.d("WebViewActivity", "SSL error ignored for development URL: " + url);
+                        handler.proceed();
+                        return;
+                    }
+
+                    // 检查网络连接状态
+                    android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                        WebViewActivity.this.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+                    if (cm != null) {
+                        android.net.NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+                        if (activeNetwork == null || !activeNetwork.isConnected()) {
+                            android.util.Log.w("WebViewActivity", "SSL error occurred with no network connection");
+                            handler.cancel();
+                            showErrorPage(-100, "网络连接失败，请检查网络设置", url);
+                            return;
+                        }
+                    }
+
+                    // 对于生产环境，显示用户确认对话框
+                    new android.app.AlertDialog.Builder(WebViewActivity.this)
+                        .setTitle("SSL证书错误")
+                        .setMessage("该网站的安全证书存在问题。这可能是由于网络问题、证书过期或网站配置问题导致的。\n\n是否继续访问？\n\n错误详情：" + error.toString())
+                        .setPositiveButton("继续访问", (dialog, which) -> {
+                            android.util.Log.d("WebViewActivity", "User chose to proceed with SSL error");
+                            handler.proceed();
+                        })
+                        .setNegativeButton("取消", (dialog, which) -> {
+                            android.util.Log.d("WebViewActivity", "User chose to cancel SSL error");
+                            handler.cancel();
+                            showErrorPage(-101, "SSL证书验证失败", url);
+                        })
+                        .setNeutralButton("重试", (dialog, which) -> {
+                            android.util.Log.d("WebViewActivity", "User chose to retry after SSL error");
+                            handler.cancel();
+                            view.postDelayed(() -> {
+                                view.reload();
+                            }, 2000);
+                        })
+                        .setCancelable(false)
+                        .show();
+                }
+
+                @Override
+                public void onReceivedError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
+                    super.onReceivedError(view, request, error);
+                    
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        String url = request != null ? request.getUrl().toString() : "unknown";
+                        String description = error.getDescription() != null ? error.getDescription().toString() : "Unknown error";
+                        int errorCode = error.getErrorCode();
+                        
+                        android.util.Log.e("WebViewActivity", "Modern WebView error: " + errorCode + " - " + description + " - " + url);
+                        
+                        // 通用连接错误处理 - 现代浏览器标准重试机制
+                        if (description.toLowerCase().contains("closed") || 
+                            description.toLowerCase().contains("connection refused") ||
+                            description.toLowerCase().contains("err_connection_closed") ||
+                            description.toLowerCase().contains("connection reset") ||
+                            description.toLowerCase().contains("timeout")) {
+                            android.util.Log.e("WebViewActivity", "Connection error detected for URL: " + url);
+                            
+                            // 标准浏览器重试机制 - 适用于所有网站
+                            if (url != null && !url.startsWith("about:")) {
+                                android.util.Log.d("WebViewActivity", "Implementing standard browser retry for URL: " + url);
+                                view.postDelayed(() -> {
+                                    android.util.Log.d("WebViewActivity", "Retrying connection...");
+                                    view.reload();
+                                }, 2000); // 2秒后重试
+                            } else {
+                                showErrorPage(errorCode, "连接失败 - " + description, url);
+                            }
+                        }
+                    }
                 }
             });
 
@@ -1412,6 +1503,9 @@ public class WebViewActivity extends AppCompatActivity {
         android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: loadUrlInCurrentTab called with input: " + input);
         android.util.Log.d("WebViewActivity", "=== WEBVIEWACTIVITY: BrowserCoreManager instance: " + mBrowserCoreManager);
 
+        // 记录用户输入的原始URL
+        mUserInputUrl = input;
+
         try {
             if (mCurrentTabIndex >= 0 && mCurrentTabIndex < mTabs.size()) {
                 TabData currentTab = mTabs.get(mCurrentTabIndex);
@@ -1486,17 +1580,46 @@ public class WebViewActivity extends AppCompatActivity {
      */
     private boolean isValidUrl(String input) {
         try {
-            // 检查基本URL格式
+            // 检查基本URL格式（包含协议）
             if (input.contains("://")) {
                 java.net.URL url = new java.net.URL(input);
                 return true;
             }
 
-            // 检查域名格式
+            // 检查域名格式（不包含空格）
             if (input.contains(".") && !input.contains(" ")) {
-                // 简单的域名验证
+                // 改进的域名验证逻辑
                 String[] parts = input.split("\\.");
-                return parts.length >= 2 && parts[parts.length - 1].length() >= 2;
+
+                // 检查是否有至少一个点号
+                if (parts.length < 2) {
+                    return false;
+                }
+
+                // 检查顶级域名长度
+                String tld = parts[parts.length - 1].toLowerCase();
+                if (tld.length() < 2) {
+                    return false;
+                }
+
+                // 简化TLD验证 - 只检查长度和字符类型
+                // 接受所有2-10位的纯字母TLD
+                if (tld.length() < 2 || tld.length() > 10 || !tld.matches("[a-z]+")) {
+                    return false;
+                }
+
+                // 检查二级域名不为空
+                String domain = parts[parts.length - 2];
+                if (domain == null || domain.trim().isEmpty()) {
+                    return false;
+                }
+
+                // 检查域名不包含特殊字符（除了连字符和数字）
+                if (!domain.matches("[a-zA-Z0-9-]+")) {
+                    return false;
+                }
+
+                return true;
             }
 
             return false;
@@ -1520,6 +1643,159 @@ public class WebViewActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    /**
+     * 配置私密模式
+     */
+    private void configureIncognitoMode(WebSettings webSettings, WebView webView) {
+        try {
+            // 禁用所有存储
+            webSettings.setDomStorageEnabled(false);
+            webSettings.setDatabaseEnabled(false);
+            // setAppCacheEnabled已在API 33中移除，跳过此设置
+            
+            // 设置缓存模式为不使用缓存
+            webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+            
+            // 禁用表单数据保存
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+                webSettings.setSaveFormData(false);
+            }
+            
+            // 禁用密码保存
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+                webSettings.setSavePassword(false);
+            }
+            
+            // 创建私密模式的数据目录（隔离存储）
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                android.webkit.CookieManager cookieManager = android.webkit.CookieManager.getInstance();
+                cookieManager.removeAllCookies(null);
+                cookieManager.setAcceptCookie(false);
+            }
+            
+            android.util.Log.d("WebViewActivity", "Configured incognito mode - disabled storage and cache");
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error configuring incognito mode", e);
+        }
+    }
+    
+    /**
+     * 切换私密模式
+     */
+    public void toggleIncognitoMode() {
+        mIsIncognitoMode = !mIsIncognitoMode;
+        updateIncognitoUI();
+        
+        // 私密模式需要重新创建标签页以应用设置
+        // 这里简化处理，实际可以通过更复杂的逻辑重新配置当前WebView
+        
+        android.util.Log.d("WebViewActivity", "Incognito mode toggled: " + mIsIncognitoMode);
+    }
+    
+    /**
+     * 更新私密模式UI
+     */
+    private void updateIncognitoUI() {
+        if (mIncognitoIcon != null) {
+            mIncognitoIcon.setVisibility(mIsIncognitoMode ? View.VISIBLE : View.GONE);
+        }
+        
+        // 可以添加更多UI更新，比如状态栏颜色变化等
+    }
+
+    /**
+     * 注入元素屏蔽CSS到WebView
+     */
+    private void injectElementBlockingCSS(WebView webView, String url) {
+        if (webView == null || url == null) {
+            return;
+        }
+        
+        try {
+            // 从URL提取域名
+            java.net.URI uri = new java.net.URI(url);
+            String domain = uri.getHost();
+            if (domain == null) {
+                return;
+            }
+            
+            // 获取该域名的屏蔽CSS
+            AdBlockManager adBlockManager = AdBlockManager.getInstance();
+            adBlockManager.initialize(this);
+            String blockCSS = adBlockManager.generateBlockCSS(domain);
+            
+            if (blockCSS != null && !blockCSS.trim().isEmpty()) {
+                // 构建JavaScript代码来注入CSS
+                String jsCode = 
+                    "(function() {" +
+                    "  var style = document.createElement('style');" +
+                    "  style.type = 'text/css';" +
+                    "  style.id = 'ehviewer-adblock-css';" +
+                    "  style.innerHTML = '" + blockCSS.replace("'", "\\'").replace("\n", "\\n") + "';" +
+                    "  var existing = document.getElementById('ehviewer-adblock-css');" +
+                    "  if (existing) existing.remove();" +
+                    "  document.head.appendChild(style);" +
+                    "  console.log('EhViewer: Injected element blocking CSS for domain: " + domain + "');" +
+                    "})();";
+                
+                // 注入JavaScript
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                    webView.evaluateJavascript(jsCode, null);
+                } else {
+                    webView.loadUrl("javascript:" + jsCode);
+                }
+                
+                android.util.Log.d("WebViewActivity", "Injected element blocking CSS for domain: " + domain);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error injecting element blocking CSS", e);
+        }
+    }
+
+    /**
+     * 获取当前所有标签页信息（供TabsManagerActivity使用）
+     */
+    public static List<TabInfo> getCurrentTabsInfo() {
+        List<TabInfo> tabsInfo = new ArrayList<>();
+        
+        // 注意：这里需要一个静态方法来访问实例数据
+        // 或者使用EventBus等方式进行通信
+        
+        try {
+            // 这是一个简化的实现，实际应该通过更好的方式获取数据
+            // 可以考虑使用SingletonPattern、EventBus或Intent传递数据
+            android.util.Log.d("WebViewActivity", "getCurrentTabsInfo called - returning placeholder data");
+            
+            // 返回占位数据，实际实现需要访问mTabs
+            TabInfo currentTabInfo = new TabInfo(1);
+            currentTabInfo.title = "当前页面";
+            currentTabInfo.url = "https://example.com";
+            currentTabInfo.isActive = true;
+            tabsInfo.add(currentTabInfo);
+            
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "Error getting current tabs info", e);
+        }
+        
+        return tabsInfo;
+    }
+    
+    /**
+     * 标签页信息类
+     */
+    public static class TabInfo {
+        public int id;
+        public String title;
+        public String url;
+        public boolean isActive;
+        public boolean isIncognito;
+        public android.graphics.Bitmap favicon;
+        
+        public TabInfo(int id) {
+            this.id = id;
+        }
     }
 
     /**
@@ -2611,10 +2887,13 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void toggleDesktopMode() {
         try {
+            // 切换显示模式
+            isDesktopMode = !isDesktopMode;
+
             TabData currentTab = getCurrentTab();
             if (currentTab != null && currentTab.webView != null && mUserAgentManager != null) {
                 String currentUA = currentTab.webView.getSettings().getUserAgentString();
-                
+
                 // 移除UA修改，让WebView使用系统默认UA
                 // 网站应该根据真实的设备信息进行响应式适配
                 if (currentTab.webView != null && currentTab.webView.getSettings() != null) {

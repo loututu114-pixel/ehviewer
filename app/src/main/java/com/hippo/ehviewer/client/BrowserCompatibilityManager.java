@@ -244,7 +244,7 @@ public class BrowserCompatibilityManager {
         searchHeaders.put("DNT", "1");
 
         compatibilityConfigs.put(WebsiteType.SEARCH_ENGINE, new CompatibilityConfig(
-            UserAgentManager.UA_CHROME_DESKTOP,
+            null, // 使用系统默认UA
             searchHeaders,
             new WebSettingsConfig(true, true, true, true, true, "LOAD_DEFAULT"),
             true, true, true, 10000
@@ -259,7 +259,7 @@ public class BrowserCompatibilityManager {
         videoHeaders.put("Sec-Fetch-Site", "none");
 
         compatibilityConfigs.put(WebsiteType.VIDEO_PLATFORM, new CompatibilityConfig(
-            UserAgentManager.UA_CHROME_DESKTOP,
+            null, // 使用系统默认UA
             videoHeaders,
             new WebSettingsConfig(true, true, true, true, true, "LOAD_DEFAULT"),
             true, true, true, 15000
@@ -272,7 +272,7 @@ public class BrowserCompatibilityManager {
         eCommerceHeaders.put("Cache-Control", "no-cache");
 
         compatibilityConfigs.put(WebsiteType.E_COMMERCE, new CompatibilityConfig(
-            UserAgentManager.UA_CHROME_MOBILE,
+            null, // 使用系统默认UA
             eCommerceHeaders,
             new WebSettingsConfig(true, true, true, true, false, "LOAD_NO_CACHE"),
             true, true, false, 8000
@@ -286,7 +286,7 @@ public class BrowserCompatibilityManager {
         bankingHeaders.put("Pragma", "no-cache");
 
         compatibilityConfigs.put(WebsiteType.BANKING_FINANCE, new CompatibilityConfig(
-            UserAgentManager.UA_CHROME_DESKTOP,
+            null, // 使用系统默认UA
             bankingHeaders,
             new WebSettingsConfig(true, false, false, false, false, "LOAD_NO_CACHE"),
             true, false, false, 12000
@@ -300,7 +300,7 @@ public class BrowserCompatibilityManager {
         apiHeaders.put("X-Requested-With", "XMLHttpRequest");
 
         compatibilityConfigs.put(WebsiteType.API_SERVICE, new CompatibilityConfig(
-            UserAgentManager.UA_CHROME_DESKTOP,
+            null, // 使用系统默认UA
             apiHeaders,
             new WebSettingsConfig(false, false, true, true, false, "LOAD_NO_CACHE"),
             true, true, false, 5000
@@ -313,7 +313,7 @@ public class BrowserCompatibilityManager {
         cdnHeaders.put("Cache-Control", "max-age=31536000");
 
         compatibilityConfigs.put(WebsiteType.CDN_STATIC, new CompatibilityConfig(
-            UserAgentManager.UA_CHROME_DESKTOP,
+            null, // 使用系统默认UA
             cdnHeaders,
             new WebSettingsConfig(true, false, false, false, true, "LOAD_CACHE_ELSE_NETWORK"),
             false, false, true, 3000
