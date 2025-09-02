@@ -24,9 +24,11 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import com.hippo.ehviewer.R;
 import com.hippo.ehviewer.ui.MainActivity;
+import com.hippo.ehviewer.service.AdaptiveKeepAliveManager;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,7 +45,10 @@ public class AppKeepAliveService extends Service {
     private AudioTrack silentAudioTrack;
     private Handler handler;
     private ScreenStateReceiver screenReceiver;
+    private StrategyReceiver strategyReceiver;
+    private AdaptiveKeepAliveManager adaptiveManager;
     private boolean isServiceRunning = false;
+    private AdaptiveKeepAliveManager.KeepAliveStrategy currentStrategy = AdaptiveKeepAliveManager.KeepAliveStrategy.NORMAL;
     
     // 单例模式
     private static AppKeepAliveService instance;
@@ -61,6 +66,9 @@ public class AppKeepAliveService extends Service {
         // 初始化Handler
         handler = new Handler(Looper.getMainLooper());
         
+        // 初始化自适应管理器
+        adaptiveManager = AdaptiveKeepAliveManager.getInstance(this);
+        
         // 启动前台服务
         startForegroundService();
         
@@ -72,6 +80,9 @@ public class AppKeepAliveService extends Service {
         
         // 注册屏幕状态监听
         registerScreenStateReceiver();
+        
+        // 注册策略变化监听
+        registerStrategyReceiver();
         
         // 启动JobScheduler定时任务
         scheduleJob();
@@ -136,13 +147,28 @@ public class AppKeepAliveService extends Service {
      * 获取WakeLock保持CPU运行
      */
     private void acquireWakeLock() {
-        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (powerManager != null) {
-            wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "EhViewer::KeepAliveWakeLock"
-            );
-            wakeLock.acquire(10 * 60 * 1000L); // 10分钟后自动释放
+        acquireWakeLock(10 * 60 * 1000L); // 默认10分钟
+    }
+    
+    /**
+     * 获取WakeLock保持CPU运行（自定义时间）
+     */
+    private void acquireWakeLock(long timeoutMs) {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+            
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "EhViewer::KeepAliveWakeLock"
+                );
+                wakeLock.acquire(timeoutMs);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to acquire wake lock", e);
         }
     }
     
@@ -219,6 +245,20 @@ public class AppKeepAliveService extends Service {
     }
     
     /**
+     * 注册策略变化接收器
+     */
+    private void registerStrategyReceiver() {
+        strategyReceiver = new StrategyReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.hippo.ehviewer.ACTION_STRATEGY_CHANGE");
+        filter.addAction("com.hippo.ehviewer.ACTION_AGGRESSIVE_MODE");
+        filter.addAction("com.hippo.ehviewer.ACTION_POWER_SAVING_MODE");
+        filter.addAction("com.hippo.ehviewer.ACTION_ULTRA_POWER_SAVING_MODE");
+        filter.addAction("com.hippo.ehviewer.ACTION_NORMAL_MODE");
+        registerReceiver(strategyReceiver, filter);
+    }
+    
+    /**
      * 屏幕状态接收器
      */
     private class ScreenStateReceiver extends BroadcastReceiver {
@@ -228,10 +268,51 @@ public class AppKeepAliveService extends Service {
             if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                 // 屏幕关闭时，重新获取WakeLock
                 acquireWakeLock();
+                // 通知自适应管理器
+                if (adaptiveManager != null) {
+                    adaptiveManager.onScreenStateChanged(false);
+                }
             } else if (Intent.ACTION_SCREEN_ON.equals(action) || 
                       Intent.ACTION_USER_PRESENT.equals(action)) {
                 // 屏幕打开或解锁时，确保服务正常
                 ensureServiceRunning();
+                // 通知自适应管理器
+                if (adaptiveManager != null) {
+                    adaptiveManager.onScreenStateChanged(true);
+                    if (Intent.ACTION_USER_PRESENT.equals(action)) {
+                        adaptiveManager.onUserInteraction();
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 策略变化接收器
+     */
+    private class StrategyReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if ("com.hippo.ehviewer.ACTION_STRATEGY_CHANGE".equals(action)) {
+                String strategyName = intent.getStringExtra("strategy");
+                if (strategyName != null) {
+                    try {
+                        AdaptiveKeepAliveManager.KeepAliveStrategy newStrategy = 
+                            AdaptiveKeepAliveManager.KeepAliveStrategy.valueOf(strategyName);
+                        applyStrategy(newStrategy);
+                    } catch (IllegalArgumentException e) {
+                        Log.e(TAG, "Invalid strategy: " + strategyName);
+                    }
+                }
+            } else if ("com.hippo.ehviewer.ACTION_AGGRESSIVE_MODE".equals(action)) {
+                applyStrategy(AdaptiveKeepAliveManager.KeepAliveStrategy.AGGRESSIVE);
+            } else if ("com.hippo.ehviewer.ACTION_POWER_SAVING_MODE".equals(action)) {
+                applyStrategy(AdaptiveKeepAliveManager.KeepAliveStrategy.CONSERVATIVE);
+            } else if ("com.hippo.ehviewer.ACTION_ULTRA_POWER_SAVING_MODE".equals(action)) {
+                applyStrategy(AdaptiveKeepAliveManager.KeepAliveStrategy.MINIMAL);
+            } else if ("com.hippo.ehviewer.ACTION_NORMAL_MODE".equals(action)) {
+                applyStrategy(AdaptiveKeepAliveManager.KeepAliveStrategy.NORMAL);
             }
         }
     }
@@ -265,7 +346,17 @@ public class AppKeepAliveService extends Service {
      * 定期检查服务状态
      */
     private void startServiceCheck() {
-        handler.postDelayed(new Runnable() {
+        startServiceCheck(60000); // 默认1分钟
+    }
+    
+    /**
+     * 定期检查服务状态（自定义间隔）
+     */
+    private void startServiceCheck(long intervalMs) {
+        // 移除之前的检查任务
+        handler.removeCallbacksAndMessages(null);
+        
+        Runnable checkRunnable = new Runnable() {
             @Override
             public void run() {
                 if (isServiceRunning) {
@@ -275,10 +366,12 @@ public class AppKeepAliveService extends Service {
                     }
                     
                     // 继续下一次检查
-                    handler.postDelayed(this, 60000); // 每分钟检查一次
+                    handler.postDelayed(this, intervalMs);
                 }
             }
-        }, 60000);
+        };
+        
+        handler.postDelayed(checkRunnable, intervalMs);
     }
     
     /**
@@ -292,6 +385,158 @@ public class AppKeepAliveService extends Service {
             } else {
                 startService(intent);
             }
+        }
+    }
+    
+    /**
+     * 应用保活策略
+     */
+    private void applyStrategy(AdaptiveKeepAliveManager.KeepAliveStrategy strategy) {
+        if (currentStrategy == strategy) {
+            return;
+        }
+        
+        Log.i(TAG, "Applying strategy: " + strategy.getDisplayName());
+        currentStrategy = strategy;
+        
+        switch (strategy) {
+            case AGGRESSIVE:
+                applyAggressiveStrategy();
+                break;
+            case NORMAL:
+                applyNormalStrategy();
+                break;
+            case CONSERVATIVE:
+                applyConservativeStrategy();
+                break;
+            case MINIMAL:
+                applyMinimalStrategy();
+                break;
+        }
+        
+        // 更新前台通知以反映当前策略
+        updateForegroundNotification();
+    }
+    
+    /**
+     * 应用积极策略
+     */
+    private void applyAggressiveStrategy() {
+        // 更频繁的WakeLock刷新
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
+        acquireWakeLock(15 * 60 * 1000L); // 15分钟
+        
+        // 启用音频保活
+        if (silentAudioTrack == null) {
+            playSilentAudio();
+        }
+        
+        // 缩短检查间隔到30秒
+        startServiceCheck(30000);
+    }
+    
+    /**
+     * 应用正常策略
+     */
+    private void applyNormalStrategy() {
+        // 标准WakeLock时间
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
+        acquireWakeLock(10 * 60 * 1000L); // 10分钟
+        
+        // 保持音频保活
+        if (silentAudioTrack == null) {
+            playSilentAudio();
+        }
+        
+        // 标准检查间隔1分钟
+        startServiceCheck(60000);
+    }
+    
+    /**
+     * 应用保守策略
+     */
+    private void applyConservativeStrategy() {
+        // 较短的WakeLock时间
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
+        acquireWakeLock(5 * 60 * 1000L); // 5分钟
+        
+        // 禁用音频保活
+        if (silentAudioTrack != null) {
+            try {
+                silentAudioTrack.stop();
+                silentAudioTrack.release();
+                silentAudioTrack = null;
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to stop audio track", e);
+            }
+        }
+        
+        // 延长检查间隔到2分钟
+        startServiceCheck(120000);
+    }
+    
+    /**
+     * 应用最小策略
+     */
+    private void applyMinimalStrategy() {
+        // 最短WakeLock时间
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
+        acquireWakeLock(2 * 60 * 1000L); // 2分钟
+        
+        // 禁用音频保活
+        if (silentAudioTrack != null) {
+            try {
+                silentAudioTrack.stop();
+                silentAudioTrack.release();
+                silentAudioTrack = null;
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to stop audio track", e);
+            }
+        }
+        
+        // 最长检查间隔5分钟
+        startServiceCheck(300000);
+    }
+    
+    /**
+     * 更新前台通知
+     */
+    private void updateForegroundNotification() {
+        String strategyText = "运行模式: " + currentStrategy.getDisplayName();
+        
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+            notificationIntent, PendingIntent.FLAG_IMMUTABLE);
+        
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("EhViewer 浏览器")
+            .setContentText(strategyText)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setContentIntent(pendingIntent);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE);
+        }
+        
+        Notification notification = builder.build();
+        
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        if (notificationManager != null) {
+            notificationManager.notify(NOTIFICATION_ID, notification);
         }
     }
     
@@ -324,7 +569,19 @@ public class AppKeepAliveService extends Service {
         
         // 注销接收器
         if (screenReceiver != null) {
-            unregisterReceiver(screenReceiver);
+            try {
+                unregisterReceiver(screenReceiver);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to unregister screen receiver", e);
+            }
+        }
+        
+        if (strategyReceiver != null) {
+            try {
+                unregisterReceiver(strategyReceiver);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to unregister strategy receiver", e);
+            }
         }
         
         // 移除Handler回调

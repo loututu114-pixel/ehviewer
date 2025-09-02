@@ -291,7 +291,7 @@ public class AdBlockManager {
     ));
 
     private static AdBlockManager sInstance;
-    private boolean mAdBlockEnabled = false; // 默认禁用，避免过度拦截导致网页无法打开
+    private boolean mAdBlockEnabled = true; // 默认启用广告屏蔽功能
     private Context mContext;
     
     // 元素屏蔽相关

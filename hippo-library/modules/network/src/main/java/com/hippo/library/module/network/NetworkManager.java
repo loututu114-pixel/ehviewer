@@ -21,6 +21,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -383,22 +388,79 @@ public class NetworkManager {
 
         @Override
         public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-            mainHandler.post(() -> {
+            // 在后台线程执行文件下载，避免阻塞主线程
+            executorService.submit(() -> {
+                FileOutputStream fos = null;
+                InputStream inputStream = null;
                 try {
-                    if (response.isSuccessful()) {
-                        // TODO: 实现文件下载逻辑
-                        callback.onSuccess(destination);
+                    if (response.isSuccessful() && response.body() != null) {
+                        // 确保目标目录存在
+                        File parentDir = destination.getParentFile();
+                        if (parentDir != null && !parentDir.exists()) {
+                            parentDir.mkdirs();
+                        }
+                        
+                        // 开始下载文件
+                        inputStream = response.body().byteStream();
+                        fos = new FileOutputStream(destination);
+                        
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        long totalBytesRead = 0;
+                        long contentLength = response.body().contentLength();
+                        
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            fos.write(buffer, 0, bytesRead);
+                            totalBytesRead += bytesRead;
+                            
+                            // 可以在这里添加进度回调
+                            if (contentLength > 0) {
+                                final long progress = totalBytesRead;
+                                final long total = contentLength;
+                                // TODO: 添加进度回调支持
+                            }
+                        }
+                        
+                        fos.flush();
+                        
+                        // 下载完成，回调成功
+                        mainHandler.post(() -> callback.onSuccess(destination));
+                        
                     } else {
-                        NetworkException exception = new NetworkException(
-                                NetworkException.ERROR_SERVER,
-                                "HTTP " + response.code() + ": " + response.message()
-                        );
-                        callback.onFailure(exception);
+                        mainHandler.post(() -> {
+                            NetworkException exception = new NetworkException(
+                                    NetworkException.ERROR_SERVER,
+                                    "HTTP " + response.code() + ": " + response.message()
+                            );
+                            callback.onFailure(exception);
+                        });
                     }
                 } catch (Exception e) {
-                    NetworkException exception = NetworkUtils.createNetworkException(e);
-                    callback.onFailure(exception);
+                    // 清理不完整的文件
+                    if (destination.exists() && !destination.delete()) {
+                        android.util.Log.w("NetworkManager", "Failed to delete incomplete download: " + destination.getAbsolutePath());
+                    }
+                    
+                    mainHandler.post(() -> {
+                        NetworkException exception = NetworkUtils.createNetworkException(e);
+                        callback.onFailure(exception);
+                    });
                 } finally {
+                    // 关闭流
+                    if (fos != null) {
+                        try {
+                            fos.close();
+                        } catch (IOException e) {
+                            android.util.Log.w("NetworkManager", "Error closing output stream", e);
+                        }
+                    }
+                    if (inputStream != null) {
+                        try {
+                            inputStream.close();
+                        } catch (IOException e) {
+                            android.util.Log.w("NetworkManager", "Error closing input stream", e);
+                        }
+                    }
                     response.close();
                 }
             });

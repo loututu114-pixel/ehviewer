@@ -52,6 +52,9 @@ import com.hippo.ehviewer.client.EhEngine;
 import com.hippo.ehviewer.client.X5WebViewManager;
 import com.hippo.ehviewer.client.MemoryManager;
 import com.hippo.ehviewer.util.AppOptimizationManager;
+import com.hippo.ehviewer.util.SystemErrorHandler;
+import com.hippo.ehviewer.util.LogMonitor;
+import com.hippo.ehviewer.util.SystemMonitor;
 import com.hippo.ehviewer.client.data.EhNewsDetail;
 import com.hippo.ehviewer.client.data.GalleryDetail;
 import com.hippo.ehviewer.client.data.userTag.UserTagList;
@@ -196,6 +199,16 @@ public class EhApplication extends RecordingApplication {
         
         // 初始化应用优化管理器
         AppOptimizationManager.getInstance(this).initializeOnAppCreate(this);
+
+        // 初始化系统错误处理器
+        SystemErrorHandler.getInstance(this);
+
+        // 初始化系统监控器
+        SystemMonitor.getInstance(this).startMonitoring();
+
+        // 启动日志监控器
+        LogMonitor.getInstance(this).startMonitoring();
+
         // 实际作用不确定，但是与64位应用有冲突
 //        A7Zip.loadLibrary(A7ZipExtractLite.LIBRARY, libname -> ReLinker.loadLibrary(EhApplication.this, libname));
         // 64位适配

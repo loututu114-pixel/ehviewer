@@ -1,7 +1,7 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-08-30T16:08:18Z
-version: 1.1
+last_updated: 2025-09-01T13:06:42Z
+version: 1.2
 author: Claude Code PM System
 ---
 
@@ -59,6 +59,12 @@ author: Claude Code PM System
 - **Ad Blocking**: Custom implementation
 - **License Plugin**: Dependency license management
 
+### Error Handling & System Monitoring (NEW - v1.9.9.18)
+- **LogMonitor**: Real-time Android log monitoring and error pattern detection
+- **SystemErrorHandler**: Graceful handling of system-level errors (SurfaceFlinger, Parcel, GPU)
+- **RetryHandler**: Automated retry mechanisms with exponential backoff
+- **Error Categories**: Unix socket permissions, GPU rendering, memory management
+
 ### Testing Dependencies
 - JUnit for unit testing
 - AndroidX Test libraries
@@ -97,7 +103,7 @@ Supported locales:
 
 ## Application Configuration
 - **Package Name**: com.hippo.ehviewer
-- **Version Name**: 1.9.9.17
+- **Version Name**: 1.9.9.18
 - **Version Code**: 111
 - **Application ID**: com.hippo.ehviewer
 

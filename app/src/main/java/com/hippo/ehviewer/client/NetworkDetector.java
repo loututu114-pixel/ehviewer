@@ -85,6 +85,22 @@ public class NetworkDetector {
         return sInstance;
     }
 
+    /**
+     * 静态方法：检测是否被GFW屏蔽（简化的同步版本）
+     * 用于需要快速判断的场景
+     */
+    public static boolean isGfwBlocked(Context context) {
+        try {
+            NetworkDetector detector = getInstance(context);
+            NetworkStatus status = detector.detectNetworkInternal();
+            return status == NetworkStatus.GFW_BLOCKED;
+        } catch (Exception e) {
+            Log.e(TAG, "Error detecting GFW status", e);
+            // 如果检测失败，保守地返回false（不认为被屏蔽）
+            return false;
+        }
+    }
+
     private NetworkDetector(Context context) {
         this.mContext = context;
         this.mExecutorService = Executors.newSingleThreadExecutor();

@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background_default"
+    android:padding="8dp">
+
+    <!-- 标题栏和设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🌐 浏览器快捷方式"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/settings_button"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_settings"
+            android:alpha="0.6"
+            android:contentDescription="设置" />
+
+        <ImageButton
+            android:id="@+id/widget_refresh"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            android:alpha="0.6"
+            android:contentDescription="刷新"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+    <!-- 搜索框 -->
+    <LinearLayout
+        android:id="@+id/search_box"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:background="@drawable/search_box_background"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp"
+        android:paddingHorizontal="12dp">
+
+        <ImageView
+            android:id="@+id/search_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_search"
+            android:alpha="0.7" />
+
+        <TextView
+            android:id="@+id/search_hint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Google 搜索"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.8"
+            android:layout_marginStart="8dp" />
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_arrow_forward"
+            android:alpha="0.5" />
+
+    </LinearLayout>
+
+    <!-- 网站快捷方式网格 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp">
+
+        <!-- 第一行网站 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <!-- 网站 1 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/website_button_1"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="🔍"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/website_button_background"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/website_text_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="谷歌"
+                    android:textSize="10sp"
+                    android:textColor="@android:color/white"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+            <!-- 网站 2 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/website_button_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="🔍"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/website_button_background"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/website_text_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="百度"
+                    android:textSize="10sp"
+                    android:textColor="@android:color/white"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+            <!-- 网站 3 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/website_button_3"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="📱"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/website_button_background"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/website_text_3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="微博"
+                    android:textSize="10sp"
+                    android:textColor="@android:color/white"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 第二行网站 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- 网站 4 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/website_button_4"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="🤔"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/website_button_background"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/website_text_4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="知乎"
+                    android:textSize="10sp"
+                    android:textColor="@android:color/white"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+            <!-- 网站 5 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/website_button_5"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="📺"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/website_button_background"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/website_text_5"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="B站"
+                    android:textSize="10sp"
+                    android:textColor="@android:color/white"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+            <!-- 网站 6 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/website_button_6"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="🛒"
+                    android:textSize="24sp"
+                    android:gravity="center"
+                    android:background="@drawable/website_button_background"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/website_text_6"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="淘宝"
+                    android:textSize="10sp"
+                    android:textColor="@android:color/white"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 分隔线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/white"
+        android:alpha="0.3"
+        android:layout_marginVertical="8dp" />
+
+    <!-- 个性化推荐区域 -->
+    <LinearLayout
+        android:id="@+id/recommendation_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="?android:attr/selectableItemBackground"
+        android:padding="6dp">
+
+        <TextView
+            android:id="@+id/recommendation_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="为您推荐: 新闻资讯"
+            android:textSize="12sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/recommendation_desc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="基于您的浏览习惯"
+            android:textSize="10sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.7"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <!-- 底部操作和统计 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp">
+
+        <TextView
+            android:id="@+id/usage_stats"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="已使用 23 次 • 1小时前"
+            android:textSize="9sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.6" />
+
+        <ImageButton
+            android:id="@+id/add_bookmark_button"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_add"
+            android:alpha="0.6"
+            android:contentDescription="添加书签" />
+
+    </LinearLayout>
+
+</LinearLayout>

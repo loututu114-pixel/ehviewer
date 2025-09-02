@@ -591,8 +591,8 @@
     <string name="settings_eh_show_gallery_pages_summary">Display the number of pages in the gallery list</string>
     <string name="settings_eh_show_tag_translations">Show tag translations</string>
     <string name="settings_eh_show_tag_translations_summary">Show tag translations instead of the original text (It takes time to download the data file)</string>
-    <string name="settings_eh_tag_translations_source">Placeholder</string>
-    <string name="settings_eh_tag_translations_source_url">https://placeholder</string>
+    <string name="settings_eh_tag_translations_source">GitHub</string>
+    <string name="settings_eh_tag_translations_source_url">https://github.com/seven332/EhViewer/raw/tag-translations/tag-translations/tag-translations-zh-rCN</string>
     <string name="settings_eh_filter">Block gallery</string>
     <string name="settings_eh_filter_summary">Block gallery by title, uploader and tags</string>
     <string name="settings_eh_cellular_network_warning">Cellular network warning</string>
@@ -1056,5 +1056,11 @@
     <string name="settings_eh_bottom_nav_mode">底部导航栏模式</string>
     <string name="bottom_nav_mode_browser">浏览器模式</string>
     <string name="bottom_nav_mode_gallery">EhViewer图库模式</string>
+
+    <!-- Widget Descriptions -->
+    <string name="widget_battery_status_description">显示电池状态和电源管理选项的桌面小部件</string>
+    <string name="widget_browser_shortcuts_description">提供快速访问浏览器功能的桌面小部件</string>
+    <string name="widget_clock_weather_description">显示时间和天气信息的桌面小部件</string>
+    <string name="widget_wifi_manager_description">管理WiFi连接的桌面小部件</string>
 
 </resources>

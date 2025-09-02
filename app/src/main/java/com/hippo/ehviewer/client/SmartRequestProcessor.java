@@ -251,10 +251,10 @@ public class SmartRequestProcessor {
      * 检查是否应该拦截请求
      */
     private boolean shouldBlockRequest(String url) {
-        // 广告过滤 - 暂时禁用，等待AdBlockManager完善
-        // if (adBlockManager != null && adBlockManager.shouldBlock(url)) {
-        //     return true;
-        // }
+        // 广告过滤 - 已启用AdBlockManager
+        if (adBlockManager != null && adBlockManager.isAd(url)) {
+            return true;
+        }
 
         // 规则检查
         RequestRule rule = getRequestRule(url);

@@ -7,8 +7,8 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Log;
 import androidx.core.app.NotificationCompat;
-// import com.google.firebase.messaging.FirebaseMessagingService;
-// import com.google.firebase.messaging.RemoteMessage;
+import com.google.firebase.messaging.FirebaseMessagingService;
+import com.google.firebase.messaging.RemoteMessage;
 import android.app.Service;
 import android.content.Context;
 import android.os.IBinder;
@@ -23,9 +23,9 @@ import java.util.Map;
 /**
  * FCM推送消息服务
  * 处理来自Firebase的远程推送消息
- * 注：暂时注释Firebase相关代码，需要添加Firebase依赖后启用
+ * 已启用Firebase功能，支持完整的推送消息处理
  */
-public class PushMessageService extends Service {
+public class PushMessageService extends FirebaseMessagingService {
     
     private static final String TAG = "PushMessageService";
     
@@ -37,16 +37,10 @@ public class PushMessageService extends Service {
         notificationManager = NotificationManager.getInstance(this);
     }
     
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-    
     /**
      * 接收推送消息
-     * 注：需要Firebase依赖，暂时注释
+     * Firebase消息接收处理
      */
-    /*
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
@@ -65,7 +59,6 @@ public class PushMessageService extends Service {
             handleNotificationMessage(remoteMessage.getNotification());
         }
     }
-    */
     
     /**
      * 模拟接收推送消息（测试用）
@@ -128,6 +121,28 @@ public class PushMessageService extends Service {
         } catch (Exception e) {
             Log.e(TAG, "Error processing data message", e);
         }
+    }
+    
+    /**
+     * 处理Firebase通知消息
+     */
+    private void handleNotificationMessage(RemoteMessage.Notification notification) {
+        String title = notification.getTitle();
+        String body = notification.getBody();
+        String imageUrl = notification.getImageUrl() != null ? notification.getImageUrl().toString() : null;
+        
+        NotificationManager.NotificationData data = 
+            new NotificationManager.NotificationData(title, body);
+        
+        // 添加图片支持
+        if (imageUrl != null) {
+            Bitmap bitmap = getBitmapFromURL(imageUrl);
+            if (bitmap != null) {
+                data.setBigPicture(bitmap);
+            }
+        }
+        
+        notificationManager.showNotification(data);
     }
     
     /**
@@ -373,9 +388,8 @@ public class PushMessageService extends Service {
     
     /**
      * Token刷新
-     * 注：需要Firebase依赖，暂时注释
+     * Firebase token更新处理
      */
-    /*
     @Override
     public void onNewToken(String token) {
         super.onNewToken(token);
@@ -384,7 +398,6 @@ public class PushMessageService extends Service {
         // 将token发送到服务器
         sendTokenToServer(token);
     }
-    */
     
     /**
      * 发送Token到服务器

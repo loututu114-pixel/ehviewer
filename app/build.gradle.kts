@@ -149,6 +149,7 @@ dependencies {
     // Firebase (王子公主 app analytics)
     implementation("com.google.firebase:firebase-crashlytics:19.4.2")
     implementation("com.google.firebase:firebase-analytics:22.4.0")
+    implementation("com.google.firebase:firebase-messaging:24.0.0")
 
     // Test dependencies
     testImplementation("junit:junit:4.13.2")

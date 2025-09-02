@@ -31,6 +31,7 @@ public class BrowserCompatibilityManager {
     // 统计信息
     private final Map<String, CompatibilityStats> domainStats;
     private final Set<String> problematicDomains;
+    private final Map<String, Integer> errorStats;
     
     // 配置选项 - 调整为被动兼容模式
     private boolean autoMobileRedirect = false; // 默认关闭强制跳转
@@ -48,7 +49,8 @@ public class BrowserCompatibilityManager {
         this.userAgentManager = new UserAgentManager(context);
         this.domainStats = new HashMap<>();
         this.problematicDomains = new HashSet<>();
-        
+        this.errorStats = new HashMap<>();
+
         loadSettings();
         loadStatistics();
     }
@@ -527,16 +529,54 @@ public class BrowserCompatibilityManager {
      * 加载统计数据
      */
     private void loadStatistics() {
-        // TODO: 从持久存储加载统计数据
-        Log.d(TAG, "Statistics loaded");
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("browser_compatibility_stats", Context.MODE_PRIVATE);
+            
+            // 加载错误统计
+            errorStats.clear();
+            Map<String, ?> allPrefs = prefs.getAll();
+            for (Map.Entry<String, ?> entry : allPrefs.entrySet()) {
+                String key = entry.getKey();
+                if (key.startsWith("error_") && entry.getValue() instanceof Integer) {
+                    String url = key.substring(6); // 移除"error_"前缀
+                    errorStats.put(url, (Integer) entry.getValue());
+                }
+            }
+            
+            Log.d(TAG, "Statistics loaded: " + errorStats.size() + " error records");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load statistics", e);
+        }
     }
     
     /**
      * 保存统计数据
      */
     public void saveStatistics() {
-        // TODO: 保存统计数据到持久存储
-        Log.d(TAG, "Statistics saved");
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("browser_compatibility_stats", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            
+            // 清除旧数据
+            editor.clear();
+            
+            // 保存错误统计（限制保存数量避免占用过多空间）
+            int saveCount = 0;
+            final int MAX_SAVE_COUNT = 100;
+            for (Map.Entry<String, Integer> entry : errorStats.entrySet()) {
+                if (saveCount >= MAX_SAVE_COUNT) break;
+                editor.putInt("error_" + entry.getKey(), entry.getValue());
+                saveCount++;
+            }
+            
+            // 保存时间戳
+            editor.putLong("last_save_time", System.currentTimeMillis());
+            
+            editor.apply();
+            Log.d(TAG, "Statistics saved: " + saveCount + " records");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save statistics", e);
+        }
     }
     
     /**

@@ -1,7 +1,7 @@
 ---
 created: 2025-08-30T04:26:53Z
-last_updated: 2025-09-01T00:39:57Z
-version: 1.3
+last_updated: 2025-09-01T13:06:42Z
+version: 1.4
 author: Claude Code PM System
 ---
 
@@ -34,6 +34,7 @@ EhViewerh/
 ├── install/               # Installation scripts and resources
 ├── release_package/       # Release build outputs
 ├── Ehviewer_CN_SXJ/      # Chinese localization resources
+├── ANDROID_LOG_ERRORS_FIX_GUIDE.md (NEW - Android system error solutions)
 └── *.apk                  # Built APK variants (5 themed versions)
 ```
 
@@ -88,8 +89,11 @@ app/
 │   │   │   │   │   ├── BrowserRegistrationManager.java
 │   │   │   │   │   ├── DefaultBrowserHelper.java
 │   │   │   │   │   ├── DomainSuggestionManager.java
+│   │   │   │   │   ├── LogMonitor.java (NEW - Log monitoring and error detection)
+│   │   │   │   │   ├── RetryHandler.java (NEW - Automatic retry mechanisms)
 │   │   │   │   │   ├── SmartUrlProcessor.java
 │   │   │   │   │   ├── SmartUrlProcessorTest.java
+│   │   │   │   │   ├── SystemErrorHandler.java (NEW - System error handling)
 │   │   │   │   │   ├── UniversalFileOpener.java
 │   │   │   │   │   ├── UrlSuggestionTest.java
 │   │   │   │   │   ├── VideoPlayerEnhancer.java
