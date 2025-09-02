@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 按下状态 -->
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="#5A67D8" />
+            <corners android:radius="26dp" />
+            <stroke android:width="2dp" android:color="@android:color/white" />
+        </shape>
+    </item>
+    <!-- 正常状态 -->
+    <item>
+        <shape>
+            <solid android:color="#667eea" />
+            <corners android:radius="26dp" />
+            <stroke android:width="2dp" android:color="@android:color/white" />
+        </shape>
+    </item>
+</selector>

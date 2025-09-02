@@ -840,6 +840,36 @@
             android:theme="@style/AppTheme.NoActionBar">
         </activity>
 
+        <!-- 用户引导和权限设置 -->
+        <activity
+            android:name="com.hippo.ehviewer.onboarding.OnboardingActivity"
+            android:configChanges="screenSize|uiMode|orientation"
+            android:exported="true"
+            android:label="用户引导"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="portrait">
+        </activity>
+        
+        <activity
+            android:name="com.hippo.ehviewer.permission.PermissionGuideActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="权限引导"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:taskAffinity=""
+            android:excludeFromRecents="true">
+        </activity>
+        
+        <activity
+            android:name="com.hippo.ehviewer.permission.PermissionRationaleActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="权限说明"
+            android:theme="@android:style/Theme.Black.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true">
+        </activity>
+
         <!-- 独立的浏览器应用入口 - 专为浏览器选择设计 -->
         <activity
             android:name="com.hippo.ehviewer.ui.EhBrowserActivity"
@@ -1045,6 +1075,113 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </receiver>
+
+        <!-- 系统事件广播接收器 - 增强拉活能力 -->
+        <receiver
+            android:name=".receiver.SystemEventReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter android:priority="1000">
+                <!-- 网络连接变化 -->
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                <!-- 电池状态变化 -->
+                <action android:name="android.intent.action.BATTERY_CHANGED" />
+                <action android:name="android.intent.action.POWER_CONNECTED" />
+                <action android:name="android.intent.action.POWER_DISCONNECTED" />
+                <!-- 时间相关变化 -->
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <!-- 存储媒体变化 -->
+                <action android:name="android.intent.action.MEDIA_MOUNTED" />
+                <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
+                <!-- 屏幕状态变化 -->
+                <action android:name="android.intent.action.SCREEN_ON" />
+                <action android:name="android.intent.action.SCREEN_OFF" />
+                <action android:name="android.intent.action.USER_PRESENT" />
+                <!-- 电池低电量 -->
+                <action android:name="android.intent.action.BATTERY_LOW" />
+                <action android:name="android.intent.action.BATTERY_OKAY" />
+                <!-- 设备重启 -->
+                <action android:name="android.intent.action.REBOOT" />
+                <!-- 语言区域变化 -->
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <intent-filter>
+                <!-- 包安装/卸载事件 -->
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 桌面小部件 - 时钟天气 -->
+        <receiver 
+            android:name=".widget.ClockWeatherWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.hippo.ehviewer.widget.CLICK" />
+                <action android:name="com.hippo.ehviewer.widget.REFRESH" />
+                <action android:name="com.hippo.ehviewer.widget.OPEN_BROWSER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_clock_weather_info" />
+        </receiver>
+
+        <!-- 桌面小部件 - WiFi管理 -->
+        <receiver 
+            android:name=".widget.WiFiManagerWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.hippo.ehviewer.widget.CLICK" />
+                <action android:name="com.hippo.ehviewer.widget.REFRESH" />
+                <action android:name="com.hippo.ehviewer.widget.WIFI_TOGGLE" />
+                <action android:name="com.hippo.ehviewer.widget.WIFI_SCAN" />
+                <action android:name="com.hippo.ehviewer.widget.WIFI_CONNECT" />
+                <action android:name="com.hippo.ehviewer.widget.NETWORK_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_wifi_manager_info" />
+        </receiver>
+
+        <!-- 桌面小部件 - 电池状态 -->
+        <receiver 
+            android:name=".widget.BatteryStatusWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.hippo.ehviewer.widget.CLICK" />
+                <action android:name="com.hippo.ehviewer.widget.REFRESH" />
+                <action android:name="com.hippo.ehviewer.widget.BATTERY_SETTINGS" />
+                <action android:name="com.hippo.ehviewer.widget.POWER_SAVER" />
+                <action android:name="com.hippo.ehviewer.widget.BATTERY_OPTIMIZATION" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_battery_status_info" />
+        </receiver>
+        <!-- 桌面小部件 - 浏览器快捷方式 -->
+        <receiver 
+            android:name=".widget.BrowserShortcutWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.hippo.ehviewer.widget.CLICK" />
+                <action android:name="com.hippo.ehviewer.widget.REFRESH" />
+                <action android:name="com.hippo.ehviewer.widget.SEARCH" />
+                <action android:name="com.hippo.ehviewer.widget.WEBSITE_CLICK" />
+                <action android:name="com.hippo.ehviewer.widget.ADD_BOOKMARK" />
+                <action android:name="com.hippo.ehviewer.widget.SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_browser_shortcuts_info" />
         </receiver>
         
         <!-- 短信验证码操作接收器 -->

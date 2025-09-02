@@ -37,8 +37,8 @@ public class HistoryManager {
     private static final int DATABASE_VERSION = 1;
     private static final String TABLE_HISTORY = "history";
 
-    // 历史记录最大数量 - 限制为30条，保持历史记录简洁
-    private static final int MAX_HISTORY_COUNT = 30;
+    // 历史记录最大数量 - 增加到300条，避免记录被过度清理
+    private static final int MAX_HISTORY_COUNT = 300;
 
     private static HistoryManager sInstance;
     private final DatabaseHelper mDbHelper;
@@ -64,36 +64,48 @@ public class HistoryManager {
 
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
-        // 检查是否已存在
-        Cursor cursor = db.query(TABLE_HISTORY, new String[]{"id", "visit_count"},
-                "url = ?", new String[]{url}, null, null, null);
+        try {
+            // 检查是否已存在
+            Cursor cursor = db.query(TABLE_HISTORY, new String[]{"id", "visit_count"},
+                    "url = ?", new String[]{url}, null, null, null);
 
-        if (cursor.moveToFirst()) {
-            // 更新现有记录
-            long id = cursor.getLong(0);
-            int visitCount = cursor.getInt(1) + 1;
+            if (cursor.moveToFirst()) {
+                // 更新现有记录
+                long id = cursor.getLong(0);
+                int visitCount = cursor.getInt(1) + 1;
 
-            ContentValues values = new ContentValues();
-            values.put("title", title);
-            values.put("visit_time", System.currentTimeMillis());
-            values.put("visit_count", visitCount);
+                ContentValues values = new ContentValues();
+                values.put("title", title);
+                values.put("visit_time", System.currentTimeMillis());
+                values.put("visit_count", visitCount);
 
-            db.update(TABLE_HISTORY, values, "id = ?", new String[]{String.valueOf(id)});
-        } else {
-            // 插入新记录
-            ContentValues values = new ContentValues();
-            values.put("title", title);
-            values.put("url", url);
-            values.put("visit_time", System.currentTimeMillis());
-            values.put("visit_count", 1);
+                int updateResult = db.update(TABLE_HISTORY, values, "id = ?", new String[]{String.valueOf(id)});
+                Log.d("HistoryManager", "Updated existing history record: " + url + ", result: " + updateResult);
+            } else {
+                // 插入新记录
+                ContentValues values = new ContentValues();
+                values.put("title", title);
+                values.put("url", url);
+                values.put("visit_time", System.currentTimeMillis());
+                values.put("visit_count", 1);
 
-            db.insert(TABLE_HISTORY, null, values);
+                long insertResult = db.insert(TABLE_HISTORY, null, values);
+                Log.d("HistoryManager", "Inserted new history record: " + url + ", result: " + insertResult);
 
-            // 检查并清理超出数量的记录
-            cleanOldHistory(db);
+                // 检查并清理超出数量的记录
+                cleanOldHistory(db);
+            }
+
+            cursor.close();
+        } catch (Exception e) {
+            Log.e("HistoryManager", "Error adding history record", e);
+        } finally {
+            // 确保数据库连接被关闭
+            if (db != null && db.isOpen()) {
+                // 注意：这里不应该关闭数据库连接，因为它是单例模式
+                // db.close();
+            }
         }
-
-        cursor.close();
     }
 
     /**
@@ -143,14 +155,36 @@ public class HistoryManager {
     @NonNull
     public List<HistoryInfo> getAllHistory() {
         List<HistoryInfo> historyList = new ArrayList<>();
-        SQLiteDatabase db = mDbHelper.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_HISTORY, null, null, null, null, null,
-                "visit_time DESC");
+        SQLiteDatabase db = null;
+        Cursor cursor = null;
 
-        while (cursor.moveToNext()) {
-            historyList.add(cursorToHistory(cursor));
+        try {
+            db = mDbHelper.getReadableDatabase();
+            cursor = db.query(TABLE_HISTORY, null, null, null, null, null,
+                    "visit_time DESC");
+
+            Log.d("HistoryManager", "Querying all history records, cursor count: " + cursor.getCount());
+
+            while (cursor.moveToNext()) {
+                try {
+                    HistoryInfo history = cursorToHistory(cursor);
+                    historyList.add(history);
+                    Log.d("HistoryManager", "Loaded history: " + history.title + " - " + history.url);
+                } catch (Exception e) {
+                    Log.e("HistoryManager", "Error parsing history record", e);
+                }
+            }
+
+            Log.d("HistoryManager", "Total history records loaded: " + historyList.size());
+
+        } catch (Exception e) {
+            Log.e("HistoryManager", "Error getting all history records", e);
+        } finally {
+            if (cursor != null && !cursor.isClosed()) {
+                cursor.close();
+            }
         }
-        cursor.close();
+
         return historyList;
     }
 
@@ -239,11 +273,32 @@ public class HistoryManager {
      */
     private HistoryInfo cursorToHistory(Cursor cursor) {
         HistoryInfo history = new HistoryInfo();
-        history.id = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
-        history.title = cursor.getString(cursor.getColumnIndexOrThrow("title"));
-        history.url = cursor.getString(cursor.getColumnIndexOrThrow("url"));
-        history.visitTime = cursor.getLong(cursor.getColumnIndexOrThrow("visit_time"));
-        history.visitCount = cursor.getInt(cursor.getColumnIndexOrThrow("visit_count"));
+
+        try {
+            history.id = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
+            history.title = cursor.getString(cursor.getColumnIndexOrThrow("title"));
+            history.url = cursor.getString(cursor.getColumnIndexOrThrow("url"));
+            history.visitTime = cursor.getLong(cursor.getColumnIndexOrThrow("visit_time"));
+            history.visitCount = cursor.getInt(cursor.getColumnIndexOrThrow("visit_count"));
+
+            // 确保URL不为空
+            if (history.url == null || history.url.trim().isEmpty()) {
+                Log.w("HistoryManager", "Found history record with empty URL, id: " + history.id);
+                history.url = "about:blank";
+            }
+
+            // 确保标题不为空
+            if (history.title == null || history.title.trim().isEmpty()) {
+                history.title = history.url;
+            }
+
+        } catch (Exception e) {
+            Log.e("HistoryManager", "Error converting cursor to HistoryInfo", e);
+            // 返回一个默认的HistoryInfo对象
+            history.url = "about:blank";
+            history.title = "未知页面";
+        }
+
         return history;
     }
 

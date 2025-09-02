@@ -1,0 +1,120 @@
+{
+  "version": "1.0.0",
+  "lastUpdate": "2024-01-01T00:00:00Z",
+  "searchConfig": {
+    "homepage": {
+      "enabled": true,
+      "url": "https://www.google.com",
+      "china": "https://www.baidu.com",
+      "title": "默认首页",
+      "customOptions": [
+        {
+          "name": "新闻首页",
+          "url": "https://news.google.com",
+          "china": "https://news.baidu.com"
+        },
+        {
+          "name": "购物中心",
+          "url": "https://www.amazon.com",
+          "china": "https://www.taobao.com"
+        },
+        {
+          "name": "视频网站",
+          "url": "https://www.youtube.com",
+          "china": "https://www.bilibili.com"
+        },
+        {
+          "name": "开发者社区",
+          "url": "https://github.com",
+          "china": "https://gitee.com"
+        }
+      ]
+    },
+    "default": {
+      "engine": "google",
+      "name": "Google",
+      "url": "https://www.google.com/search?q=%s",
+      "icon": "https://www.google.com/favicon.ico"
+    },
+    "china": {
+      "engine": "baidu",
+      "name": "百度",
+      "url": "https://www.baidu.com/s?wd=%s",
+      "icon": "https://www.baidu.com/favicon.ico"
+    },
+    "engines": {
+      "google": {
+        "name": "Google",
+        "url": "https://www.google.com/search?q=%s",
+        "icon": "https://www.google.com/favicon.ico",
+        "suggest": "https://www.google.com/complete/search?client=firefox&q=%s"
+      },
+      "baidu": {
+        "name": "百度",
+        "url": "https://www.baidu.com/s?wd=%s",
+        "icon": "https://www.baidu.com/favicon.ico",
+        "suggest": "https://www.baidu.com/su?wd=%s"
+      },
+      "bing": {
+        "name": "必应",
+        "url": "https://www.bing.com/search?q=%s",
+        "icon": "https://www.bing.com/favicon.ico",
+        "suggest": "https://www.bing.com/AS/Suggestions?query=%s&mkt=zh-cn"
+      },
+      "duckduckgo": {
+        "name": "DuckDuckGo",
+        "url": "https://duckduckgo.com/?q=%s",
+        "icon": "https://duckduckgo.com/favicon.ico",
+        "suggest": "https://duckduckgo.com/ac/?q=%s"
+      },
+      "sogou": {
+        "name": "搜狗",
+        "url": "https://www.sogou.com/web?query=%s",
+        "icon": "https://www.sogou.com/favicon.ico"
+      }
+    },
+    "countryMapping": {
+      "CN": "china",
+      "HK": "china",
+      "TW": "china",
+      "MO": "china",
+      "SG": "china",
+      "MY": "china"
+    },
+    "channelMapping": {
+      "xiaomi": {
+        "engine": "baidu",
+        "priority": 10
+      },
+      "huawei": {
+        "engine": "baidu",
+        "priority": 9
+      },
+      "oppo": {
+        "engine": "baidu",
+        "priority": 8
+      },
+      "vivo": {
+        "engine": "baidu",
+        "priority": 7
+      },
+      "google": {
+        "engine": "google",
+        "priority": 5
+      }
+    }
+  },
+  "urlPatterns": {
+    "urlRegex": "^(https?://)?([\\w-]+\\.)+[\\w-]+(/[\\w-./?%&=]*)?$",
+    "ipRegex": "^(https?://)?\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?(/[\\w-./?%&=]*)?$",
+    "domainRegex": "^([\\w-]+\\.)+[\\w-]+$",
+    "localhostRegex": "^(https?://)?localhost(:\\d+)?(/[\\w-./?%&=]*)?$"
+  },
+  "features": {
+    "smartDetection": true,
+    "searchSuggestions": true,
+    "autoComplete": true,
+    "historySuggestions": false,
+    "bookmarkSuggestions": true
+  }
+}

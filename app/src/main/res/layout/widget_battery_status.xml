@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background_default"
+    android:padding="8dp">
+
+    <!-- 标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔋 电池管理"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/widget_refresh"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            android:alpha="0.6"
+            android:contentDescription="刷新" />
+
+    </LinearLayout>
+
+    <!-- 电池电量显示区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+
+        <ImageView
+            android:id="@+id/battery_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_battery_full"
+            android:layout_marginEnd="8dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/battery_percentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="85%"
+                android:textSize="24sp"
+                android:textColor="@android:color/white"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/remaining_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="约可使用 6小时30分钟"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"
+                android:alpha="0.8"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 电池进度条 -->
+    <ProgressBar
+        android:id="@+id/battery_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="4dp"
+        android:progress="85"
+        android:max="100"
+        android:progressTint="@color/battery_progress_color" />
+
+    <!-- 充电状态 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:id="@+id/charging_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="充电中"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/power_saver_button"
+            android:layout_width="70dp"
+            android:layout_height="32dp"
+            android:text="省电模式"
+            android:textSize="9sp"
+            android:background="@drawable/button_power_save_off"
+            android:textColor="@android:color/white" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/charging_details"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="交流电充电"
+        android:textSize="11sp"
+        android:textColor="@android:color/white"
+        android:alpha="0.7"
+        android:layout_marginTop="2dp" />
+
+    <!-- 分隔线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/white"
+        android:alpha="0.3"
+        android:layout_marginVertical="6dp" />
+
+    <!-- 电池详细信息 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/battery_temperature"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="温度: 32.5°C"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"
+                android:alpha="0.8" />
+
+            <TextView
+                android:id="@+id/battery_voltage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="电压: 4.2V"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"
+                android:alpha="0.8"
+                android:gravity="end" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/battery_health"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="健康度: 良好"
+            android:textSize="11sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.8"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <!-- 电源管理建议 -->
+    <TextView
+        android:id="@+id/power_recommendation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="电量正常，正常使用"
+        android:textSize="10sp"
+        android:textColor="@android:color/white"
+        android:alpha="0.7"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/rounded_background"
+        android:padding="6dp" />
+
+</LinearLayout>

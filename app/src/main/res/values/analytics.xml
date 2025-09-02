@@ -23,6 +23,6 @@
     <!-- App Information -->
     <string name="app_name_analytics" translatable="false">王子的公主</string>
 
-    <!-- Google Tag Manager Container ID (预留，后续可重新启用) -->
-    <!-- <string name="gtm_container_id" translatable="false">GTM-MBDL2QT7</string> -->
+    <!-- Google Tag Manager Container ID -->
+    <string name="gtm_container_id" translatable="false">GTM-MBDL2QT7</string>
 </resources>

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background_default"
+    android:padding="8dp">
+
+    <!-- 标题栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📶 网络管理"
+            android:textSize="14sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/widget_refresh"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            android:alpha="0.6"
+            android:contentDescription="刷新" />
+
+    </LinearLayout>
+
+    <!-- WiFi状态区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/wifi_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="WiFi 已开启"
+            android:textSize="12sp"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/wifi_toggle_button"
+            android:layout_width="60dp"
+            android:layout_height="32dp"
+            android:text="开关"
+            android:textSize="10sp"
+            android:background="@drawable/button_wifi_on"
+            android:textColor="@android:color/white" />
+
+    </LinearLayout>
+
+    <!-- 当前连接信息 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/current_wifi_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="我的WiFi网络"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/signal_strength"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="信号强度: 优秀 (-45 dBm)"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"
+                android:alpha="0.8"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/signal_strength_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_wifi_signal_4"
+            android:alpha="0.8" />
+
+    </LinearLayout>
+
+    <!-- 连接信息 -->
+    <TextView
+        android:id="@+id/connection_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="IP: 192.168.1.100"
+        android:textSize="10sp"
+        android:textColor="@android:color/white"
+        android:alpha="0.7"
+        android:layout_marginTop="2dp" />
+
+    <!-- 分隔线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/white"
+        android:alpha="0.3"
+        android:layout_marginVertical="6dp" />
+
+    <!-- 网络类型显示 -->
+    <TextView
+        android:id="@+id/network_type"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="网络: WiFi"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"
+        android:alpha="0.9" />
+
+    <!-- 可用网络区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="4dp">
+
+        <TextView
+            android:id="@+id/available_networks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="发现 5 个网络"
+            android:textSize="11sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.8" />
+
+        <TextView
+            android:id="@+id/network_suggestion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="点击扫描更多网络"
+            android:textSize="10sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.6"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <!-- 操作按钮区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <Button
+            android:id="@+id/wifi_scan_button"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="🔍 扫描"
+            android:textSize="10sp"
+            android:background="@drawable/button_scan"
+            android:textColor="@android:color/white"
+            android:layout_marginEnd="4dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:text="🌐 测速"
+            android:textSize="10sp"
+            android:textColor="@android:color/white"
+            android:alpha="0.7"
+            android:gravity="center"
+            android:background="?android:attr/selectableItemBackground"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -23,6 +23,8 @@ import androidx.annotation.Nullable;
 import com.hippo.ehviewer.R;
 import com.tencent.smtt.sdk.QbSdk;
 
+import java.util.HashMap;
+
 /**
  * 腾讯X5浏览器管理器
  * 负责X5 SDK的初始化和WebView的创建管理
@@ -60,6 +62,36 @@ public class X5WebViewManager {
 
         Log.i(TAG, "Initializing X5 WebView SDK...");
 
+        // 优化X5初始化配置
+        try {
+            // 设置X5初始化参数，解决Unix socket权限问题
+            HashMap<String, Object> initParams = new HashMap<>();
+            initParams.put("QBSDK_DISABLE_UNIFY_REQUEST", "true"); // 禁用统一请求
+            initParams.put("QBSDK_DISABLE_CRASH_HANDLE", "true"); // 禁用X5崩溃处理
+            initParams.put("QBSDK_DISABLE_DOWNLOAD", "false"); // 启用X5下载
+            QbSdk.initTbsSettings(initParams);
+
+            // 设置TBS环境参数 - 暂时注释掉，因为API版本问题
+            // QbSdk.setTbsListener(new QbSdk.TbsListener() {
+            //     @Override
+            //     public void onDownloadFinish(int i) {
+            //         Log.d(TAG, "TBS download finished: " + i);
+            //     }
+            // 
+            //     @Override
+            //     public void onInstallFinish(int i) {
+            //         Log.d(TAG, "TBS install finished: " + i);
+            //     }
+            // 
+            //     @Override
+            //     public void onDownloadProgress(int i) {
+            //         Log.d(TAG, "TBS download progress: " + i);
+            //     }
+            // });
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to set TBS parameters, continue with default", e);
+        }
+
         // 设置X5初始化回调
         sPreInitCallback = new QbSdk.PreInitCallback() {
             @Override
@@ -71,9 +103,25 @@ public class X5WebViewManager {
                 if (success) {
                     // X5初始化成功，可以使用X5 WebView
                     Log.i(TAG, "X5 WebView is available for use");
+
+                    // 尝试获取版本信息
+                    try {
+                        int tbsVersion = QbSdk.getTbsVersion(context);
+                        Log.i(TAG, "X5 TBS version: " + tbsVersion);
+                    } catch (Exception e) {
+                        Log.w(TAG, "Failed to get TBS version", e);
+                    }
                 } else {
                     // X5初始化失败，回退到系统WebView
                     Log.w(TAG, "X5 WebView init failed, fallback to system WebView");
+
+                    // 记录失败原因 - 暂时注释掉，因为API版本问题
+                    // try {
+                    //     int tbsCoreVersion = QbSdk.getTbsCoreVersion();
+                    //     Log.w(TAG, "TBS core version: " + tbsCoreVersion);
+                    // } catch (Exception e) {
+                    //     Log.w(TAG, "Failed to get TBS core version", e);
+                    // }
                 }
             }
 
@@ -86,13 +134,17 @@ public class X5WebViewManager {
         // 初始化X5 SDK
         QbSdk.initX5Environment(context, sPreInitCallback);
 
-        // 设置一些X5配置
-        QbSdk.setDownloadWithoutWifi(true); // 允许非WiFi网络下载X5内核
+        // 设置X5配置
+        try {
+            QbSdk.setDownloadWithoutWifi(true); // 允许非WiFi网络下载X5内核
+            QbSdk.setNeedInitX5FirstTime(true); // 确保首次初始化
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to set QbSdk configuration", e);
+        }
 
         // 设置X5日志级别（如果支持）
         try {
-            // 一些X5版本可能不支持日志设置，这里使用try-catch
-            Log.i(TAG, "X5 SDK initialized with basic configuration");
+            Log.i(TAG, "X5 SDK initialized with enhanced configuration");
         } catch (Exception e) {
             Log.e(TAG, "Failed to set X5 log configuration", e);
         }

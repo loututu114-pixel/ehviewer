@@ -1,16 +1,20 @@
 package com.hippo.ehviewer.ui.browser;
 
+import android.Manifest;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 import android.webkit.URLUtil;
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -110,11 +114,14 @@ public class BrowserDownloadManager {
             // 获取文件名
             String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
             
-            // 创建下载目录
-            File downloadDir = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOWNLOADS), "EhViewer");
-            if (!downloadDir.exists()) {
-                downloadDir.mkdirs();
+            // 检查存储权限
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                // Android 9及以下需要存储权限
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                    notifyDownloadError("需要存储权限");
+                    return -1;
+                }
             }
             
             // 构建下载请求
@@ -123,8 +130,23 @@ public class BrowserDownloadManager {
             request.setDescription("正在下载...");
             request.setNotificationVisibility(
                 DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalPublicDir(
-                Environment.DIRECTORY_DOWNLOADS, "EhViewer/" + fileName);
+            
+            // 根据Android版本设置下载目标
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ 使用Scoped Storage
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS, "EhViewer/" + fileName);
+            } else {
+                // Android 9及以下使用传统方式
+                File downloadDir = new File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS), "EhViewer");
+                if (!downloadDir.exists()) {
+                    downloadDir.mkdirs();
+                }
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS, "EhViewer/" + fileName);
+            }
+            
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(true);
             request.addRequestHeader("User-Agent", userAgent);
@@ -384,5 +406,11 @@ public class BrowserDownloadManager {
         
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         context.registerReceiver(receiver, filter);
+    }
+
+    private void notifyDownloadError(String reason) {
+        for (DownloadListener listener : listeners) {
+            listener.onDownloadFailed(null, reason);
+        }
     }
 }

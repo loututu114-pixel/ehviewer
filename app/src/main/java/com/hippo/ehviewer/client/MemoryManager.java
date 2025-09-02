@@ -190,10 +190,20 @@ public class MemoryManager implements ComponentCallbacks2 {
                 Log.d(TAG, "WebView cache cleaned");
             }
 
-            // 3. 清理WebView池
-            // 注意：WebViewPoolManager.getInstance方法不存在，这里先注释掉
-            // TODO: 实现WebView池管理器的内存清理
-            Log.d(TAG, "WebView pool optimization skipped - manager not available");
+            // 3. 清理WebView池 - 使用BrowserCoreManager获取WebView池管理器
+            try {
+                // 通过BrowserCoreManager获取WebViewPoolManager实例
+                com.hippo.ehviewer.client.BrowserCoreManager browserCore =
+                    com.hippo.ehviewer.client.BrowserCoreManager.getInstance(mContext);
+                if (browserCore != null) {
+                    browserCore.clearUnusedWebViews();
+                    Log.d(TAG, "WebView pool cleared via BrowserCoreManager");
+                } else {
+                    Log.w(TAG, "BrowserCoreManager not available for WebView pool cleanup");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to clear WebView pool", e);
+            }
 
             // 4. 强制垃圾回收
             System.gc();

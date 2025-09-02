@@ -286,15 +286,116 @@ public class BrowserCoreManager {
      * 预加载画廊资源
      */
     private void preloadGalleryResources(String url) {
-        // 预加载画廊相关的脚本和样式
+        try {
+            Log.d(TAG, "=== BROWSERCORE: Starting gallery resource preload for URL: " + url);
+
+            // 预加载画廊相关的脚本和样式
+            preloadManager.addToPreloadQueue(
+                "https://ehgt.org/g/blank.gif",
+                "https://ehgt.org/g/mr.gif",
+                "https://ehgt.org/g/lr.gif"
+            );
+
+            // 预加载EhViewer相关资源
+            preloadEhViewerResources();
+
+            // 预加载画廊详情页面的关键资源
+            if (url.contains("/g/")) {
+                preloadGalleryDetailResources(url);
+            }
+
+            // 预加载画廊列表页面的关键资源
+            if (url.contains("/tag/") || url.contains("?")) {
+                preloadGalleryListResources(url);
+            }
+
+            Log.d(TAG, "=== BROWSERCORE: Gallery resource preload completed");
+
+        } catch (Exception e) {
+            Log.e(TAG, "=== BROWSERCORE: Failed to preload gallery resources", e);
+        }
+    }
+
+    /**
+     * 预加载EhViewer基础资源
+     */
+    private void preloadEhViewerResources() {
+        // 预加载EhViewer常用的JavaScript和CSS资源
         preloadManager.addToPreloadQueue(
-            "https://ehgt.org/g/blank.gif",
-            "https://ehgt.org/g/mr.gif",
-            "https://ehgt.org/g/lr.gif"
+            "https://ehgt.org/g/509.gif",  // 图片加载中图标
+            "https://ehgt.org/g/512.gif",  // 图片错误图标
+            "https://ehgt.org/g/loading.gif" // 加载动画
         );
 
-        // 预加载EhViewer相关资源
-        // TODO: 实现GalleryDetailParser和GalleryListParser的预加载方法
+        // 预加载常用脚本（如果有的话）
+        // 这里可以添加EhViewer相关的JavaScript文件URL
+    }
+
+    /**
+     * 预加载画廊详情页面资源
+     */
+    private void preloadGalleryDetailResources(String url) {
+        try {
+            Log.d(TAG, "=== BROWSERCORE: Preloading gallery detail resources for: " + url);
+
+            // 预加载画廊详情页面的关键资源
+            preloadManager.addToPreloadQueue(
+                "https://ehgt.org/g/mr.gif",    // 缩略图
+                "https://ehgt.org/g/lr.gif",    // 大图
+                "https://ehgt.org/g/509.gif",   // 加载状态
+                "https://ehgt.org/g/512.gif"    // 错误状态
+            );
+
+            // 如果有评论功能，预加载评论相关的资源
+            if (url.contains("#comments")) {
+                preloadCommentResources();
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "=== BROWSERCORE: Failed to preload gallery detail resources", e);
+        }
+    }
+
+    /**
+     * 预加载画廊列表页面资源
+     */
+    private void preloadGalleryListResources(String url) {
+        try {
+            Log.d(TAG, "=== BROWSERCORE: Preloading gallery list resources for: " + url);
+
+            // 预加载列表页面的关键资源
+            preloadManager.addToPreloadQueue(
+                "https://ehgt.org/g/blank.gif",  // 空白占位图
+                "https://ehgt.org/g/mr.gif",     // 缩略图
+                "https://ehgt.org/g/loading.gif" // 加载动画
+            );
+
+            // 预加载分页相关的资源
+            preloadPaginationResources();
+
+        } catch (Exception e) {
+            Log.e(TAG, "=== BROWSERCORE: Failed to preload gallery list resources", e);
+        }
+    }
+
+    /**
+     * 预加载评论相关资源
+     */
+    private void preloadCommentResources() {
+        // 预加载评论功能的资源
+        preloadManager.addToPreloadQueue(
+            "https://ehgt.org/g/blank.gif"
+        );
+    }
+
+    /**
+     * 预加载分页相关资源
+     */
+    private void preloadPaginationResources() {
+        // 预加载分页导航的资源
+        preloadManager.addToPreloadQueue(
+            "https://ehgt.org/g/blank.gif"
+        );
     }
 
     /**
@@ -472,5 +573,29 @@ public class BrowserCoreManager {
      */
     public SmartRequestProcessor getRequestProcessor() {
         return requestProcessor;
+    }
+
+    /**
+     * 清理未使用的WebView实例
+     */
+    public void clearUnusedWebViews() {
+        try {
+            Log.d(TAG, "Clearing unused WebViews");
+
+            // 清理WebView连接池中的未使用实例
+            if (webViewPool != null) {
+                webViewPool.cleanup();
+                Log.d(TAG, "WebView pool cleared successfully");
+            }
+
+            // 重新初始化连接池以确保有可用的WebView
+            if (webViewPool != null) {
+                webViewPool.warmUp();
+                Log.d(TAG, "WebView pool warmed up after cleanup");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to clear unused WebViews", e);
+        }
     }
 }

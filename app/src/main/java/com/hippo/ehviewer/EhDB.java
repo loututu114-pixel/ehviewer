@@ -59,6 +59,7 @@ import com.hippo.util.SqlUtils;
 import com.hippo.lib.yorozuya.IOUtils;
 import com.hippo.lib.yorozuya.ObjectUtils;
 import com.hippo.lib.yorozuya.collect.SparseJLArray;
+import com.hippo.ehviewer.util.DatabaseErrorHandler;
 
 import org.greenrobot.greendao.AbstractDao;
 import org.greenrobot.greendao.query.CloseableListIterator;
@@ -222,176 +223,167 @@ public class EhDB {
 
         // Get GalleryInfo list
         SparseJLArray<GalleryInfo> map = new SparseJLArray<>();
+        Cursor cursor = null;
         try {
-            Cursor cursor = oldDB.rawQuery("select * from " + OldDBHelper.TABLE_GALLERY, null);
-            if (cursor != null) {
-                if (cursor.moveToFirst()) {
-                    while (!cursor.isAfterLast()) {
-                        GalleryInfo gi = new GalleryInfo();
-                        gi.gid = cursor.getInt(0);
-                        gi.token = cursor.getString(1);
-                        gi.title = cursor.getString(2);
-                        gi.posted = cursor.getString(3);
-                        gi.category = cursor.getInt(4);
-                        gi.thumb = cursor.getString(5);
-                        gi.uploader = cursor.getString(6);
-                        try {
-                            // In 0.6.x version, NaN is stored
-                            gi.rating = cursor.getFloat(7);
-                        } catch (Throwable e) {
-                            ExceptionUtils.throwIfFatal(e);
-                            gi.rating = -1.0f;
-                        }
-
-                        map.put(gi.gid, gi);
-
-                        cursor.moveToNext();
+            cursor = DatabaseErrorHandler.safeRawQuery(oldDB, "select * from " + OldDBHelper.TABLE_GALLERY, null);
+            if (cursor != null && DatabaseErrorHandler.safeCursorMoveToFirst(cursor)) {
+                do {
+                    GalleryInfo gi = new GalleryInfo();
+                    gi.gid = cursor.getInt(0);
+                    gi.token = cursor.getString(1);
+                    gi.title = cursor.getString(2);
+                    gi.posted = cursor.getString(3);
+                    gi.category = cursor.getInt(4);
+                    gi.thumb = cursor.getString(5);
+                    gi.uploader = cursor.getString(6);
+                    try {
+                        // In 0.6.x version, NaN is stored
+                        gi.rating = cursor.getFloat(7);
+                    } catch (Throwable e) {
+                        ExceptionUtils.throwIfFatal(e);
+                        gi.rating = -1.0f;
                     }
-                }
-                cursor.close();
+
+                    map.put(gi.gid, gi);
+                } while (DatabaseErrorHandler.safeCursorMoveToNext(cursor));
             }
         } catch (Throwable i) {
             ExceptionUtils.throwIfFatal(i);
+        } finally {
+            DatabaseErrorHandler.safeCloseCursor(cursor);
         }
 
         // Merge local favorites
+        Cursor cursor2 = null;
         try {
-            Cursor cursor = oldDB.rawQuery("select * from " + OldDBHelper.TABLE_LOCAL_FAVOURITE, null);
-            if (cursor != null) {
+            cursor2 = DatabaseErrorHandler.safeRawQuery(oldDB, "select * from " + OldDBHelper.TABLE_LOCAL_FAVOURITE, null);
+            if (cursor2 != null && DatabaseErrorHandler.safeCursorMoveToFirst(cursor2)) {
                 LocalFavoritesDao dao = sDaoSession.getLocalFavoritesDao();
-                if (cursor.moveToFirst()) {
-                    long i = 0L;
-                    while (!cursor.isAfterLast()) {
-                        // Get GalleryInfo first
-                        long gid = cursor.getInt(0);
-                        GalleryInfo gi = map.get(gid);
-                        if (gi == null) {
-                            Log.e(TAG, "Can't get GalleryInfo with gid: " + gid);
-                            cursor.moveToNext();
-                            continue;
-                        }
-
-                        LocalFavoriteInfo info = new LocalFavoriteInfo(gi);
-                        info.setTime(i);
-                        dao.insert(info);
-                        cursor.moveToNext();
-                        i++;
+                long i = 0L;
+                do {
+                    // Get GalleryInfo first
+                    long gid = cursor2.getInt(0);
+                    GalleryInfo gi = map.get(gid);
+                    if (gi == null) {
+                        Log.e(TAG, "Can't get GalleryInfo with gid: " + gid);
+                        continue;
                     }
-                }
-                cursor.close();
+
+                    LocalFavoriteInfo info = new LocalFavoriteInfo(gi);
+                    info.setTime(i);
+                    dao.insert(info);
+                    i++;
+                } while (DatabaseErrorHandler.safeCursorMoveToNext(cursor2));
             }
         } catch (Throwable e) {
             ExceptionUtils.throwIfFatal(e);
             // Ignore
+        } finally {
+            DatabaseErrorHandler.safeCloseCursor(cursor2);
         }
 
 
         // Merge quick search
+        Cursor cursor3 = null;
         try {
-            Cursor cursor = oldDB.rawQuery("select * from " + OldDBHelper.TABLE_TAG, null);
-            if (cursor != null) {
+            cursor3 = DatabaseErrorHandler.safeRawQuery(oldDB, "select * from " + OldDBHelper.TABLE_TAG, null);
+            if (cursor3 != null && DatabaseErrorHandler.safeCursorMoveToFirst(cursor3)) {
                 QuickSearchDao dao = sDaoSession.getQuickSearchDao();
-                if (cursor.moveToFirst()) {
-                    while (!cursor.isAfterLast()) {
-                        QuickSearch quickSearch = new QuickSearch();
+                do {
+                    QuickSearch quickSearch = new QuickSearch();
 
-                        int mode = cursor.getInt(2);
-                        String search = cursor.getString(4);
-                        String tag = cursor.getString(7);
-                        if (mode == ListUrlBuilder.MODE_UPLOADER && search != null &&
-                                search.startsWith("uploader:")) {
-                            search = search.substring("uploader:".length());
-                        }
-
-                        quickSearch.setTime((long) cursor.getInt(0));
-                        quickSearch.setName(cursor.getString(1));
-                        quickSearch.setMode(mode);
-                        quickSearch.setCategory(cursor.getInt(3));
-                        quickSearch.setKeyword(mode == ListUrlBuilder.MODE_TAG ? tag : search);
-                        quickSearch.setAdvanceSearch(cursor.getInt(5));
-                        quickSearch.setMinRating(cursor.getInt(6));
-
-                        dao.insert(quickSearch);
-                        cursor.moveToNext();
+                    int mode = cursor3.getInt(2);
+                    String search = cursor3.getString(4);
+                    String tag = cursor3.getString(7);
+                    if (mode == ListUrlBuilder.MODE_UPLOADER && search != null &&
+                            search.startsWith("uploader:")) {
+                        search = search.substring("uploader:".length());
                     }
-                }
-                cursor.close();
+
+                    quickSearch.setTime((long) cursor3.getInt(0));
+                    quickSearch.setName(cursor3.getString(1));
+                    quickSearch.setMode(mode);
+                    quickSearch.setCategory(cursor3.getInt(3));
+                    quickSearch.setKeyword(mode == ListUrlBuilder.MODE_TAG ? tag : search);
+                    quickSearch.setAdvanceSearch(cursor3.getInt(5));
+                    quickSearch.setMinRating(cursor3.getInt(6));
+
+                    dao.insert(quickSearch);
+                } while (DatabaseErrorHandler.safeCursorMoveToNext(cursor3));
             }
         } catch (Throwable e) {
             ExceptionUtils.throwIfFatal(e);
             // Ignore
+        } finally {
+            DatabaseErrorHandler.safeCloseCursor(cursor3);
         }
 
         // Merge download info
+        Cursor cursor4 = null;
         try {
-            Cursor cursor = oldDB.rawQuery("select * from " + OldDBHelper.TABLE_DOWNLOAD, null);
-            if (cursor != null) {
+            cursor4 = DatabaseErrorHandler.safeRawQuery(oldDB, "select * from " + OldDBHelper.TABLE_DOWNLOAD, null);
+            if (cursor4 != null && DatabaseErrorHandler.safeCursorMoveToFirst(cursor4)) {
                 DownloadsDao dao = sDaoSession.getDownloadsDao();
-                if (cursor.moveToFirst()) {
-                    long i = 0L;
-                    while (!cursor.isAfterLast()) {
-                        // Get GalleryInfo first
-                        long gid = cursor.getInt(0);
-                        GalleryInfo gi = map.get(gid);
-                        if (gi == null) {
-                            Log.e(TAG, "Can't get GalleryInfo with gid: " + gid);
-                            cursor.moveToNext();
-                            continue;
-                        }
-
-                        DownloadInfo info = new DownloadInfo(gi);
-                        int state = cursor.getInt(2);
-                        int legacy = cursor.getInt(3);
-                        if (state == DownloadInfo.STATE_FINISH && legacy > 0) {
-                            state = DownloadInfo.STATE_FAILED;
-                        }
-                        info.setState(state);
-                        info.setLegacy(legacy);
-                        if (cursor.getColumnCount() == 5) {
-                            info.setTime(cursor.getLong(4));
-                        } else {
-                            info.setTime(i);
-                        }
-                        dao.insert(info);
-                        cursor.moveToNext();
-                        i++;
+                long i = 0L;
+                do {
+                    // Get GalleryInfo first
+                    long gid = cursor4.getInt(0);
+                    GalleryInfo gi = map.get(gid);
+                    if (gi == null) {
+                        Log.e(TAG, "Can't get GalleryInfo with gid: " + gid);
+                        continue;
                     }
-                }
-                cursor.close();
+
+                    DownloadInfo info = new DownloadInfo(gi);
+                    int state = cursor4.getInt(2);
+                    int legacy = cursor4.getInt(3);
+                    if (state == DownloadInfo.STATE_FINISH && legacy > 0) {
+                        state = DownloadInfo.STATE_FAILED;
+                    }
+                    info.setState(state);
+                    info.setLegacy(legacy);
+                    if (cursor4.getColumnCount() == 5) {
+                        info.setTime(cursor4.getLong(4));
+                    } else {
+                        info.setTime(i);
+                    }
+                    dao.insert(info);
+                    i++;
+                } while (DatabaseErrorHandler.safeCursorMoveToNext(cursor4));
             }
         } catch (Throwable e) {
             ExceptionUtils.throwIfFatal(e);
             // Ignore
+        } finally {
+            DatabaseErrorHandler.safeCloseCursor(cursor4);
         }
 
+        Cursor cursor5 = null;
         try {
             // Merge history info
-            Cursor cursor = oldDB.rawQuery("select * from " + OldDBHelper.TABLE_HISTORY, null);
-            if (cursor != null) {
+            cursor5 = DatabaseErrorHandler.safeRawQuery(oldDB, "select * from " + OldDBHelper.TABLE_HISTORY, null);
+            if (cursor5 != null && DatabaseErrorHandler.safeCursorMoveToFirst(cursor5)) {
                 HistoryDao dao = sDaoSession.getHistoryDao();
-                if (cursor.moveToFirst()) {
-                    while (!cursor.isAfterLast()) {
-                        // Get GalleryInfo first
-                        long gid = cursor.getInt(0);
-                        GalleryInfo gi = map.get(gid);
-                        if (gi == null) {
-                            Log.e(TAG, "Can't get GalleryInfo with gid: " + gid);
-                            cursor.moveToNext();
-                            continue;
-                        }
-
-                        HistoryInfo info = new HistoryInfo(gi);
-                        info.setMode(cursor.getInt(1));
-                        info.setTime(cursor.getLong(2));
-                        dao.insert(info);
-                        cursor.moveToNext();
+                do {
+                    // Get GalleryInfo first
+                    long gid = cursor5.getInt(0);
+                    GalleryInfo gi = map.get(gid);
+                    if (gi == null) {
+                        Log.e(TAG, "Can't get GalleryInfo with gid: " + gid);
+                        continue;
                     }
-                }
-                cursor.close();
+
+                    HistoryInfo info = new HistoryInfo(gi);
+                    info.setMode(cursor5.getInt(1));
+                    info.setTime(cursor5.getLong(2));
+                    dao.insert(info);
+                } while (DatabaseErrorHandler.safeCursorMoveToNext(cursor5));
             }
         } catch (Throwable e) {
             ExceptionUtils.throwIfFatal(e);
             // Ignore
+        } finally {
+            DatabaseErrorHandler.safeCloseCursor(cursor5);
         }
 
         try {
@@ -620,7 +612,19 @@ public class EhDB {
 
     public static synchronized boolean inBlackList(String Badgayname) {
         BlackListDao dao = sDaoSession.getBlackListDao();
-        return dao.queryRaw("where Badgayname ='" + Badgayname + "'").size() != 0;
+        try {
+            List<BlackList> list = dao.queryRaw("where Badgayname ='" + SqlUtils.sqlEscapeString(Badgayname) + "'");
+            return list != null && !list.isEmpty();
+        } catch (Exception e) {
+            Log.e(TAG, "Error in BlackList query for: " + Badgayname, e);
+            // Fallback to queryBuilder
+            try {
+                return dao.queryBuilder().where(BlackListDao.Properties.Badgayname.eq(Badgayname)).count() > 0;
+            } catch (Exception fallbackError) {
+                Log.e(TAG, "Fallback BlackList query also failed for: " + Badgayname, fallbackError);
+                return false;
+            }
+        }
     }
 
     public static synchronized void insertBlackList(BlackList blackList) {
@@ -649,12 +653,12 @@ public class EhDB {
 
     public static synchronized boolean inGalleryTags(long gid) {
         GalleryTagsDao dao = sDaoSession.getGalleryTagsDao();
-        return dao.queryRaw("where gid =" + gid).size() != 0;
+        return DatabaseErrorHandler.safeInGalleryTags(dao, gid);
     }
 
     public static synchronized GalleryTags queryGalleryTags(long gid) {
         GalleryTagsDao dao = sDaoSession.getGalleryTagsDao();
-        List<GalleryTags> list = dao.queryRaw("where gid =" + gid);
+        List<GalleryTags> list = DatabaseErrorHandler.safeQueryGalleryTags(dao, gid);
         if (list.isEmpty()) {
             return null;
         }

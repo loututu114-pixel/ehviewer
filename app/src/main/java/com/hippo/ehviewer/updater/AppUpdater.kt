@@ -212,9 +212,11 @@ class AppUpdater(private val name: String, source: BufferedSource) {
                             return true
                         }
                     }
+                    // 如果不是手动检查且版本没有更新，直接返回false
                     if (!manualChecking) {
                         return false
                     }
+                    // 对于手动检查，如果缓存中的版本等于或新于远程版本，继续检查当前版本
                 }
                 updateResult = compareVersion(currentVersion, tempUpdateData.getString(VERSION))
                 return if (updateResult < 0) {

@@ -48,6 +48,7 @@ import androidx.core.content.ContextCompat;
 
 import com.hippo.ehviewer.R;
 import com.hippo.ehviewer.util.AppLauncher;
+import com.hippo.ehviewer.util.RetryHandler;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -70,6 +71,7 @@ public class EnhancedWebViewManager {
     private HistoryManager mHistoryManager;
     private PasswordManager mPasswordManager;
     private ConnectionRetryManager mRetryManager;
+    private RetryHandler mRetryHandler;
 
     // 文件选择回调
     private ValueCallback<Uri[]> mFilePathCallback;
@@ -131,6 +133,7 @@ public class EnhancedWebViewManager {
         this.mWebView = webView;
         this.mHistoryManager = historyManager;
         this.mRetryManager = new ConnectionRetryManager();
+        this.mRetryHandler = new RetryHandler();
 
         // 添加null检查
         if (mWebView == null) {
@@ -220,6 +223,32 @@ public class EnhancedWebViewManager {
         } else {
             // 低版本使用软件渲染
             mWebView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+
+        // GPU渲染优化 - 解决SharedImageManager错误
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // 禁用WebGL以避免GPU兼容性问题
+                webSettings.setOffscreenPreRaster(true);
+            }
+
+            // 设置渲染优化
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                webSettings.setEnableSmoothTransition(true);
+            }
+
+            // 禁用某些可能导致GPU问题的功能
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                try {
+                    // 使用反射禁用硬件加速中的问题功能
+                    java.lang.reflect.Method setRenderProcessPriority = webSettings.getClass().getMethod("setRenderProcessPriority", int.class);
+                    setRenderProcessPriority.invoke(webSettings, 0); // NORMAL优先级
+                } catch (Exception e) {
+                    android.util.Log.w(TAG, "Failed to set render process priority", e);
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "Failed to apply GPU rendering optimizations", e);
         }
         
         // 设置WebView支持视频

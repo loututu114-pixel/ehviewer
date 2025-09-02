@@ -7,6 +7,8 @@ import android.os.Looper;
 import android.util.Log;
 import android.util.LruCache;
 
+import com.hippo.beerbelly.SimpleDiskCache;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -388,46 +390,123 @@ public class CacheManager {
     }
 
     /**
-     * 磁盘缓存类（简化的实现）
+     * 磁盘缓存类（使用SimpleDiskCache实现真正的磁盘存储）
      */
     private static class DiskCache {
         private final Context context;
         private final long maxCacheSize;
-        private final Map<String, Object> diskCache = new HashMap<>();
+        private final SimpleDiskCache simpleDiskCache;
 
         DiskCache(Context context, long maxCacheSize) {
             this.context = context;
             this.maxCacheSize = maxCacheSize;
+            
+            // 使用项目现有的SimpleDiskCache实现真正的磁盘缓存
+            File cacheDir = new File(context.getCacheDir(), "disk_cache");
+            this.simpleDiskCache = new SimpleDiskCache(cacheDir, (int) maxCacheSize);
         }
 
         Bitmap getBitmap(String key) {
-            // 简化实现，实际应该使用DiskLruCache
-            return (Bitmap) diskCache.get(key);
+            try {
+                // 从磁盘读取bitmap数据
+                com.hippo.streampipe.InputStreamPipe pipe = simpleDiskCache.getInputStreamPipe(key);
+                if (pipe != null) {
+                    pipe.obtain();
+                    try {
+                        java.io.InputStream is = pipe.open();
+                        return android.graphics.BitmapFactory.decodeStream(is);
+                    } finally {
+                        pipe.close();
+                        pipe.release();
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to get bitmap from disk cache: " + key, e);
+            }
+            return null;
         }
 
         void putBitmap(String key, Bitmap bitmap) {
-            // 简化实现
-            diskCache.put(key, bitmap);
+            if (bitmap == null || bitmap.isRecycled()) {
+                return;
+            }
+
+            try {
+                // 将bitmap压缩后存储到磁盘
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+                java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(baos.toByteArray());
+                baos.close();
+
+                simpleDiskCache.put(key, bais);
+                bais.close();
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to put bitmap to disk cache: " + key, e);
+            }
         }
 
         String getString(String key) {
-            return (String) diskCache.get(key);
+            try {
+                com.hippo.streampipe.InputStreamPipe pipe = simpleDiskCache.getInputStreamPipe(key);
+                if (pipe != null) {
+                    pipe.obtain();
+                    try {
+                        java.io.InputStream is = pipe.open();
+                        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = is.read(buffer)) != -1) {
+                            baos.write(buffer, 0, len);
+                        }
+                        return new String(baos.toByteArray(), "UTF-8");
+                    } finally {
+                        pipe.close();
+                        pipe.release();
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to get string from disk cache: " + key, e);
+            }
+            return null;
         }
 
         void putString(String key, String data) {
-            diskCache.put(key, data);
+            if (data == null) {
+                return;
+            }
+
+            try {
+                java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(data.getBytes("UTF-8"));
+                simpleDiskCache.put(key, bais);
+                bais.close();
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to put string to disk cache: " + key, e);
+            }
         }
 
         boolean contains(String key) {
-            return diskCache.containsKey(key);
+            try {
+                return simpleDiskCache.contain(key);
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to check disk cache: " + key, e);
+                return false;
+            }
         }
 
         void remove(String key) {
-            diskCache.remove(key);
+            try {
+                simpleDiskCache.remove(key);
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to remove from disk cache: " + key, e);
+            }
         }
 
         void clear() {
-            diskCache.clear();
+            try {
+                simpleDiskCache.clear();
+            } catch (Exception e) {
+                android.util.Log.w("CacheManager", "Failed to clear disk cache", e);
+            }
         }
 
         void cleanup() {
@@ -435,12 +514,13 @@ public class CacheManager {
         }
 
         long getCacheSize() {
-            // 简化实现
-            return diskCache.size() * 1024; // 估算大小
+            // 使用SimpleDiskCache的size方法
+            return simpleDiskCache.size();
         }
 
         int getEntryCount() {
-            return diskCache.size();
+            // 简化实现，SimpleDiskCache没有直接的entry count方法
+            return (int) Math.max(0, simpleDiskCache.size() / 1024); // 估算条目数
         }
     }
 
