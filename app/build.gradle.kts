@@ -26,8 +26,8 @@ android {
         applicationId = "com.hippo.ehviewer"
         minSdk = 23
         targetSdk = 29
-        versionCode = 189918
-        versionName = "1.9.9.18"
+        versionCode = 189919
+        versionName = "1.9.9.19"
         vectorDrawables.useSupportLibrary = true
         androidResources.localeFilters += listOf(
             "zh", "zh-rCN", "zh-rHK", "zh-rTW",

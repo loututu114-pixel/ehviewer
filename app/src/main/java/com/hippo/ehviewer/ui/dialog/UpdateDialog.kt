@@ -105,10 +105,8 @@ class UpdateDialog(private val activity: Activity) {
         downloadUrl: String,
         version: String
     ) {
-        // 直接跳转到下载链接，让用户手动下载
-        val uri = downloadUrl.toUri()
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-        activity.startActivity(intent)
+        // 使用EhViewer内置浏览器打开下载链接，而不是外部浏览器
+        com.hippo.ehviewer.UrlOpener.openUrl(activity, downloadUrl, false)
         dialog?.dismiss()
 //        val title = "Ehviewer$version.apk"
 //        val request = DownloadManager.Request(downloadUrl.toUri())
@@ -149,9 +147,8 @@ class UpdateDialog(private val activity: Activity) {
     }
 
     private fun gotoGithub(dialog: DialogInterface, id: Int) {
-        val uri = GITHUB_RELEASE_URL.toUri()
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-        activity.startActivity(intent)
+        // 使用EhViewer内置浏览器打开GitHub链接，而不是外部浏览器
+        com.hippo.ehviewer.UrlOpener.openUrl(activity, GITHUB_RELEASE_URL, false)
         dialog.dismiss()
     }
 
