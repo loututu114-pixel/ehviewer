@@ -1113,8 +1113,13 @@ public final class MainActivity extends StageActivity
         } else if (itemId == R.id.nav_bottom_history) {
             // 历史记录 - 根据模式选择打开浏览器历史或EhViewer图库历史
             if (Settings.isBrowserMode()) {
-                // 浏览器模式：历史记录功能已移除
-                showTip("浏览器历史记录功能已移除", BaseScene.LENGTH_SHORT);
+                // 浏览器模式：打开浏览器历史
+                try {
+                    BrowserHistoryActivity.startBrowserHistory(this);
+                } catch (Exception e) {
+                    android.util.Log.e("MainActivity", "Failed to start BrowserHistoryActivity", e);
+                    showTip("无法打开浏览器历史", BaseScene.LENGTH_SHORT);
+                }
             } else {
                 // EhViewer图库模式：打开图库历史
                 try {

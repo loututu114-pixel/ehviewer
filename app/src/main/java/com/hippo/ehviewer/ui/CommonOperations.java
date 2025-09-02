@@ -139,29 +139,84 @@ public final class CommonOperations {
 
     // TODO Add context if activity and context are different style
     public static void startDownload(final MainActivity activity, final List<GalleryInfo> galleryInfos, boolean forceDefault) {
-        final DownloadManager dm = EhApplication.getDownloadManager(activity);
+        try {
+            android.util.Log.d("CommonOperations", "Starting download process for " + galleryInfos.size() + " galleries");
 
-        LongList toStart = new LongList();
-        List<GalleryInfo> toAdd = new ArrayList<>();
-        for (GalleryInfo gi : galleryInfos) {
-            if (dm.containDownloadInfo(gi.gid)) {
-                toStart.add(gi.gid);
-            } else {
-                toAdd.add(gi);
+            // 验证输入参数
+            if (activity == null) {
+                android.util.Log.e("CommonOperations", "Activity is null");
+                return;
             }
-        }
 
-        if (!toStart.isEmpty()) {
-            Intent intent = new Intent(activity, DownloadService.class);
-            intent.setAction(DownloadService.ACTION_START_RANGE);
-            intent.putExtra(DownloadService.KEY_GID_LIST, toStart);
-            activity.startService(intent);
-        }
+            if (galleryInfos == null || galleryInfos.isEmpty()) {
+                android.util.Log.e("CommonOperations", "GalleryInfo list is null or empty");
+                activity.showTip("没有可下载的项目", BaseScene.LENGTH_SHORT);
+                return;
+            }
 
-        if (toAdd.isEmpty()) {
-            activity.showTip(R.string.added_to_download_list, BaseScene.LENGTH_SHORT);
-            return;
-        }
+            // 获取下载管理器
+            final DownloadManager dm;
+            try {
+                dm = EhApplication.getDownloadManager(activity);
+                if (dm == null) {
+                    android.util.Log.e("CommonOperations", "DownloadManager is null");
+                    activity.showTip("下载服务不可用", BaseScene.LENGTH_SHORT);
+                    return;
+                }
+            } catch (Exception e) {
+                android.util.Log.e("CommonOperations", "Error getting DownloadManager", e);
+                activity.showTip("下载服务初始化失败", BaseScene.LENGTH_SHORT);
+                return;
+            }
+
+            LongList toStart = new LongList();
+            List<GalleryInfo> toAdd = new ArrayList<>();
+
+            // 验证每个GalleryInfo
+            for (GalleryInfo gi : galleryInfos) {
+                if (gi == null) {
+                    android.util.Log.w("CommonOperations", "Skipping null GalleryInfo");
+                    continue;
+                }
+                if (gi.gid <= 0) {
+                    android.util.Log.w("CommonOperations", "Skipping invalid GID: " + gi.gid);
+                    continue;
+                }
+
+                try {
+                    if (dm.containDownloadInfo(gi.gid)) {
+                        toStart.add(gi.gid);
+                        android.util.Log.d("CommonOperations", "Will restart download for GID: " + gi.gid);
+                    } else {
+                        toAdd.add(gi);
+                        android.util.Log.d("CommonOperations", "Will add new download for GID: " + gi.gid);
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("CommonOperations", "Error checking download info for GID: " + gi.gid, e);
+                }
+            }
+
+            // 启动已存在的下载
+            if (!toStart.isEmpty()) {
+                try {
+                    android.util.Log.d("CommonOperations", "Starting " + toStart.size() + " existing downloads");
+                    Intent intent = new Intent(activity, DownloadService.class);
+                    intent.setAction(DownloadService.ACTION_START_RANGE);
+                    intent.putExtra(DownloadService.KEY_GID_LIST, toStart);
+                    activity.startService(intent);
+                    android.util.Log.d("CommonOperations", "Started existing downloads successfully");
+                } catch (Exception e) {
+                    android.util.Log.e("CommonOperations", "Error starting existing downloads", e);
+                    activity.showTip("重启下载失败", BaseScene.LENGTH_SHORT);
+                }
+            }
+
+            if (toAdd.isEmpty()) {
+                activity.showTip(R.string.added_to_download_list, BaseScene.LENGTH_SHORT);
+                return;
+            }
+
+            android.util.Log.d("CommonOperations", "Processing " + toAdd.size() + " new downloads");
 
         boolean justStart = forceDefault;
         String label = null;
@@ -176,17 +231,29 @@ public final class CommonOperations {
             label = null;
         }
 
-        if (justStart) {
-            // Got default label
-            for (GalleryInfo gi : toAdd) {
-                Intent intent = new Intent(activity, DownloadService.class);
-                intent.setAction(DownloadService.ACTION_START);
-                intent.putExtra(DownloadService.KEY_LABEL, label);
-                intent.putExtra(DownloadService.KEY_GALLERY_INFO, gi);
-                activity.startService(intent);
-            }
-            // Notify
-            activity.showTip(R.string.added_to_download_list, BaseScene.LENGTH_SHORT);
+            if (justStart) {
+                // Got default label
+                try {
+                    android.util.Log.d("CommonOperations", "Starting downloads with default label: " + label);
+                    for (GalleryInfo gi : toAdd) {
+                        try {
+                            Intent intent = new Intent(activity, DownloadService.class);
+                            intent.setAction(DownloadService.ACTION_START);
+                            intent.putExtra(DownloadService.KEY_LABEL, label);
+                            intent.putExtra(DownloadService.KEY_GALLERY_INFO, gi);
+                            activity.startService(intent);
+                            android.util.Log.d("CommonOperations", "Started download service for GID: " + gi.gid);
+                        } catch (Exception e) {
+                            android.util.Log.e("CommonOperations", "Error starting download service for GID: " + gi.gid, e);
+                        }
+                    }
+                    // Notify
+                    activity.showTip(R.string.added_to_download_list, BaseScene.LENGTH_SHORT);
+                    android.util.Log.d("CommonOperations", "Download process completed successfully");
+                } catch (Exception e) {
+                    android.util.Log.e("CommonOperations", "Error in justStart download process", e);
+                    activity.showTip("下载过程出现异常", BaseScene.LENGTH_SHORT);
+                }
         } else {
             // Let use chose label
             List<DownloadLabel> list = dm.getLabelList();
@@ -227,6 +294,18 @@ public final class CommonOperations {
                     }, activity.getString(R.string.remember_download_label), false)
                     .setTitle(R.string.download)
                     .show();
+            }
+
+            android.util.Log.d("CommonOperations", "Download setup completed successfully");
+
+        } catch (Exception e) {
+            android.util.Log.e("CommonOperations", "Unexpected error in startDownload", e);
+            if (activity != null) {
+                activity.showTip("下载设置出现异常", BaseScene.LENGTH_SHORT);
+            }
+
+            // 记录到Firebase Crashlytics
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e);
         }
     }
 

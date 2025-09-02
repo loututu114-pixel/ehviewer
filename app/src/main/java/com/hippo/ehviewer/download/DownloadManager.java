@@ -298,51 +298,42 @@ public class DownloadManager implements SpiderQueen.OnSpiderListener {
         // Get download from wait list
         if (!mWaitList.isEmpty()) {
             DownloadInfo info = mWaitList.removeFirst();
-            SpiderQueen spider = SpiderQueen.obtainSpiderQueen(mContext, info, SpiderQueen.MODE_DOWNLOAD);
-            mCurrentTask = info;
-            mCurrentSpider = spider;
-            spider.addOnSpiderListener(this);
-            info.state = DownloadInfo.STATE_DOWNLOAD;
-            info.speed = -1;
-            info.remaining = -1;
-            info.total = -1;
-            info.finished = 0;
-            info.downloaded = 0;
-            info.legacy = -1;
-            // Update in DB
-            EhDB.putDownloadInfo(info);
-            // Start speed count
-            mSpeedReminder.start();
-            // Notify start downloading
-            if (mDownloadListener != null) {
-                mDownloadListener.onStart(info);
-            }
-            // Notify state update
-            List<DownloadInfo> list = getInfoListForLabel(info.label);
-            if (list != null) {
-                for (DownloadInfoListener l : mDownloadInfoListeners) {
-                    l.onUpdate(info, list, mWaitList);
+
+            try {
+                Log.d(TAG, "Starting download for gallery: " + info.title + " (GID: " + info.gid + ")");
+
+                // 检查DownloadInfo本身是否有效（它继承自GalleryInfo）
+                if (info == null) {
+                    Log.e(TAG, "DownloadInfo is null");
+                    // 递归调用以处理下一个任务
+                    ensureDownload();
+                    return;
                 }
-            }
-        }
-    }
 
-    void startDownload(GalleryInfo galleryInfo, @Nullable String label) {
-        if (mCurrentTask != null && mCurrentTask.gid == galleryInfo.gid) {
-            // It is current task
-            return;
-        }
+                SpiderQueen spider = SpiderQueen.obtainSpiderQueen(mContext, info, SpiderQueen.MODE_DOWNLOAD);
+                mCurrentTask = info;
+                mCurrentSpider = spider;
+                spider.addOnSpiderListener(this);
 
-        // Check in download list
-        DownloadInfo info = mAllInfoMap.get(galleryInfo.gid);
-        if (info != null) { // Get it in download list
-            if (info.state != DownloadInfo.STATE_WAIT) {
-                // Set state DownloadInfo.STATE_WAIT
-                info.state = DownloadInfo.STATE_WAIT;
-                // Add to wait list
-                mWaitList.add(info);
+                info.state = DownloadInfo.STATE_DOWNLOAD;
+                info.speed = -1;
+                info.remaining = -1;
+                info.total = -1;
+                info.finished = 0;
+                info.downloaded = 0;
+                info.legacy = -1;
+
                 // Update in DB
                 EhDB.putDownloadInfo(info);
+
+                // Start speed count
+                mSpeedReminder.start();
+
+                // Notify start downloading
+                if (mDownloadListener != null) {
+                    mDownloadListener.onStart(info);
+                }
+
                 // Notify state update
                 List<DownloadInfo> list = getInfoListForLabel(info.label);
                 if (list != null) {
@@ -350,43 +341,120 @@ public class DownloadManager implements SpiderQueen.OnSpiderListener {
                         l.onUpdate(info, list, mWaitList);
                     }
                 }
-                // Make sure download is running
+
+                Log.d(TAG, "Download started successfully for: " + info.title);
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error starting download for gallery: " + info.title + " (GID: " + info.gid + ")", e);
+
+                // 记录崩溃信息到Firebase
+                FirebaseCrashlytics.getInstance().recordException(e);
+
+                // 将任务标记为失败
+                info.state = DownloadInfo.STATE_FAILED;
+                EhDB.putDownloadInfo(info);
+
+                // 清理当前任务
+                mCurrentTask = null;
+                mCurrentSpider = null;
+
+                // 递归调用以处理下一个任务
                 ensureDownload();
             }
-        } else {
-            // It is new download info
-            info = new DownloadInfo(galleryInfo);
-            info.label = label;
-            info.state = DownloadInfo.STATE_WAIT;
-            info.time = System.currentTimeMillis();
+        }
+    }
 
-            // Add to label download list
-            LinkedList<DownloadInfo> list = getInfoListForLabel(info.label);
-            if (list == null) {
-                Log.e(TAG, "Can't find download info list with label: " + label);
+    void startDownload(GalleryInfo galleryInfo, @Nullable String label) {
+        try {
+            if (mCurrentTask != null && mCurrentTask.gid == galleryInfo.gid) {
+                // It is current task
+                Log.d(TAG, "Download already in progress for GID: " + galleryInfo.gid);
                 return;
             }
-            list.addFirst(info);
 
-            // Add to all download list and map
-            mAllInfoList.addFirst(info);
-            mAllInfoMap.put(galleryInfo.gid, info);
-
-            // Add to wait list
-            mWaitList.add(info);
-
-            // Save to
-            EhDB.putDownloadInfo(info);
-
-            // Notify
-            for (DownloadInfoListener l : mDownloadInfoListeners) {
-                l.onAdd(info, list, list.size() - 1);
+            // 验证GalleryInfo的必要字段
+            if (galleryInfo == null) {
+                Log.e(TAG, "GalleryInfo is null");
+                return;
             }
-            // Make sure download is running
-            ensureDownload();
 
-            // Add it to history
-            EhDB.putHistoryInfo(info);
+            if (galleryInfo.gid <= 0) {
+                Log.e(TAG, "Invalid GID: " + galleryInfo.gid);
+                return;
+            }
+
+            if (galleryInfo.title == null || galleryInfo.title.trim().isEmpty()) {
+                Log.w(TAG, "Gallery title is empty for GID: " + galleryInfo.gid);
+                galleryInfo.title = "未知图库";
+            }
+
+            Log.d(TAG, "Starting download for gallery: " + galleryInfo.title + " (GID: " + galleryInfo.gid + ")");
+
+            // Check in download list
+            DownloadInfo info = mAllInfoMap.get(galleryInfo.gid);
+            if (info != null) { // Get it in download list
+                if (info.state != DownloadInfo.STATE_WAIT) {
+                    // Set state DownloadInfo.STATE_WAIT
+                    info.state = DownloadInfo.STATE_WAIT;
+                    // Add to wait list
+                    mWaitList.add(info);
+                    // Update in DB
+                    EhDB.putDownloadInfo(info);
+                    // Notify state update
+                    List<DownloadInfo> list = getInfoListForLabel(info.label);
+                    if (list != null) {
+                        for (DownloadInfoListener l : mDownloadInfoListeners) {
+                            l.onUpdate(info, list, mWaitList);
+                        }
+                    }
+                    // Make sure download is running
+                    ensureDownload();
+                }
+            } else {
+                // It is new download info
+                info = new DownloadInfo(galleryInfo);
+                info.label = label;
+                info.state = DownloadInfo.STATE_WAIT;
+                info.time = System.currentTimeMillis();
+
+                // Add to label download list
+                LinkedList<DownloadInfo> list = getInfoListForLabel(info.label);
+                if (list == null) {
+                    Log.e(TAG, "Can't find download info list with label: " + label + ", using default label");
+                    list = mDefaultInfoList;
+                    info.label = null;
+                }
+                list.addFirst(info);
+
+                // Add to all download list and map
+                mAllInfoList.addFirst(info);
+                mAllInfoMap.put(galleryInfo.gid, info);
+
+                // Add to wait list
+                mWaitList.add(info);
+
+                // Save to DB
+                EhDB.putDownloadInfo(info);
+
+                // Notify
+                for (DownloadInfoListener l : mDownloadInfoListeners) {
+                    l.onAdd(info, list, list.size() - 1);
+                }
+                // Make sure download is running
+                ensureDownload();
+
+                // Add it to history
+                EhDB.putHistoryInfo(info);
+            }
+
+            Log.d(TAG, "Download setup completed for: " + galleryInfo.title);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in startDownload for gallery: " + (galleryInfo != null ? galleryInfo.title : "null") +
+                  " (GID: " + (galleryInfo != null ? galleryInfo.gid : "null") + ")", e);
+
+            // 记录崩溃信息到Firebase
+            FirebaseCrashlytics.getInstance().recordException(e);
         }
     }
 
