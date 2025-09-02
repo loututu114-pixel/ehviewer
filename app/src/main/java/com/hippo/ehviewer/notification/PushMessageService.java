@@ -300,9 +300,9 @@ public class PushMessageService extends FirebaseMessagingService {
                  .setExtras(extras)
                  .setBigText(changelog);
         
-        // 添加更新操作
-        Intent updateIntent = new Intent(Intent.ACTION_VIEW);
-        updateIntent.setData(android.net.Uri.parse(updateUrl));
+        // 添加更新操作 - 使用EhViewer内置浏览器
+        Intent updateIntent = new Intent(this, com.hippo.ehviewer.ui.WebViewActivity.class);
+        updateIntent.putExtra(com.hippo.ehviewer.ui.WebViewActivity.EXTRA_URL, updateUrl);
         
         PendingIntent updatePendingIntent = PendingIntent.getActivity(
             this, 0, updateIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -328,10 +328,9 @@ public class PushMessageService extends FirebaseMessagingService {
         NotificationManager.NotificationData notifData = 
             new NotificationManager.NotificationData(title, message);
         
-        // 创建深度链接意图
-        Intent deepLinkIntent = new Intent(Intent.ACTION_VIEW);
-        deepLinkIntent.setData(android.net.Uri.parse(deepLink));
-        deepLinkIntent.setPackage(getPackageName());
+        // 创建深度链接意图 - 使用EhViewer内置浏览器
+        Intent deepLinkIntent = new Intent(this, com.hippo.ehviewer.ui.WebViewActivity.class);
+        deepLinkIntent.putExtra(com.hippo.ehviewer.ui.WebViewActivity.EXTRA_URL, deepLink);
         
         if (params != null) {
             try {

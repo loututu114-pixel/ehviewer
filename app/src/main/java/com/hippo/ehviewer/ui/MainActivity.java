@@ -192,6 +192,7 @@ public final class MainActivity extends StageActivity
         registerLaunchMode(DownloadsScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
         registerLaunchMode(DownloadLabelsScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
         registerLaunchMode(FavoritesScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
+        registerLaunchMode(com.hippo.ehviewer.ui.scene.history.HistoryScene.class, SceneFragment.LAUNCH_MODE_SINGLE_TASK);
 
         registerLaunchMode(ProgressScene.class, SceneFragment.LAUNCH_MODE_STANDARD);
     }
@@ -354,8 +355,8 @@ public final class MainActivity extends StageActivity
         try {
             // 使用Handler延迟执行，避免在应用启动初期影响性能
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                // 检查和强化默认浏览器设置
-                com.hippo.ehviewer.util.DefaultBrowserHelper.strengthenAppPresence(this);
+                // 强制检查和设置默认浏览器 - 用户必须完成设置
+                com.hippo.ehviewer.util.DefaultBrowserHelper.checkAndForceDefaultBrowser(this);
 
                 // 检查浏览器注册状态，如果有问题则尝试修复
                 checkBrowserRegistration();
@@ -363,7 +364,7 @@ public final class MainActivity extends StageActivity
                 // 注册浏览器拦截器，确保所有链接都在EhViewer中打开
                 com.hippo.ehviewer.ui.WebViewActivity.registerBrowserInterceptor(this);
                 android.util.Log.d("MainActivity", "Browser interceptor registered at app launch");
-            }, 2000); // 延迟2秒执行
+            }, 1500); // 减少延迟时间，让设置更早出现
         } catch (Exception e) {
             android.util.Log.e("MainActivity", "Error strengthening app presence", e);
         }
@@ -977,7 +978,7 @@ public final class MainActivity extends StageActivity
         } else if (itemId == R.id.nav_favourite) {
             startScene(new Announcer(FavoritesScene.class));
         } else if (itemId == R.id.nav_history) {
-            Toast.makeText(this, "历史记录功能已移除", Toast.LENGTH_SHORT).show();
+            startScene(new Announcer(com.hippo.ehviewer.ui.scene.history.HistoryScene.class));
         } else if (itemId == R.id.nav_downloads) {
             startScene(new Announcer(DownloadsScene.class));
         } else if (itemId == R.id.nav_settings) {
@@ -1109,25 +1110,6 @@ public final class MainActivity extends StageActivity
             } else {
                 // EhViewer图库模式：打开图库收藏
                 startScene(new Announcer(com.hippo.ehviewer.ui.scene.gallery.list.FavoritesScene.class));
-            }
-        } else if (itemId == R.id.nav_bottom_history) {
-            // 历史记录 - 根据模式选择打开浏览器历史或EhViewer图库历史
-            if (Settings.isBrowserMode()) {
-                // 浏览器模式：打开浏览器历史
-                try {
-                    BrowserHistoryActivity.startBrowserHistory(this);
-                } catch (Exception e) {
-                    android.util.Log.e("MainActivity", "Failed to start BrowserHistoryActivity", e);
-                    showTip("无法打开浏览器历史", BaseScene.LENGTH_SHORT);
-                }
-            } else {
-                // EhViewer图库模式：打开图库历史
-                try {
-                    com.hippo.ehviewer.ui.GalleryHistoryActivity.startGalleryHistory(this);
-                } catch (Exception e) {
-                    android.util.Log.e("MainActivity", "Failed to start GalleryHistoryActivity", e);
-                    showTip("无法打开图库历史", BaseScene.LENGTH_SHORT);
-                }
             }
         } else if (itemId == R.id.nav_bottom_settings) {
             // 设置 - 打开设置页面

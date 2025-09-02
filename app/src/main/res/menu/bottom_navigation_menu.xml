@@ -19,12 +19,6 @@
         android:title="书签"
         android:icon="@drawable/v_heart_black_x24" />
 
-    <!-- 历史记录 -->
-    <item
-        android:id="@+id/nav_bottom_history"
-        android:title="历史"
-        android:icon="@drawable/v_history_black_x24" />
-
     <!-- 设置 -->
     <item
         android:id="@+id/nav_bottom_settings"

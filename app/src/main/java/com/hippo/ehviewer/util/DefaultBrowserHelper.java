@@ -142,7 +142,7 @@ public class DefaultBrowserHelper {
      */
     public static boolean trySetAsDefaultBrowser(@NonNull Context context) {
         Log.d(TAG, "Starting enhanced default browser setup...");
-        
+
         try {
             // 方法1: Android 10+ RoleManager (最直接)
             if (tryRoleManagerApproach(context)) {
@@ -150,9 +150,9 @@ public class DefaultBrowserHelper {
                 return true;
             }
 
-            // 方法2: 直接打开默认应用设置
-            if (tryDirectDefaultAppsSettings(context)) {
-                Log.d(TAG, "Direct default apps settings opened");
+            // 方法2: 增强版默认应用设置跳转
+            if (tryEnhancedDefaultAppsSettings(context)) {
+                Log.d(TAG, "Enhanced default apps settings opened");
                 return true;
             }
 
@@ -205,34 +205,119 @@ public class DefaultBrowserHelper {
     }
 
     /**
-     * 方法2: 直接打开默认应用设置页面
+     * 方法2: 增强版直接打开默认应用设置页面
      */
-    private static boolean tryDirectDefaultAppsSettings(@NonNull Context context) {
+    private static boolean tryEnhancedDefaultAppsSettings(@NonNull Context context) {
         try {
-            // 尝试多种设置页面
+            // 尝试多种设置页面，按优先级排序
             String[] settingsActions = {
-                Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
-                "android.settings.MANAGE_DEFAULT_APPS_SETTINGS",
-                Settings.ACTION_APPLICATION_SETTINGS
+                Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,           // 标准默认应用设置
+                "android.settings.MANAGE_DEFAULT_APPS_SETTINGS",        // 兼容性版本
+                Settings.ACTION_APPLICATION_SETTINGS,                   // 应用设置
+                "com.android.settings.APPLICATION_SETTINGS",            // 兼容性版本
+                "android.settings.APPLICATION_MANAGEMENT_SETTINGS",     // 应用管理
+                "android.intent.action.MANAGE_APP_PERMISSION",          // 权限管理
             };
 
             for (String action : settingsActions) {
                 try {
                     Intent intent = new Intent(action);
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    // 添加额外参数以帮助系统定位到浏览器设置
+                    intent.putExtra("android.intent.extra.USER_ID", 0);
+                    intent.putExtra("android.settings.extra.APP_PACKAGE", context.getPackageName());
                     context.startActivity(intent);
-                    
-                    Toast.makeText(context, "🚀 请在【浏览器】选项中选择EhViewer", Toast.LENGTH_LONG).show();
+
+                    Toast.makeText(context, "🚀 已打开系统设置，请选择【浏览器】并选择EhViewer", Toast.LENGTH_LONG).show();
                     return true;
                 } catch (Exception e) {
                     Log.d(TAG, "Settings action failed: " + action);
                 }
             }
-            return false;
+
+            // 如果上面的都失败了，尝试厂商特定的设置页面
+            return tryVendorSpecificSettings(context);
+
         } catch (Exception e) {
-            Log.e(TAG, "Direct settings approach failed", e);
+            Log.e(TAG, "Enhanced settings approach failed", e);
             return false;
         }
+    }
+
+    /**
+     * 尝试厂商特定的设置页面
+     */
+    private static boolean tryVendorSpecificSettings(@NonNull Context context) {
+        try {
+            // 获取设备厂商信息
+            String manufacturer = android.os.Build.MANUFACTURER.toLowerCase();
+            String[] vendorActions;
+
+            switch (manufacturer) {
+                case "huawei":
+                case "honor":
+                    vendorActions = new String[]{
+                        "com.huawei.systemmanager/.apps.ManagedAppActivity",
+                        "com.huawei.systemmanager/.apps.DefaultAppManagerActivity"
+                    };
+                    break;
+                case "xiaomi":
+                case "redmi":
+                    vendorActions = new String[]{
+                        "com.miui.securitycenter/com.miui.permcenter.permissions.AppPermissionsEditorActivity",
+                        "com.android.settings/.applications.ManageApplications"
+                    };
+                    break;
+                case "oppo":
+                case "oneplus":
+                    vendorActions = new String[]{
+                        "com.coloros.safecenter/.permission.PermissionManagerActivity",
+                        "com.android.settings/.applications.ManageApplications"
+                    };
+                    break;
+                case "vivo":
+                    vendorActions = new String[]{
+                        "com.vivo.permissionmanager/.activity.PermMainActivity",
+                        "com.android.settings/.applications.ManageApplications"
+                    };
+                    break;
+                case "samsung":
+                    vendorActions = new String[]{
+                        "com.android.settings/.applications.ManageApplications",
+                        "com.samsung.android.app.settings/.Settings"
+                    };
+                    break;
+                default:
+                    return false;
+            }
+
+            // 尝试厂商特定的设置页面
+            for (String action : vendorActions) {
+                try {
+                    Intent intent = new Intent();
+                    intent.setComponent(ComponentName.unflattenFromString(action));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(intent);
+
+                    Toast.makeText(context, "📱 已打开" + manufacturer.toUpperCase() + "系统设置，请设置EhViewer为默认浏览器", Toast.LENGTH_LONG).show();
+                    return true;
+                } catch (Exception e) {
+                    Log.d(TAG, "Vendor settings failed: " + action);
+                }
+            }
+
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Vendor specific settings failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * 保留原有的方法2以兼容性
+     */
+    private static boolean tryDirectDefaultAppsSettings(@NonNull Context context) {
+        return tryEnhancedDefaultAppsSettings(context);
     }
 
     /**
@@ -332,81 +417,231 @@ public class DefaultBrowserHelper {
     private static final String PREF_SHORTCUT_CREATED = "shortcut_created";
     private static final String PREF_FIRST_LAUNCH_SETUP = "first_launch_setup";
     private static final String PREF_SETUP_COMPLETED = "setup_completed";
+    private static final String PREF_LAST_REMINDER_TIME = "last_reminder_time";
+    private static final String PREF_SESSION_REMINDER_SHOWN = "session_reminder_shown";
+    private static final String PREF_USER_DISMISSED_REMINDER = "user_dismissed_reminder";
 
     /**
-     * 检查并强制要求设置为默认浏览器
+     * 检查并强制要求设置为默认浏览器 - 用户必须完成设置
      */
     public static void checkAndForceDefaultBrowser(@NonNull Context context) {
         SharedPreferences prefs = getPrefs(context);
 
-        // 检查是否是第一次启动
-        boolean isFirstLaunch = prefs.getBoolean(PREF_FIRST_LAUNCH_SETUP, true);
+        // 检查是否已经完成设置
         boolean setupCompleted = prefs.getBoolean(PREF_SETUP_COMPLETED, false);
 
-        if (isFirstLaunch && !setupCompleted) {
-            // 显示强制设置默认浏览器的对话框
+        if (!setupCompleted) {
+            // 如果还没完成设置，强制显示设置对话框
+            Log.d(TAG, "Setup not completed, showing force setup dialog");
             showForceDefaultBrowserDialog(context);
         } else if (!isDefaultBrowser(context)) {
-            // 不是默认浏览器，显示重新设置提示
-            showReSetDefaultBrowserDialog(context);
+            // 如果曾经设置过但现在不是默认浏览器，根据智能提醒策略显示提示
+            Log.d(TAG, "No longer default browser, checking smart reminder strategy");
+            showSmartReminderDialog(context);
+        } else {
+            Log.d(TAG, "Browser setup is complete and EhViewer is default browser");
+            // 重置会话提醒标记
+            resetSessionReminderFlag(context);
         }
     }
 
     /**
-     * 显示强制设置默认浏览器的对话框
+     * 显示强制设置默认浏览器的对话框 - 用户必须完成设置才能继续使用
      */
     private static void showForceDefaultBrowserDialog(@NonNull Context context) {
         try {
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
-            builder.setTitle("🚀 成为EhViewer的超级用户")
-                    .setMessage("为了获得最佳浏览体验，请将EhViewer设置为您的默认浏览器应用。\n\n" +
-                            "这将解锁以下超能力：\n" +
-                            "• ⚡ 闪电般的网页加载速度\n" +
-                            "• 🛡️ 强大的广告拦截保护\n" +
-                            "• 📱 专属桌面快捷方式\n" +
-                            "• 🌟 成为您设备上的王者应用\n\n" +
-                            "准备好统治您的浏览体验了吗？")
-                    .setCancelable(false) // 禁止取消，用户必须做出选择
-                    .setPositiveButton("👑 立即称王", (dialog, which) -> {
+            android.app.AlertDialog dialog = builder.setTitle("🚨 重要设置 - 必须完成")
+                    .setMessage("为了确保EhViewer正常工作，您必须将EhViewer设置为默认浏览器。\n\n" +
+                            "这将为您提供：\n" +
+                            "• 🔗 所有链接都在EhViewer中打开\n" +
+                            "• ⚡ 最佳的浏览体验\n" +
+                            "• 🛡️ 安全的浏览环境\n" +
+                            "• 📱 完整的浏览器功能\n\n" +
+                            "⚠️ 此设置非常重要，请务必完成！")
+                    .setCancelable(false) // 完全禁止取消
+                    .setPositiveButton("🎯 立即设置", (dialogInterface, which) -> {
                         boolean success = trySetAsDefaultBrowser(context);
                         if (!success) {
-                            Toast.makeText(context, "请在系统设置中将EhViewer设为默认浏览器",
+                            // 如果设置失败，继续显示对话框，不让用户跳过
+                            showForceDefaultBrowserDialog(context);
+                            Toast.makeText(context, "设置失败，请在系统设置中完成设置",
                                     Toast.LENGTH_LONG).show();
+                        } else {
+                            // 设置成功，标记为已完成
+                            getPrefs(context).edit()
+                                    .putBoolean(PREF_FIRST_LAUNCH_SETUP, false)
+                                    .putBoolean(PREF_SETUP_COMPLETED, true)
+                                    .apply();
+                            Toast.makeText(context, "✅ 设置成功！欢迎使用EhViewer",
+                                    Toast.LENGTH_SHORT).show();
                         }
-                        // 记录用户已看过设置提示
-                        getPrefs(context).edit().putBoolean(PREF_FIRST_LAUNCH_SETUP, false).apply();
                     })
-                    .setNegativeButton("稍后称王", (dialog, which) -> {
-                        // 用户选择稍后设置，记录状态但不强制
-                        getPrefs(context).edit().putBoolean(PREF_FIRST_LAUNCH_SETUP, false).apply();
-                        Toast.makeText(context, "您可以在设置中随时将EhViewer设为默认浏览器",
-                                Toast.LENGTH_SHORT).show();
+                    .setNeutralButton("❓ 怎么设置", (dialogInterface, which) -> {
+                        // 显示详细设置教程，然后重新显示设置对话框
+                        showDetailedSetupGuide(context);
+                        // 延迟重新显示对话框
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            showForceDefaultBrowserDialog(context);
+                        }, 3000);
                     })
-                    .show();
+                    .create();
+
+            // 设置对话框消失监听，如果用户通过其他方式关闭对话框，重新显示
+            dialog.setOnDismissListener(dialogInterface -> {
+                // 检查是否真的设置成功了
+                if (!isDefaultBrowser(context) && !getPrefs(context).getBoolean(PREF_SETUP_COMPLETED, false)) {
+                    // 如果没有设置成功，延迟重新显示对话框
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        showForceDefaultBrowserDialog(context);
+                    }, 1000);
+                }
+            });
+
+            dialog.show();
+
+            // 禁用返回键
+            dialog.setOnKeyListener((dialogInterface, keyCode, event) -> {
+                if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                    Toast.makeText(context, "请先完成浏览器设置", Toast.LENGTH_SHORT).show();
+                    return true; // 消费掉返回键事件
+                }
+                return false;
+            });
+
         } catch (Exception e) {
             Log.e(TAG, "Error showing force default browser dialog", e);
+            // 如果对话框显示失败，尝试备用方案
+            showEmergencySetupDialog(context);
         }
     }
 
     /**
-     * 显示重新设置为默认浏览器的对话框
+     * 显示紧急设置对话框 - 当主对话框无法显示时的备用方案
+     */
+    private static void showEmergencySetupDialog(@NonNull Context context) {
+        try {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
+            android.app.AlertDialog dialog = builder.setTitle("⚠️ 紧急设置")
+                    .setMessage("EhViewer需要设置为默认浏览器才能正常工作。\n\n请按以下步骤操作：\n\n" +
+                            "1. 按下手机的【主页】键\n" +
+                            "2. 长按EhViewer图标\n" +
+                            "3. 选择【应用信息】\n" +
+                            "4. 点击【设为默认】\n" +
+                            "5. 选择【浏览器】\n" +
+                            "6. 选择【EhViewer】\n\n" +
+                            "设置完成后，请重新打开EhViewer。")
+                    .setCancelable(false)
+                    .setPositiveButton("我已完成设置", (dialogInterface, which) -> {
+                        if (isDefaultBrowser(context)) {
+                            // 设置成功
+                            getPrefs(context).edit()
+                                    .putBoolean(PREF_FIRST_LAUNCH_SETUP, false)
+                                    .putBoolean(PREF_SETUP_COMPLETED, true)
+                                    .apply();
+                            Toast.makeText(context, "✅ 设置成功！", Toast.LENGTH_SHORT).show();
+                        } else {
+                            // 还没设置成功，继续显示对话框
+                            Toast.makeText(context, "检测到还未完成设置，请先完成设置", Toast.LENGTH_LONG).show();
+                            showEmergencySetupDialog(context);
+                        }
+                    })
+                    .setNeutralButton("显示详细教程", (dialogInterface, which) -> {
+                        showDetailedSetupGuide(context);
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            showEmergencySetupDialog(context);
+                        }, 5000);
+                    })
+                    .create();
+
+            dialog.setOnDismissListener(dialogInterface -> {
+                if (!isDefaultBrowser(context) && !getPrefs(context).getBoolean(PREF_SETUP_COMPLETED, false)) {
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        showEmergencySetupDialog(context);
+                    }, 1000);
+                }
+            });
+
+            dialog.show();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing emergency setup dialog", e);
+            // 如果所有对话框都失败，显示Toast提示
+            Toast.makeText(context, "请手动将EhViewer设为默认浏览器", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * 显示重新设置为默认浏览器的对话框 - 强制用户重新设置
      */
     private static void showReSetDefaultBrowserDialog(@NonNull Context context) {
         try {
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
-            builder.setTitle("⚠️ 检测到浏览器地位变更")
-                    .setMessage("EhViewer不再是您的默认浏览器应用。\n\n" +
-                            "为了继续享受王者般的浏览体验，请重新将EhViewer设置为默认浏览器。")
-                    .setPositiveButton("👑 夺回王位", (dialog, which) -> {
-                        trySetAsDefaultBrowser(context);
+            android.app.AlertDialog dialog = builder.setTitle("⚠️ 浏览器设置异常")
+                    .setMessage("检测到EhViewer不再是默认浏览器，这将影响应用的正常使用。\n\n" +
+                            "为了确保所有功能正常工作，建议重新将EhViewer设置为默认浏览器。\n\n" +
+                            "如果不设置，您可能无法正常使用浏览功能。")
+                    .setCancelable(false)
+                    .setPositiveButton("🔧 立即修复", (dialogInterface, which) -> {
+                        boolean success = trySetAsDefaultBrowser(context);
+                        if (!success) {
+                            Toast.makeText(context, "请在系统设置中完成设置", Toast.LENGTH_LONG).show();
+                            // 不立即重新显示对话框，给用户时间操作
+                        } else {
+                            // 设置成功，重置用户拒绝标记
+                            getPrefs(context).edit()
+                                .putBoolean(PREF_USER_DISMISSED_REMINDER, false)
+                                .apply();
+                        }
                     })
-                    .setNegativeButton("稍后", (dialog, which) -> {
-                        // 什么都不做
+                    .setNeutralButton("📖 怎么操作", (dialogInterface, which) -> {
+                        showDetailedSetupGuide(context);
+                        // 延迟重新显示对话框，给用户时间查看教程
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            if (!isDefaultBrowser(context)) {
+                                showReSetDefaultBrowserDialog(context);
+                            }
+                        }, 5000);
                     })
-                    .setNeutralButton("不再提醒", (dialog, which) -> {
-                        getPrefs(context).edit().putBoolean(PREF_SETUP_COMPLETED, true).apply();
+                    .setNegativeButton("⏰ 暂时忽略", (dialogInterface, which) -> {
+                        // 记录用户明确拒绝提醒
+                        getPrefs(context).edit()
+                            .putBoolean(PREF_USER_DISMISSED_REMINDER, true)
+                            .putLong(PREF_LAST_REMINDER_TIME, System.currentTimeMillis())
+                            .apply();
+                        Toast.makeText(context, "已暂时忽略提醒，24小时后可再次提醒", Toast.LENGTH_SHORT).show();
                     })
-                    .show();
+                    .create();
+
+            // 修改dismiss监听器，不强制重新显示
+            dialog.setOnDismissListener(dialogInterface -> {
+                // 只有在用户没有明确拒绝的情况下才考虑重新显示
+                boolean userDismissed = getPrefs(context).getBoolean(PREF_USER_DISMISSED_REMINDER, false);
+                if (!isDefaultBrowser(context) && !userDismissed) {
+                    // 延迟重新显示，但给用户更多时间
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        showSmartReminderDialog(context);
+                    }, 2000);
+                }
+            });
+
+            dialog.show();
+
+            // 允许返回键关闭对话框
+            dialog.setOnKeyListener((dialogInterface, keyCode, event) -> {
+                if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                    // 用户按返回键，视为暂时忽略
+                    getPrefs(context).edit()
+                        .putBoolean(PREF_USER_DISMISSED_REMINDER, true)
+                        .putLong(PREF_LAST_REMINDER_TIME, System.currentTimeMillis())
+                        .apply();
+                    Toast.makeText(context, "已暂时忽略提醒", Toast.LENGTH_SHORT).show();
+                    dialogInterface.dismiss();
+                    return true;
+                }
+                return false;
+            });
+
         } catch (Exception e) {
             Log.e(TAG, "Error showing re-set default browser dialog", e);
         }
@@ -599,34 +834,170 @@ public class DefaultBrowserHelper {
     }
 
     /**
-     * 显示详细设置教程
+     * 显示详细设置教程并直接跳转到设置页面
      */
     private static void showDetailedSetupGuide(@NonNull Context context) {
         try {
+            // 先尝试直接跳转到系统设置
+            boolean directJumpSuccess = tryDirectBrowserSettingsJump(context);
+
+            if (directJumpSuccess) {
+                // 直接跳转成功，显示简短提示
+                Toast.makeText(context, "🔧 已跳转到浏览器设置页面，请选择EhViewer", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            // 如果直接跳转失败，显示详细教程对话框
+            showDetailedSetupDialog(context);
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing detailed guide", e);
+            // 出现异常时显示教程对话框
+            showDetailedSetupDialog(context);
+        }
+    }
+
+    /**
+     * 尝试直接跳转到浏览器设置页面
+     */
+    private static boolean tryDirectBrowserSettingsJump(@NonNull Context context) {
+        try {
+            // 方法1: 尝试使用更具体的设置页面
+            Intent intent = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // 添加参数指定我们要设置浏览器
+            intent.putExtra("android.intent.extra.USER_ID", 0);
+            intent.putExtra("android.settings.extra.APP_PACKAGE", context.getPackageName());
+            intent.putExtra("android.intent.category.BROWSABLE", true);
+            context.startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            Log.d(TAG, "Direct browser settings jump failed", e);
+        }
+
+        try {
+            // 方法2: 尝试应用详情页面中的默认设置
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + context.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // 添加额外参数
+            intent.putExtra("android.intent.category.BROWSABLE", true);
+            intent.putExtra("android.settings.extra.APP_PACKAGE", context.getPackageName());
+            context.startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            Log.d(TAG, "App details browser settings failed", e);
+        }
+
+        return false;
+    }
+
+    /**
+     * 显示详细设置教程对话框
+     */
+    private static void showDetailedSetupDialog(@NonNull Context context) {
+        try {
             android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
-            builder.setTitle("📖 详细设置教程")
-                    .setMessage("根据您的设备品牌选择对应方法:\n\n" +
-                            "🔸 华为/荣耀:\n" +
-                            "设置 → 应用和服务 → 默认应用 → 浏览器\n\n" +
-                            "🔸 小米/红米:\n" +
-                            "设置 → 应用设置 → 应用管理 → 默认应用设置\n\n" +
-                            "🔸 OPPO/一加:\n" +
-                            "设置 → 应用管理 → 默认应用 → 浏览器应用\n\n" +
-                            "🔸 vivo:\n" +
-                            "设置 → 更多设置 → 应用管理 → 默认应用\n\n" +
-                            "🔸 三星:\n" +
-                            "设置 → 应用程序 → 选择默认应用 → 浏览器\n\n" +
-                            "🔸 原生Android:\n" +
-                            "设置 → 应用和通知 → 默认应用 → 浏览器应用")
-                    .setPositiveButton("💪 我来试试", (dialog, which) -> {
-                        trySetAsDefaultBrowser(context);
+            builder.setTitle("📖 设置EhViewer为默认浏览器")
+                    .setMessage("请按以下步骤操作：\n\n" +
+                            "📱 步骤1: 打开系统设置\n" +
+                            "🔍 步骤2: 找到【应用管理】或【默认应用】\n" +
+                            "🌐 步骤3: 选择【浏览器】选项\n" +
+                            "✅ 步骤4: 选择【EhViewer浏览器】\n\n" +
+                            "💡 提示：根据您的设备品牌，设置路径可能略有不同。")
+                    .setPositiveButton("🚀 立即跳转设置", (dialog, which) -> {
+                        // 尝试多种方式跳转到设置页面
+                        if (!tryDirectBrowserSettingsJump(context)) {
+                            // 如果都失败了，显示通用设置教程
+                            showUniversalSettingsGuide(context);
+                        }
                     })
-                    .setNegativeButton("👍 明白了", (dialog, which) -> {
-                        // 什么都不做
+                    .setNegativeButton("❓ 按品牌查看教程", (dialog, which) -> {
+                        showBrandSpecificGuide(context);
                     })
                     .show();
         } catch (Exception e) {
-            Log.e(TAG, "Error showing detailed guide", e);
+            Log.e(TAG, "Error showing detailed setup dialog", e);
+        }
+    }
+
+    /**
+     * 显示通用设置教程
+     */
+    private static void showUniversalSettingsGuide(@NonNull Context context) {
+        try {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
+            builder.setTitle("🔧 通用设置方法")
+                    .setMessage("📋 请按以下任一方法操作：\n\n" +
+                            "方法一：\n" +
+                            "1. 长按EhViewer应用图标\n" +
+                            "2. 选择【应用信息】\n" +
+                            "3. 点击【设为默认】\n" +
+                            "4. 选择【浏览器】\n\n" +
+                            "方法二：\n" +
+                            "1. 打开【设置】\n" +
+                            "2. 找到【应用管理】\n" +
+                            "3. 选择EhViewer\n" +
+                            "4. 设置默认浏览器\n\n" +
+                            "方法三：\n" +
+                            "1. 打开任意网页链接\n" +
+                            "2. 当系统询问选择浏览器时\n" +
+                            "3. 选择EhViewer并勾选【始终】")
+                    .setPositiveButton("我知道了", null)
+                    .show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing universal guide", e);
+        }
+    }
+
+    /**
+     * 显示品牌特定设置教程
+     */
+    private static void showBrandSpecificGuide(@NonNull Context context) {
+        try {
+            String manufacturer = android.os.Build.MANUFACTURER.toLowerCase();
+            String title, message;
+
+            switch (manufacturer) {
+                case "huawei":
+                case "honor":
+                    title = "📱 华为/荣耀设备设置";
+                    message = "设置 → 应用和服务 → 默认应用 → 浏览器\n\n" +
+                            "或：设置 → 应用 → 默认应用 → 浏览器应用";
+                    break;
+                case "xiaomi":
+                case "redmi":
+                    title = "📱 小米/红米设备设置";
+                    message = "设置 → 应用设置 → 应用管理 → 默认应用设置 → 浏览器";
+                    break;
+                case "oppo":
+                case "oneplus":
+                    title = "📱 OPPO/一加设备设置";
+                    message = "设置 → 应用管理 → 默认应用 → 浏览器应用";
+                    break;
+                case "vivo":
+                    title = "📱 vivo设备设置";
+                    message = "设置 → 更多设置 → 应用管理 → 默认应用 → 浏览器";
+                    break;
+                case "samsung":
+                    title = "📱 三星设备设置";
+                    message = "设置 → 应用程序 → 选择默认应用 → 浏览器";
+                    break;
+                default:
+                    title = "📱 原生Android设备设置";
+                    message = "设置 → 应用和通知 → 默认应用 → 浏览器应用";
+                    break;
+            }
+
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(context);
+            builder.setTitle(title)
+                    .setMessage(message)
+                    .setPositiveButton("🚀 跳转设置", (dialog, which) -> {
+                        trySetAsDefaultBrowser(context);
+                    })
+                    .setNegativeButton("我知道了", null)
+                    .show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing brand specific guide", e);
         }
     }
 
@@ -768,5 +1139,52 @@ public class DefaultBrowserHelper {
     public static void resetBrowserSettings(@NonNull Context context) {
         getPrefs(context).edit().clear().apply();
         Toast.makeText(context, "浏览器设置已重置", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 显示智能提醒对话框 - 控制提醒频率
+     */
+    private static void showSmartReminderDialog(@NonNull Context context) {
+        SharedPreferences prefs = getPrefs(context);
+
+        // 检查是否在本会话中已经显示过提醒
+        boolean sessionReminderShown = prefs.getBoolean(PREF_SESSION_REMINDER_SHOWN, false);
+        if (sessionReminderShown) {
+            Log.d(TAG, "Session reminder already shown, skipping");
+            return;
+        }
+
+        // 检查用户是否明确拒绝过提醒
+        boolean userDismissed = prefs.getBoolean(PREF_USER_DISMISSED_REMINDER, false);
+        if (userDismissed) {
+            // 如果用户明确拒绝，检查是否超过冷却时间（24小时）
+            long lastReminderTime = prefs.getLong(PREF_LAST_REMINDER_TIME, 0);
+            long currentTime = System.currentTimeMillis();
+            long timeDiff = currentTime - lastReminderTime;
+            long cooldownPeriod = 24 * 60 * 60 * 1000; // 24小时
+
+            if (timeDiff < cooldownPeriod) {
+                Log.d(TAG, "User dismissed reminder recently, within cooldown period");
+                return;
+            }
+        }
+
+        // 记录提醒时间
+        prefs.edit()
+            .putLong(PREF_LAST_REMINDER_TIME, System.currentTimeMillis())
+            .putBoolean(PREF_SESSION_REMINDER_SHOWN, true)
+            .apply();
+
+        // 显示重新设置对话框
+        showReSetDefaultBrowserDialog(context);
+    }
+
+    /**
+     * 重置会话提醒标记
+     */
+    private static void resetSessionReminderFlag(@NonNull Context context) {
+        getPrefs(context).edit()
+            .putBoolean(PREF_SESSION_REMINDER_SHOWN, false)
+            .apply();
     }
 }
