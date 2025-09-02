@@ -90,6 +90,7 @@ import com.hippo.ehviewer.client.exception.NoHAtHClientException;
 import com.hippo.ehviewer.client.parser.RateGalleryParser;
 import com.hippo.ehviewer.dao.DownloadInfo;
 import com.hippo.ehviewer.dao.Filter;
+import com.hippo.ehviewer.download.DownloadManager;
 import com.hippo.ehviewer.ui.CommonOperations;
 import com.hippo.ehviewer.ui.GalleryActivity;
 import com.hippo.ehviewer.ui.MainActivity;
@@ -1661,17 +1662,87 @@ public class GalleryDetailScene extends BaseScene implements View.OnClickListene
     }
 
     private void onDownload() {
-        GalleryInfo galleryInfo = getGalleryInfo();
-        if (galleryInfo != null) {
-            if (EhApplication.getDownloadManager(mContext).getDownloadState(galleryInfo.gid) == DownloadInfo.STATE_INVALID) {
-                CommonOperations.startDownload(activity, galleryInfo, false);
-            } else {
-                new AlertDialog.Builder(mContext)
-                        .setTitle(R.string.download_remove_dialog_title)
-                        .setMessage(getString(R.string.download_remove_dialog_message, galleryInfo.title))
-                        .setPositiveButton(android.R.string.ok, (dialog1, which1) -> EhApplication.getDownloadManager(mContext).deleteDownload(galleryInfo.gid))
-                        .show();
+        try {
+            android.util.Log.d("GalleryDetailScene", "Starting download process...");
+
+            // 获取图库信息
+            GalleryInfo galleryInfo = getGalleryInfo();
+            if (galleryInfo == null) {
+                android.util.Log.e("GalleryDetailScene", "GalleryInfo is null");
+                showTip("无法获取图库信息", BaseScene.LENGTH_SHORT);
+                return;
             }
+
+            android.util.Log.d("GalleryDetailScene", "GalleryInfo obtained: " + galleryInfo.title + " (GID: " + galleryInfo.gid + ")");
+
+            // 检查GID是否有效
+            if (galleryInfo.gid <= 0) {
+                android.util.Log.e("GalleryDetailScene", "Invalid GID: " + galleryInfo.gid);
+                showTip("无效的图库ID", BaseScene.LENGTH_SHORT);
+                return;
+            }
+
+            // 获取下载管理器
+            DownloadManager downloadManager;
+            try {
+                downloadManager = EhApplication.getDownloadManager(mContext);
+                if (downloadManager == null) {
+                    android.util.Log.e("GalleryDetailScene", "DownloadManager is null");
+                    showTip("下载管理器初始化失败", BaseScene.LENGTH_SHORT);
+                    return;
+                }
+            } catch (Exception e) {
+                android.util.Log.e("GalleryDetailScene", "Error getting DownloadManager", e);
+                showTip("下载服务初始化失败", BaseScene.LENGTH_SHORT);
+                return;
+            }
+
+            // 检查下载状态
+            int downloadState = downloadManager.getDownloadState(galleryInfo.gid);
+            android.util.Log.d("GalleryDetailScene", "Download state for GID " + galleryInfo.gid + ": " + downloadState);
+
+            if (downloadState == DownloadInfo.STATE_INVALID) {
+                // 开始下载
+                android.util.Log.d("GalleryDetailScene", "Starting new download for: " + galleryInfo.title);
+                try {
+                    CommonOperations.startDownload(activity, galleryInfo, false);
+                    showTip("开始下载: " + galleryInfo.title, BaseScene.LENGTH_SHORT);
+                } catch (Exception e) {
+                    android.util.Log.e("GalleryDetailScene", "Error starting download", e);
+                    showTip("下载启动失败", BaseScene.LENGTH_SHORT);
+                }
+            } else {
+                // 显示删除确认对话框
+                android.util.Log.d("GalleryDetailScene", "Showing delete download dialog for: " + galleryInfo.title);
+                try {
+                    new AlertDialog.Builder(mContext)
+                            .setTitle(R.string.download_remove_dialog_title)
+                            .setMessage(getString(R.string.download_remove_dialog_message, galleryInfo.title))
+                            .setPositiveButton(android.R.string.ok, (dialog1, which1) -> {
+                                try {
+                                    EhApplication.getDownloadManager(mContext).deleteDownload(galleryInfo.gid);
+                                    showTip("已删除下载", BaseScene.LENGTH_SHORT);
+                                } catch (Exception e) {
+                                    android.util.Log.e("GalleryDetailScene", "Error deleting download", e);
+                                    showTip("删除下载失败", BaseScene.LENGTH_SHORT);
+                                }
+                            })
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show();
+                } catch (Exception e) {
+                    android.util.Log.e("GalleryDetailScene", "Error showing delete dialog", e);
+                    showTip("操作失败", BaseScene.LENGTH_SHORT);
+                }
+            }
+
+            android.util.Log.d("GalleryDetailScene", "Download process completed successfully");
+
+        } catch (Exception e) {
+            android.util.Log.e("GalleryDetailScene", "Unexpected error in onDownload", e);
+            showTip("下载操作出现异常", BaseScene.LENGTH_SHORT);
+
+            // 记录到Firebase Crashlytics
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e);
         }
     }
 

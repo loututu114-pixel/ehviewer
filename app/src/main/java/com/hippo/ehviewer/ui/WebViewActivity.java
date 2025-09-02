@@ -24,6 +24,7 @@ import com.hippo.ehviewer.client.BookmarkManager;
 import com.hippo.ehviewer.client.data.BookmarkInfo;
 import com.hippo.ehviewer.client.AdBlockManager;
 import com.hippo.ehviewer.client.SearchConfigManager;
+import com.hippo.ehviewer.client.HistoryManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ public class WebViewActivity extends AppCompatActivity {
     private BookmarkManager mBookmarkManager;
     private AdBlockManager mAdBlockManager;
     private SearchConfigManager mSearchConfigManager;
+    private HistoryManager mHistoryManager;
 
     // 状态变量
     private boolean isDesktopMode = false;
@@ -90,6 +92,7 @@ public class WebViewActivity extends AppCompatActivity {
             mBookmarkManager = BookmarkManager.getInstance(this);
             mAdBlockManager = AdBlockManager.getInstance();
         mSearchConfigManager = SearchConfigManager.getInstance(this);
+        mHistoryManager = HistoryManager.getInstance(this);
 
         // 初始化搜索配置管理器
         mSearchConfigManager.initialize();
@@ -164,6 +167,9 @@ public class WebViewActivity extends AppCompatActivity {
 
                 // 更新当前标签页的信息
                 updateCurrentTabInfo(url, view.getTitle());
+
+                // 记录浏览历史
+                addToHistory(url, view.getTitle());
                 }
 
                 @Override
@@ -1192,5 +1198,27 @@ public class WebViewActivity extends AppCompatActivity {
      */
     public void exitVideoFullscreen() {
         // 空实现，简化版本不支持视频全屏
+    }
+
+    /**
+     * 添加浏览历史记录
+     */
+    private void addToHistory(String url, String title) {
+        if (mHistoryManager != null && url != null && !url.isEmpty()) {
+            try {
+                // 过滤不需要记录的URL
+                if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                    return; // 只记录HTTP/HTTPS URL
+                }
+
+                // 使用页面标题，如果为空则使用URL
+                String pageTitle = (title != null && !title.isEmpty()) ? title : url;
+
+                // 添加到历史记录
+                mHistoryManager.addHistory(pageTitle, url);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error adding to history", e);
+            }
+        }
     }
 }
