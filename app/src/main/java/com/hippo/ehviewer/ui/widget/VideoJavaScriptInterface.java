@@ -69,4 +69,31 @@ public class VideoJavaScriptInterface {
     public void onVideoError(String error) {
         Log.e(TAG, "Video error: " + error);
     }
+
+    /**
+     * 播放视频
+     */
+    @JavascriptInterface
+    public void playVideo() {
+        Log.d(TAG, "JavaScript requested play");
+        // 这个方法可以用来处理原生播放控制
+    }
+
+    /**
+     * 暂停视频
+     */
+    @JavascriptInterface
+    public void pauseVideo() {
+        Log.d(TAG, "JavaScript requested pause");
+        // 这个方法可以用来处理原生播放控制
+    }
+
+    /**
+     * 切换播放/暂停状态
+     */
+    @JavascriptInterface
+    public void togglePlayPause() {
+        Log.d(TAG, "JavaScript requested toggle play/pause");
+        // 这个方法可以用来处理原生播放控制
+    }
 }

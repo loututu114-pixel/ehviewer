@@ -85,6 +85,29 @@
                 }
             }
 
+            // 查找全屏按钮
+            var fullscreenButtonSelectors = [
+                '.fullscreen-button',
+                '#fullscreen-button',
+                '.btn-fullscreen',
+                '#btn-fullscreen',
+                '.fullscreen-icon',
+                '.fullscreen-btn',
+                '[data-fullscreen-button]',
+                '.video-fullscreen-button',
+                '#video-fullscreen-button',
+                '.fullscreen'
+            ];
+
+            var fullscreenButton = null;
+            for (var k = 0; k < fullscreenButtonSelectors.length; k++) {
+                fullscreenButton = document.querySelector(fullscreenButtonSelectors[k]);
+                if (fullscreenButton) {
+                    console.log('Found XVideos fullscreen button:', fullscreenButtonSelectors[k]);
+                    break;
+                }
+            }
+
             // 增强播放按钮
             if (playButton) {
                 console.log('Enhancing XVideos play button');
@@ -102,8 +125,8 @@
                 // 保存原始事件处理
                 var originalOnClick = playButton.onclick;
 
-                // 添加增强的点击事件监听器
-                playButton.addEventListener('click', function(e) {
+                // 移除现有的点击事件监听器（如果有的话）
+                var newClickHandler = function(e) {
                     console.log('XVideos play button clicked (enhanced)');
                     e.preventDefault();
                     e.stopPropagation();
@@ -113,24 +136,53 @@
                         var video = document.querySelector('video');
                         if (video) {
                             if (video.paused) {
-                                video.play();
-                                console.log('Video started via enhanced play button');
+                                var playPromise = video.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.then(function() {
+                                        console.log('Video started successfully via enhanced play button');
+                                        // 通知Android层
+                                        if (typeof Android !== 'undefined' && Android.onPlayStateChanged) {
+                                            Android.onPlayStateChanged(true);
+                                        }
+                                    }).catch(function(error) {
+                                        console.error('Video play failed:', error);
+                                        if (typeof Android !== 'undefined' && Android.onVideoError) {
+                                            Android.onVideoError('Play failed: ' + error.message);
+                                        }
+                                    });
+                                }
                             } else {
                                 video.pause();
                                 console.log('Video paused via enhanced play button');
+                                // 通知Android层
+                                if (typeof Android !== 'undefined' && Android.onPlayStateChanged) {
+                                    Android.onPlayStateChanged(false);
+                                }
                             }
+                        } else {
+                            console.error('No video element found');
                         }
                     } catch (err) {
                         console.error('Error in enhanced play button:', err);
+                        if (typeof Android !== 'undefined' && Android.onVideoError) {
+                            Android.onVideoError('Play/pause error: ' + err.message);
+                        }
                     }
 
                     // 调用原始事件处理（如果存在）
                     if (originalOnClick) {
-                        originalOnClick.call(this, e);
+                        try {
+                            originalOnClick.call(this, e);
+                        } catch (err) {
+                            console.error('Error calling original click handler:', err);
+                        }
                     }
 
                     return false;
-                }, true); // 使用捕获阶段
+                };
+
+                // 使用捕获阶段添加事件监听器，确保我们的处理优先
+                playButton.addEventListener('click', newClickHandler, true);
 
                 // 移除CSS阻止点击
                 var computedStyle = window.getComputedStyle(playButton);
@@ -139,6 +191,103 @@
                 }
 
                 console.log('XVideos play button enhanced successfully');
+            }
+
+            // 增强全屏按钮
+            if (fullscreenButton) {
+                console.log('Enhancing XVideos fullscreen button');
+
+                // 移除pointer-events限制
+                fullscreenButton.style.pointerEvents = 'auto';
+                fullscreenButton.style.cursor = 'pointer';
+                fullscreenButton.style.zIndex = '9999';
+
+                // 确保按钮可见
+                fullscreenButton.style.display = 'block';
+                fullscreenButton.style.visibility = 'visible';
+                fullscreenButton.style.opacity = '1';
+
+                // 保存原始事件处理
+                var originalFullscreenOnClick = fullscreenButton.onclick;
+
+                // 添加增强的全屏事件监听器
+                fullscreenButton.addEventListener('click', function(e) {
+                    console.log('XVideos fullscreen button clicked (enhanced)');
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // 请求全屏
+                    try {
+                        if (typeof Android !== 'undefined' && Android.requestFullscreen) {
+                            Android.requestFullscreen();
+                            console.log('Fullscreen requested via Android interface');
+                        } else {
+                            // 回退到原生全屏
+                            var video = document.querySelector('video');
+                            if (video) {
+                                if (video.requestFullscreen) {
+                                    video.requestFullscreen();
+                                } else if (video.webkitRequestFullscreen) {
+                                    video.webkitRequestFullscreen();
+                                } else if (video.mozRequestFullScreen) {
+                                    video.mozRequestFullScreen();
+                                } else if (video.msRequestFullscreen) {
+                                    video.msRequestFullscreen();
+                                }
+                                console.log('Fullscreen requested via native API');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error in enhanced fullscreen button:', err);
+                    }
+
+                    // 调用原始事件处理（如果存在）
+                    if (originalFullscreenOnClick) {
+                        originalFullscreenOnClick.call(this, e);
+                    }
+
+                    return false;
+                }, true); // 使用捕获阶段
+
+                // 移除CSS阻止点击
+                var fullscreenComputedStyle = window.getComputedStyle(fullscreenButton);
+                if (fullscreenComputedStyle.pointerEvents === 'none') {
+                    fullscreenButton.style.setProperty('pointer-events', 'auto', 'important');
+                }
+
+                console.log('XVideos fullscreen button enhanced successfully');
+            }
+
+            // 如果没找到专门的全屏按钮，为视频元素添加双击全屏
+            if (!fullscreenButton) {
+                console.log('No fullscreen button found, adding double-click fullscreen to video');
+                var video = document.querySelector('video');
+                if (video && !video.hasAttribute('data-fullscreen-enhanced')) {
+                    video.setAttribute('data-fullscreen-enhanced', 'true');
+                    video.addEventListener('dblclick', function(e) {
+                        console.log('Video double-clicked for fullscreen');
+                        e.preventDefault();
+                        try {
+                            if (typeof Android !== 'undefined' && Android.requestFullscreen) {
+                                Android.requestFullscreen();
+                            } else {
+                                // 原生全屏回退
+                                if (this.requestFullscreen) {
+                                    this.requestFullscreen();
+                                } else if (this.webkitRequestFullscreen) {
+                                    this.webkitRequestFullscreen();
+                                } else if (this.mozRequestFullScreen) {
+                                    this.mozRequestFullScreen();
+                                } else if (this.msRequestFullscreen) {
+                                    this.msRequestFullscreen();
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Error in video double-click fullscreen:', err);
+                        }
+                    });
+                    console.log('Video double-click fullscreen enhanced');
+                }
             }
         }
     }

@@ -1367,9 +1367,58 @@ public class VideoPlayerEnhancer {
     public void requestFullscreen() {
         activity.runOnUiThread(() -> {
             Log.d(TAG, "Fullscreen requested from JavaScript");
-            
-            // 直接启动视频播放Activity
-            launchVideoPlayerActivity();
+
+            // 优先使用WebView原生全屏，而不是启动新Activity
+            if (webView != null) {
+                String fullscreenScript = "(function() {" +
+                    "try {" +
+                    "    var video = document.querySelector('video');" +
+                    "    if (video) {" +
+                    "        // 尝试使用原生全屏API" +
+                    "        if (video.requestFullscreen) {" +
+                    "            video.requestFullscreen();" +
+                    "            console.log('Requested fullscreen via native API');" +
+                    "        } else if (video.webkitRequestFullscreen) {" +
+                    "            video.webkitRequestFullscreen();" +
+                    "            console.log('Requested fullscreen via webkit API');" +
+                    "        } else if (video.mozRequestFullScreen) {" +
+                    "            video.mozRequestFullScreen();" +
+                    "            console.log('Requested fullscreen via moz API');" +
+                    "        } else if (video.msRequestFullscreen) {" +
+                    "            video.msRequestFullscreen();" +
+                    "            console.log('Requested fullscreen via ms API');" +
+                    "        } else {" +
+                    "            console.log('No fullscreen API available, using fallback');" +
+                    "            // 触发WebView的onShowCustomView" +
+                    "            if (typeof Android !== 'undefined' && Android.requestCustomViewFullscreen) {" +
+                    "                Android.requestCustomViewFullscreen();" +
+                    "            }" +
+                    "        }" +
+                    "    } else {" +
+                    "        console.log('No video element found for fullscreen');" +
+                    "    }" +
+                    "} catch (e) {" +
+                    "    console.error('Error requesting fullscreen:', e);" +
+                    "    // 回退到启动MediaPlayerActivity" +
+                    "    if (typeof Android !== 'undefined' && Android.launchMediaPlayer) {" +
+                    "        Android.launchMediaPlayer();" +
+                    "    }" +
+                    "}" +
+                    "})();";
+
+                try {
+                    webView.evaluateJavascript(fullscreenScript, result -> {
+                        Log.d(TAG, "Fullscreen script executed: " + result);
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to execute fullscreen script", e);
+                    // 回退到启动新Activity
+                    launchVideoPlayerActivity();
+                }
+            } else {
+                Log.w(TAG, "WebView is null, falling back to MediaPlayerActivity");
+                launchVideoPlayerActivity();
+            }
         });
     }
 
