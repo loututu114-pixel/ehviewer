@@ -60,7 +60,84 @@ public class NetworkCacheManager {
     private int mMissCount = 0;
     private long mTotalSavedBytes = 0;
     private long mCurrentCacheSize = 0;
+
+    // 智能缓存策略类型
+    public enum CacheStrategyType {
+        AGGRESSIVE,    // 激进缓存 - 长时间缓存
+        MODERATE,      // 中等缓存 - 标准时间
+        CONSERVATIVE,  // 保守缓存 - 短时间缓存
+        NO_CACHE       // 不缓存
+    }
     
+    /**
+     * 智能缓存策略选择器
+     */
+    public CacheStrategyType determineCacheStrategy(String url, String contentType, long contentLength) {
+        if (url == null) return CacheStrategyType.NO_CACHE;
+
+        String lowerUrl = url.toLowerCase();
+        String lowerContentType = contentType != null ? contentType.toLowerCase() : "";
+
+        // 图片资源 - 激进缓存
+        if (lowerContentType.contains("image/") ||
+            lowerUrl.contains(".jpg") || lowerUrl.contains(".png") ||
+            lowerUrl.contains(".gif") || lowerUrl.contains(".webp")) {
+
+            // 大图片使用中等缓存
+            if (contentLength > 1024 * 1024) { // 1MB以上
+                return CacheStrategyType.MODERATE;
+            }
+            return CacheStrategyType.AGGRESSIVE;
+        }
+
+        // 字体和样式文件 - 激进缓存
+        if (lowerContentType.contains("font/") ||
+            lowerContentType.contains("text/css") ||
+            lowerUrl.contains(".woff") || lowerUrl.contains(".woff2") ||
+            lowerUrl.contains(".ttf") || lowerUrl.contains(".css")) {
+            return CacheStrategyType.AGGRESSIVE;
+        }
+
+        // JavaScript文件 - 中等缓存
+        if (lowerContentType.contains("javascript") ||
+            lowerContentType.contains("text/javascript") ||
+            lowerUrl.contains(".js")) {
+            return CacheStrategyType.MODERATE;
+        }
+
+        // API响应 - 保守缓存
+        if (lowerUrl.contains("/api/") || lowerUrl.contains("ajax") ||
+            lowerUrl.contains("json")) {
+            return CacheStrategyType.CONSERVATIVE;
+        }
+
+        // HTML页面 - 不缓存或短时间缓存
+        if (lowerContentType.contains("text/html") ||
+            (!lowerUrl.contains(".") && !lowerUrl.contains("?"))) {
+            return CacheStrategyType.CONSERVATIVE;
+        }
+
+        // 默认中等缓存
+        return CacheStrategyType.MODERATE;
+    }
+
+    /**
+     * 根据缓存策略获取缓存时间
+     */
+    public long getCacheDuration(CacheStrategyType strategy) {
+        switch (strategy) {
+            case AGGRESSIVE:
+                return 7 * 24 * 60 * 60 * 1000L; // 7天
+            case MODERATE:
+                return DEFAULT_CACHE_DURATION;     // 24小时
+            case CONSERVATIVE:
+                return 60 * 60 * 1000L;           // 1小时
+            case NO_CACHE:
+            default:
+                return 0;                          // 不缓存
+        }
+    }
+
     /**
      * 缓存项数据结构
      */

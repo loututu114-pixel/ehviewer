@@ -112,6 +112,36 @@ public class LogMonitor {
     }
 
     /**
+     * 处理用户提供的系统日志
+     */
+    public void processSystemLogLines(String[] logLines) {
+        if (logLines == null || logLines.length == 0) {
+            return;
+        }
+
+        int processedCount = 0;
+        int errorCount = 0;
+
+        for (String logLine : logLines) {
+            if (logLine == null || logLine.trim().isEmpty()) {
+                continue;
+            }
+
+            processedCount++;
+
+            // 处理每行日志
+            try {
+                handleDetectedError(logLine);
+                errorCount++;
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to process log line: " + logLine.substring(0, Math.min(100, logLine.length())), e);
+            }
+        }
+
+        Log.i(TAG, "Processed " + processedCount + " log lines, found " + errorCount + " potential errors");
+    }
+
+    /**
      * 处理检测到的错误
      * 这个方法应该在实际检测到错误时被调用
      */

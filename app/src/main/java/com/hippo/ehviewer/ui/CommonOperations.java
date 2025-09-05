@@ -314,18 +314,31 @@ public final class CommonOperations {
             return;
         }
 
-        UniFile noMedia = file.createFile(".nomedia");
-        if (null == noMedia) {
-            return;
-        }
-
-        InputStream is = null;
         try {
-            is = noMedia.openInputStream();
-        } catch (IOException e) {
-            // Ignore
-        } finally {
-            IOUtils.closeQuietly(is);
+            // 检查.nomedia文件是否已存在
+            UniFile noMedia = file.subFile(".nomedia");
+            if (noMedia != null && noMedia.isFile()) {
+                android.util.Log.d("CommonOperations", ".nomedia file already exists");
+                return;
+            }
+
+            // 创建.nomedia文件
+            noMedia = file.createFile(".nomedia");
+            if (null == noMedia) {
+                android.util.Log.w("CommonOperations", "Failed to create .nomedia file");
+                return;
+            }
+
+            // 验证文件创建成功
+            if (noMedia.isFile()) {
+                android.util.Log.d("CommonOperations", ".nomedia file created successfully at: " + noMedia.getUri());
+            } else {
+                android.util.Log.w("CommonOperations", ".nomedia file creation verification failed");
+            }
+
+        } catch (Exception e) {
+            android.util.Log.w("CommonOperations", "Error ensuring .nomedia file", e);
+            // 不要重新抛出异常，避免影响应用启动
         }
     }
 

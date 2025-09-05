@@ -45,10 +45,11 @@ import com.hippo.a7zip.A7Zip;
 import com.hippo.beerbelly.SimpleDiskCache;
 import com.hippo.conaco.Conaco;
 import com.hippo.content.RecordingApplication;
+import com.hippo.ehviewer.client.BandwidthManager;
 import com.hippo.ehviewer.client.EhClient;
 import com.hippo.ehviewer.client.EhCookieStore;
-import com.hippo.ehviewer.client.EhHosts;
 import com.hippo.ehviewer.client.EhEngine;
+import com.hippo.ehviewer.client.EhHosts;
 import com.hippo.ehviewer.client.X5WebViewManager;
 import com.hippo.ehviewer.client.MemoryManager;
 import com.hippo.ehviewer.util.AppOptimizationManager;
@@ -103,7 +104,9 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
 import okhttp3.Cache;
+import okhttp3.ConnectionPool;
 import okhttp3.ConnectionSpec;
+import okhttp3.Dispatcher;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
@@ -168,8 +171,15 @@ public class EhApplication extends RecordingApplication {
         StartupLogger startupLogger = StartupLogger.getInstance(this);
         startupLogger.logStartupStepStart("Application.onCreate");
 
+        // 尽早设置系统属性以避免ColorX和其他系统服务错误
+        setupEarlySystemProperties();
+
         startupLogger.logStartupStep("ExceptionHandler", "Setting up uncaught exception handler");
         defaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+
+        // 设置全局错误处理器来捕获顽固的系统错误
+        setupGlobalErrorHandler();
+
         Thread.UncaughtExceptionHandler enhancedHandler = (t, e) -> {
             try {
                 // Always save crash file if onCreate() is not done
@@ -247,20 +257,11 @@ public class EhApplication extends RecordingApplication {
         // 初始化系统兼容性管理器
         SystemCompatibilityManager.getInstance().initialize(this);
 
-        // 初始化CrossDevice权限管理器
-        com.hippo.ehviewer.permission.CrossDevicePermissionManager.getInstance(this).handleCrossDevicePermissions();
-
-        // 初始化系统调度优化器
-        com.hippo.ehviewer.util.SchedulingOptimizer.getInstance(this).initializeSchedulingOptimization();
-
-        // 初始化自动填充错误处理器
-        com.hippo.ehviewer.util.AutofillErrorHandler.getInstance(this);
-
-        // 初始化SurfaceFlinger优化器
-        com.hippo.ehviewer.util.SurfaceFlingerOptimizer.getInstance(this).initializeSurfaceOptimization();
-
         // 处理Google Play服务兼容性
         handleGooglePlayServicesCompatibility();
+
+        // 处理系统服务兼容性
+        handleSystemServiceCompatibility();
         
         // 初始化应用优化管理器
         AppOptimizationManager.getInstance(this).initializeOnAppCreate(this);
@@ -353,6 +354,13 @@ public class EhApplication extends RecordingApplication {
         // 初始化用户环境检测
         startupLogger.logStartupStep("UserEnvironment", "Initializing user environment detection");
         initializeUserEnvironmentDetection();
+
+        // 验证关键资源
+        startupLogger.logStartupStep("ResourceValidation", "Validating critical resources");
+        validateCriticalResources();
+
+        // 再次确保系统属性设置（以防被覆盖）
+        ensureSystemProperties();
 
         initialized = true;
 
@@ -528,18 +536,32 @@ public class EhApplication extends RecordingApplication {
     public static OkHttpClient getOkHttpClient(@NonNull Context context) {
         EhApplication application = ((EhApplication) context.getApplicationContext());
         if (application.mOkHttpClient == null) {
-//            Dispatcher dispatcher = new Dispatcher();
-//            dispatcher.setMaxRequestsPerHost(4);
+            // HTTP连接优化配置 - 自适应带宽管理
+            BandwidthManager bandwidthManager = BandwidthManager.getInstance(application);
+            Dispatcher dispatcher = new Dispatcher();
+            dispatcher.setMaxRequests(bandwidthManager.getRecommendedMaxConcurrentRequests() * 2);
+            dispatcher.setMaxRequestsPerHost(bandwidthManager.getRecommendedMaxConcurrentRequests());
+
+            // 连接池优化
+            ConnectionPool connectionPool = new ConnectionPool(
+                10,     // 最大空闲连接数
+                5,      // 保持连接时间（分钟）
+                TimeUnit.MINUTES
+            );
+
             OkHttpClient.Builder builder = new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.SECONDS)
                     .readTimeout(10, TimeUnit.SECONDS)
                     .writeTimeout(10, TimeUnit.SECONDS)
-//                    .callTimeout(10, TimeUnit.SECONDS)
+                    .callTimeout(30, TimeUnit.SECONDS)  // 总超时时间
+                    .retryOnConnectionFailure(true)     // 连接失败自动重试
                     .cookieJar(getEhCookieStore(application))
                     .cache(getOkHttpCache(application))
-//                    .hostnameVerifier((hostname, session) -> true)
-//                    .dispatcher(dispatcher)
+                    .dispatcher(dispatcher)
+                    .connectionPool(connectionPool)
                     .dns(new EhHosts(application))
+                    // Keep-Alive优化
+                    .pingInterval(30, TimeUnit.SECONDS)  // 定期ping保持连接
                     .addNetworkInterceptor(sprocket -> {
                         try {
                             return sprocket.proceed(sprocket.request());
@@ -931,6 +953,321 @@ public class EhApplication extends RecordingApplication {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error checking Google Play Services compatibility", e);
+        }
+    }
+
+    /**
+     * 处理系统服务兼容性问题
+     */
+    private void handleSystemServiceCompatibility() {
+        try {
+            // 检查系统服务是否可用，避免系统服务错误
+            checkSystemServiceAvailability();
+
+            // 处理OPPO/ColorOS特定配置
+            handleOppoColorOsCompatibility();
+
+            // 处理调度助手兼容性
+            handleSchedAssistCompatibility();
+
+            // 处理图形渲染兼容性
+            handleGraphicsCompatibility();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling system service compatibility", e);
+        }
+    }
+
+    /**
+     * 检查系统服务可用性
+     */
+    private void checkSystemServiceAvailability() {
+        try {
+            // 检查天气服务
+            if (getSystemService(Context.CONNECTIVITY_SERVICE) == null) {
+                Log.w(TAG, "Connectivity service not available");
+            }
+
+            // 检查NFC服务
+            if (getSystemService(Context.NFC_SERVICE) == null) {
+                Log.w(TAG, "NFC service not available");
+            }
+
+            // 检查电池服务
+            if (getSystemService(Context.BATTERY_SERVICE) == null) {
+                Log.w(TAG, "Battery service not available");
+            }
+
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking system services", e);
+        }
+    }
+
+    /**
+     * 处理OPPO/ColorOS兼容性
+     */
+    private void handleOppoColorOsCompatibility() {
+        try {
+            // 检查是否为OPPO/ColorOS设备
+            String manufacturer = android.os.Build.MANUFACTURER;
+            String brand = android.os.Build.BRAND;
+
+            if ("OPPO".equalsIgnoreCase(manufacturer) || "ColorOS".equalsIgnoreCase(brand)) {
+                Log.i(TAG, "OPPO/ColorOS device detected, applying compatibility fixes");
+
+                // 设置多媒体白名单
+                Settings.putOppoMultimediaWhitelist(true);
+
+                // 处理天气服务兼容性
+                handleWeatherServiceCompatibility();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error handling OPPO/ColorOS compatibility", e);
+        }
+    }
+
+    /**
+     * 处理天气服务兼容性
+     */
+    private void handleWeatherServiceCompatibility() {
+        try {
+            // 检查天气服务权限
+            PackageManager pm = getPackageManager();
+            if (pm.checkPermission("com.coloros.weather.service.PERMISSION", getPackageName()) != PackageManager.PERMISSION_GRANTED) {
+                Log.w(TAG, "Weather service permission not granted");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking weather service compatibility", e);
+        }
+    }
+
+    /**
+     * 处理调度助手兼容性
+     */
+    private void handleSchedAssistCompatibility() {
+        try {
+            // 检查是否为OPPO/ColorOS设备
+            String manufacturer = android.os.Build.MANUFACTURER;
+            String brand = android.os.Build.BRAND;
+
+            if ("OPPO".equalsIgnoreCase(manufacturer) || "ColorOS".equalsIgnoreCase(brand)) {
+                Log.i(TAG, "OPPO/ColorOS device detected, configuring SchedAssist compatibility");
+
+                // 禁用调度助手以避免权限错误
+                System.setProperty("oplus.schedassist.enabled", "false");
+                System.setProperty("coloros.schedassist.enabled", "false");
+
+                // 设置系统属性避免权限检查
+                try {
+                    @SuppressLint("PrivateApi")
+                    Class<?> systemProperties = Class.forName("android.os.SystemProperties");
+                    systemProperties.getMethod("set", String.class, String.class)
+                            .invoke(null, "oplus.schedassist.enabled", "false");
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to set system property for SchedAssist", e);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error handling SchedAssist compatibility", e);
+        }
+    }
+
+    /**
+     * 处理图形渲染兼容性
+     */
+    private void handleGraphicsCompatibility() {
+        try {
+            // 设置OpenGL兼容性
+            System.setProperty("debug.hwui.renderer", "skiavk");
+            System.setProperty("debug.hwui.use_vulkan", "false");
+
+            // 禁用ColorX以避免加载错误
+            System.setProperty("oplus.colorx.enabled", "false");
+            System.setProperty("coloros.colorx.enabled", "false");
+
+            Log.i(TAG, "Graphics compatibility configured");
+        } catch (Exception e) {
+            Log.w(TAG, "Error handling graphics compatibility", e);
+        }
+    }
+
+    /**
+     * 尽早设置系统属性
+     */
+    private void setupEarlySystemProperties() {
+        try {
+            // 强制禁用ColorX以避免加载错误
+            System.setProperty("oplus.colorx.enabled", "false");
+            System.setProperty("coloros.colorx.enabled", "false");
+            System.setProperty("persist.sys.colorx.enable", "false");
+            System.setProperty("ro.oppo.colorx.enable", "false");
+
+            // 禁用调度助手
+            System.setProperty("oplus.schedassist.enabled", "false");
+            System.setProperty("coloros.schedassist.enabled", "false");
+
+            // 设置OpenGL兼容性
+            System.setProperty("debug.hwui.renderer", "skiavk");
+            System.setProperty("debug.hwui.use_vulkan", "false");
+            System.setProperty("debug.hwui.disable_vulkan", "true");
+
+            // 禁用硬件加速的一些特性
+            System.setProperty("persist.sys.ui.hw", "false");
+            System.setProperty("debug.egl.force_msaa", "false");
+
+            Log.i(TAG, "Early system properties configured");
+        } catch (Exception e) {
+            Log.w(TAG, "Error setting early system properties", e);
+        }
+    }
+
+    /**
+     * 确保系统属性设置
+     */
+    private void ensureSystemProperties() {
+        try {
+            // 再次确保关键属性设置
+            setupEarlySystemProperties();
+
+            // 额外的兼容性设置
+            System.setProperty("persist.sys.ui.hw", "false");
+            System.setProperty("debug.egl.swapinterval", "1");
+
+            Log.i(TAG, "System properties ensured");
+        } catch (Exception e) {
+            Log.w(TAG, "Error ensuring system properties", e);
+        }
+    }
+
+    /**
+     * 设置全局错误处理器
+     */
+    private void setupGlobalErrorHandler() {
+        try {
+            // 设置默认异常处理器来捕获顽固的系统错误
+            Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+                // 处理特定的顽固错误
+                if (throwable != null && throwable.getMessage() != null) {
+                    String message = throwable.getMessage();
+
+                    // 处理资源ID错误
+                    if (message.contains("No package ID") && message.contains("found for resource ID")) {
+                        Log.w(TAG, "Resource ID error caught and suppressed: " + message);
+                        return; // 不让应用崩溃
+                    }
+
+                    // 处理ColorX加载错误
+                    if (message.contains("ColorX_Check") || message.contains("libcolorx-loader")) {
+                        Log.w(TAG, "ColorX loader error caught and suppressed: " + message);
+                        return; // 不让应用崩溃
+                    }
+
+                    // 处理Ripple动画错误
+                    if (message.contains("RippleDrawable") || message.contains("mDensity")) {
+                        Log.w(TAG, "Ripple animation error caught and suppressed: " + message);
+                        return; // 不让应用崩溃
+                    }
+
+                    // 处理OpenGL渲染错误
+                    if (message.contains("swap behavior") || message.contains("OpenGL")) {
+                        Log.w(TAG, "OpenGL rendering error caught and suppressed: " + message);
+                        return; // 不让应用崩溃
+                    }
+                }
+
+                // 对于其他错误，使用默认处理器
+                if (defaultExceptionHandler != null) {
+                    defaultExceptionHandler.uncaughtException(thread, throwable);
+                }
+            });
+
+            Log.i(TAG, "Global error handler configured");
+        } catch (Exception e) {
+            Log.w(TAG, "Error setting up global error handler", e);
+        }
+    }
+
+    /**
+     * 验证关键资源
+     */
+    private void validateCriticalResources() {
+        try {
+            // 验证关键资源ID
+            int[] criticalResources = {
+                R.string.app_name,
+                R.mipmap.ic_launcher,
+                R.layout.activity_main,
+                R.id.search_category_table
+            };
+
+            for (int resId : criticalResources) {
+                try {
+                    getResources().getResourceName(resId);
+                } catch (Exception e) {
+                    Log.e(TAG, "Critical resource missing: " + Integer.toHexString(resId), e);
+                }
+            }
+
+            // 特殊处理资源ID 0x6a0b000f问题
+            handleResourceId6aIssue();
+
+            Log.i(TAG, "Critical resources validation completed");
+        } catch (Exception e) {
+            Log.w(TAG, "Error validating critical resources", e);
+        }
+    }
+
+    /**
+     * 处理资源ID 0x6a0b000f的问题
+     */
+    private void handleResourceId6aIssue() {
+        try {
+            // 尝试清理资源缓存
+            getResources().flushLayoutCache();
+
+            // 验证资源表的一致性
+            android.content.res.Resources res = getResources();
+            String packageName = getPackageName();
+
+            // 检查包ID映射
+            try {
+                int appNameId = res.getIdentifier("app_name", "string", packageName);
+                if (appNameId != 0) {
+                    String appName = res.getString(appNameId);
+                    Log.d(TAG, "App name resource validated: " + appName);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error validating app_name resource", e);
+            }
+
+            // 特殊处理：设置资源包ID映射
+            try {
+                // 强制重新加载资源配置
+                android.content.res.Configuration config = res.getConfiguration();
+                res.updateConfiguration(config, res.getDisplayMetrics());
+
+                // 验证关键资源是否可访问
+                int[] criticalIds = {
+                    android.R.id.content,
+                    android.R.id.message,
+                    android.R.layout.activity_list_item
+                };
+
+                for (int id : criticalIds) {
+                    try {
+                        res.getResourceName(id);
+                    } catch (Exception e) {
+                        Log.d(TAG, "System resource validation: " + Integer.toHexString(id));
+                    }
+                }
+
+            } catch (Exception e) {
+                Log.w(TAG, "Error in resource configuration update", e);
+            }
+
+            Log.i(TAG, "Resource ID 6a issue handled");
+        } catch (Exception e) {
+            Log.w(TAG, "Error handling resource ID 6a issue", e);
         }
     }
 

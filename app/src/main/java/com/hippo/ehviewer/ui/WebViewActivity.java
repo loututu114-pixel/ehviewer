@@ -3,6 +3,8 @@ package com.hippo.ehviewer.ui;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,6 +21,11 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.hippo.ehviewer.ui.browser.EnhancedWebChromeClient;
+import com.hippo.ehviewer.ui.browser.EnhancedWebViewClient;
+import com.hippo.ehviewer.ui.widget.EmbeddedVideoPlayer;
+import com.hippo.ehviewer.util.WebViewScreenshotUtil;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -54,7 +61,12 @@ import java.util.List;
  * 简化的WebView浏览器Activity
  * 移除了历史记录和标签管理功能，只保留基本的浏览功能
  */
-public class WebViewActivity extends AppCompatActivity {
+public class WebViewActivity extends AppCompatActivity implements
+        EnhancedWebChromeClient.ProgressCallback,
+        EnhancedWebChromeClient.TitleCallback,
+        EnhancedWebChromeClient.JsDialogCallback,
+        EnhancedWebViewClient.ErrorCallback,
+        EnhancedWebViewClient.PageCallback {
 
     private static final String TAG = "WebViewActivity";
 
@@ -71,6 +83,13 @@ public class WebViewActivity extends AppCompatActivity {
     private ImageButton mTabsButton;
     private ImageButton mSettingsButton;
     private ProgressBar mProgressBar;
+
+    // 增强客户端
+    private EnhancedWebChromeClient mEnhancedChromeClient;
+    private EnhancedWebViewClient mEnhancedWebClient;
+
+    // 视频播放器
+    private EmbeddedVideoPlayer mVideoPlayer;
     
     // Loading State UI组件
     private View mLoadingStateView;
@@ -80,14 +99,6 @@ public class WebViewActivity extends AppCompatActivity {
     private TextView mQuickHomeButton;
     private TextView mQuickHistoryButton;
     private TextView mQuickBookmarksButton;
-
-    // Chrome Omnibox 按钮
-    private ImageButton mSearchButton;
-    private ImageButton mBookmarkButtonChrome;
-    private ImageButton mClearButton;
-
-    // 搜索建议控制标志
-    private boolean mUserTyping = false; // 标记用户是否正在主动输入
 
     // 管理器
     private BookmarkManager mBookmarkManager;
@@ -106,6 +117,18 @@ public class WebViewActivity extends AppCompatActivity {
 
     // 搜索建议管理器
     private SearchSuggestionsManager mSearchSuggestionsManager;
+
+    // Toast管理器 - 防止Toast消息过多
+    private ToastManager mToastManager;
+
+    // 系统错误处理器
+    private SystemErrorHandler mSystemErrorHandler;
+
+    // 系统错误监控器
+    private SystemErrorMonitor mSystemErrorMonitor;
+
+    // 地址栏输入框的文本监听器，用于控制搜索建议显示
+    private android.text.TextWatcher mOmniboxTextWatcher;
 
     // 状态变量
     private boolean isDesktopMode = false;
@@ -139,70 +162,56 @@ public class WebViewActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_web_view);
 
-        // 初始化管理器（核心管理器优先初始化）
+        // 初始化管理器
             mBookmarkManager = BookmarkManager.getInstance(this);
+            mAdBlockManager = AdBlockManager.getInstance();
+        mSearchConfigManager = SearchConfigManager.getInstance(this);
         mHistoryManager = HistoryManager.getInstance(this);
 
-        // 初始化UI（优先显示界面）
+        // 初始化用户脚本管理器
+        mUserScriptManager = UserScriptManager.getInstance(this);
+        mScriptStorage = new ScriptStorage(this);
+        mScriptUpdater = new ScriptUpdater(this, mUserScriptManager, mScriptStorage);
+
+        // 初始化搜索配置管理器
+        mSearchConfigManager.initialize();
+
+        // 初始化智能功能管理器
+        mSmartMenuManager = new SmartMenuManager(this);
+        mSmartTipsManager = new SmartTipsManager(this);
+
+        // 初始化搜索建议管理器
+        mSearchSuggestionsManager = new SearchSuggestionsManager(this);
+
+        // 初始化Toast管理器
+        mToastManager = new ToastManager(this);
+
+        // 初始化系统错误处理器
+        mSystemErrorHandler = new SystemErrorHandler(this);
+
+        // 初始化系统错误监控器
+        mSystemErrorMonitor = new SystemErrorMonitor(this);
+
+        // 初始化UI
             initializeViews();
 
-        // 设置WebView（基础设置）
+        // 设置WebView
         setupWebView();
 
         // 设置监听器
         setupListeners();
 
+        // 设置搜索建议监听器
+        setupSearchSuggestions();
+
         // 初始显示加载状态
         showLoadingState(true, "正在准备浏览器...");
-
-        // 处理初始URL（立即响应用户操作）
+        
+        // 处理初始URL
         handleInitialUrl();
 
-        // 异步初始化非核心组件
-        initializeNonCriticalComponents();
-    }
-
-    /**
-     * 异步初始化非核心组件，避免阻塞UI
-     */
-    private void initializeNonCriticalComponents() {
-        // 在后台线程中初始化非核心组件
-        new Thread(() -> {
-            try {
-                // 初始化广告拦截管理器
-                mAdBlockManager = AdBlockManager.getInstance();
-
-                // 初始化搜索配置管理器
-                mSearchConfigManager = SearchConfigManager.getInstance(this);
-                mSearchConfigManager.initialize();
-
-                // 初始化用户脚本管理器（延迟加载脚本）
-                mUserScriptManager = UserScriptManager.getInstance(this);
-                mScriptStorage = new ScriptStorage(this);
-                mScriptUpdater = new ScriptUpdater(this, mUserScriptManager, mScriptStorage);
-
-                // 延迟加载默认脚本（仅加载核心脚本）
-                loadEssentialScriptsOnly();
-
-                // 初始化智能功能管理器
-                mSmartMenuManager = new SmartMenuManager(this);
-                mSmartTipsManager = new SmartTipsManager(this);
-
-                // 初始化搜索建议管理器
-                mSearchSuggestionsManager = new SearchSuggestionsManager(this);
-
-                // 设置搜索建议监听器
-                setupSearchSuggestions();
-
-                runOnUiThread(() -> {
-                    // 加载完成后的UI更新
-                    updateLoadingStatus("浏览器准备完成");
-                });
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing non-critical components", e);
-            }
-        }).start();
+        // 请求地理位置权限
+        requestLocationPermission();
     }
 
     /**
@@ -224,11 +233,6 @@ public class WebViewActivity extends AppCompatActivity {
         mQuickSearchInput = findViewById(R.id.quick_search_input);
         mQuickSearchButton = findViewById(R.id.quick_search_button);
         mLoadingStatusText = findViewById(R.id.loading_status_text);
-
-        // 初始化新的搜索栏按钮
-        mSearchButton = findViewById(R.id.search_button);
-        mBookmarkButtonChrome = findViewById(R.id.bookmark_button_chrome);
-        mClearButton = findViewById(R.id.clear_button);
         mQuickHomeButton = findViewById(R.id.quick_home_button);
         mQuickHistoryButton = findViewById(R.id.quick_history_button);
         mQuickBookmarksButton = findViewById(R.id.quick_bookmarks_button);
@@ -245,6 +249,20 @@ public class WebViewActivity extends AppCompatActivity {
      */
     private void setupWebView() {
         if (mWebView == null) return;
+
+        // 处理系统兼容性
+        handleSystemCompatibility();
+
+        // 初始化增强客户端
+        mEnhancedChromeClient = new EnhancedWebChromeClient(this);
+        mEnhancedWebClient = new EnhancedWebViewClient(this);
+
+        // 处理OPPO设备兼容性
+        com.hippo.ehviewer.util.DefaultBrowserHelper.handleOppoDeviceCompatibility(this);
+
+        // 初始化视频播放器
+        mVideoPlayer = new EmbeddedVideoPlayer(this);
+        mVideoPlayer.attachToWebView(mWebView, this);
 
         // 创建第一个标签页
         createNewTab("新标签页", "about:blank", true);
@@ -302,88 +320,11 @@ public class WebViewActivity extends AppCompatActivity {
             }
         });
 
-        mWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                super.onPageStarted(view, url, favicon);
-                currentUrl = url;
-                updateAddressBar(url);
-                showLoadingState(true, "正在连接到 " + Uri.parse(url).getHost() + "...");
-                showProgress(true);
-                
-                // 设置加载超时，如果15秒内没有加载完成，显示提示
-                mLoadingTimeoutHandler.removeCallbacksAndMessages(null);
-                mLoadingTimeoutHandler.postDelayed(() -> {
-                    if (isPageLoading) {
-                        updateLoadingStatus("页面加载时间较长，请稍候...");
-                    }
-                }, 15000);
-            }
+        // 使用增强的WebViewClient
+        mWebView.setWebViewClient(mEnhancedWebClient);
 
-                @Override
-                public void onPageFinished(WebView view, String url) {
-                    super.onPageFinished(view, url);
-                currentUrl = url;
-                updateAddressBar(url);
-                updateBookmarkButton();
-                showLoadingState(false, "");
-                showProgress(false);
-
-                // 取消加载超时
-                mLoadingTimeoutHandler.removeCallbacksAndMessages(null);
-
-                // 更新当前标签页的信息
-                updateCurrentTabInfo(url, view.getTitle());
-
-                // 记录浏览历史
-                addToHistory(url, view.getTitle());
-
-                // 注入用户脚本
-                injectUserScripts(url);
-                }
-                
-            @Override
-            public void onPageCommitVisible(WebView view, String url) {
-                super.onPageCommitVisible(view, url);
-                // 页面开始变为可见时，隐藏加载状态
-                showLoadingState(false, "");
-            }
-
-                @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                if (url.startsWith("http://") || url.startsWith("https://")) {
-                    return false; // 在WebView中加载
-                } else {
-                    // 处理其他scheme
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        startActivity(intent);
-                        return true;
-                } catch (Exception e) {
-                        Toast.makeText(WebViewActivity.this,
-                            "无法处理链接: " + url, Toast.LENGTH_SHORT).show();
-                        return true;
-                    }
-                }
-            }
-        });
-
-        mWebView.setWebChromeClient(new WebChromeClient() {
-                @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                if (mProgressBar != null) {
-                    mProgressBar.setProgress(newProgress);
-                }
-                }
-
-                @Override
-            public void onReceivedTitle(WebView view, String title) {
-                super.onReceivedTitle(view, title);
-                // 更新标签页标题
-                updateCurrentTabInfo(view.getUrl(), title);
-            }
-        });
+        // 使用增强的WebChromeClient
+        mWebView.setWebChromeClient(mEnhancedChromeClient);
     }
 
     /**
@@ -476,55 +417,36 @@ public class WebViewActivity extends AppCompatActivity {
             }
         });
 
-        // 为输入框添加文本变化监听器
-        omniboxInput.addTextChangedListener(new android.text.TextWatcher() {
+        // 创建文本变化监听器
+        mOmniboxTextWatcher = new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String query = s.toString().trim();
-
-                // 只有在用户主动输入时才显示搜索建议
-                if (mUserTyping) {
-                    if (query.length() > 0) {
-                        // 显示搜索建议
-                        View anchor = findViewById(R.id.omnibox_container);
-                        if (anchor != null) {
-                            mSearchSuggestionsManager.showSuggestions(anchor, query);
-                        }
-                        // 显示清除按钮
-                        if (mClearButton != null) {
-                            mClearButton.setVisibility(View.VISIBLE);
-                        }
-                    } else {
-                        // 隐藏搜索建议
-                        mSearchSuggestionsManager.hideSuggestions();
-                        // 隐藏清除按钮
-                        if (mClearButton != null) {
-                            mClearButton.setVisibility(View.GONE);
-                        }
+                if (query.length() > 0) {
+                    // 显示搜索建议
+                    View anchor = findViewById(R.id.omnibox_container);
+                    if (anchor != null) {
+                        mSearchSuggestionsManager.showSuggestions(anchor, query);
                     }
                 } else {
-                    // 如果不是用户主动输入，只控制清除按钮的显示
-                    if (mClearButton != null) {
-                        mClearButton.setVisibility(query.length() > 0 ? View.VISIBLE : View.GONE);
-                    }
+                    // 隐藏搜索建议
+                    mSearchSuggestionsManager.hideSuggestions();
                 }
             }
 
             @Override
             public void afterTextChanged(android.text.Editable s) {}
-        });
+        };
 
-        // 当输入框焦点变化时控制搜索建议显示
+        // 为输入框添加文本变化监听器
+        omniboxInput.addTextChangedListener(mOmniboxTextWatcher);
+
+        // 当输入框失去焦点时隐藏搜索建议
         omniboxInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
-                // 用户获得焦点，开始主动输入模式
-                mUserTyping = true;
-            } else {
-                // 用户失去焦点，结束主动输入模式
-                mUserTyping = false;
+            if (!hasFocus) {
                 // 延迟隐藏，让点击建议有时间处理
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     mSearchSuggestionsManager.hideSuggestions();
@@ -800,44 +722,6 @@ public class WebViewActivity extends AppCompatActivity {
                 }
             });
         }
-
-        // Chrome Omnibox 搜索按钮
-        if (mSearchButton != null) {
-            mSearchButton.setOnClickListener(v -> {
-                EditText omniboxInput = findViewById(R.id.omnibox_input);
-                if (omniboxInput != null) {
-                    String input = omniboxInput.getText().toString().trim();
-                    if (!input.isEmpty()) {
-                        String processedUrl = mSearchConfigManager.processInput(input);
-                        loadUrl(processedUrl);
-                        // 隐藏键盘
-                        android.view.inputmethod.InputMethodManager imm =
-                            (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                        if (imm != null) {
-                            imm.hideSoftInputFromWindow(omniboxInput.getWindowToken(), 0);
-                        }
-                    }
-                }
-            });
-        }
-
-        // Chrome Omnibox 清除按钮
-        if (mClearButton != null) {
-            mClearButton.setOnClickListener(v -> {
-                EditText omniboxInput = findViewById(R.id.omnibox_input);
-                if (omniboxInput != null) {
-                    omniboxInput.setText("");
-                    omniboxInput.requestFocus();
-                }
-            });
-        }
-
-        // Chrome Omnibox 书签按钮
-        if (mBookmarkButtonChrome != null) {
-            mBookmarkButtonChrome.setOnClickListener(v -> {
-                addCurrentPageToBookmarks();
-            });
-        }
         
         // 快速主页按钮
         if (mQuickHomeButton != null) {
@@ -925,12 +809,15 @@ public class WebViewActivity extends AppCompatActivity {
     private void updateAddressBar(String url) {
         EditText omniboxInput = findViewById(R.id.omnibox_input);
         if (omniboxInput != null && url != null) {
-            // 临时禁用用户输入标志，避免页面加载时触发搜索建议
-            boolean wasUserTyping = mUserTyping;
-            mUserTyping = false;
+            // 临时移除文本监听器，防止触发搜索建议
+            if (mOmniboxTextWatcher != null) {
+                omniboxInput.removeTextChangedListener(mOmniboxTextWatcher);
+            }
             omniboxInput.setText(url);
-            // 恢复用户输入标志
-            mUserTyping = wasUserTyping;
+            // 重新添加文本监听器
+            if (mOmniboxTextWatcher != null) {
+                omniboxInput.addTextChangedListener(mOmniboxTextWatcher);
+            }
         }
     }
 
@@ -2184,7 +2071,314 @@ public class WebViewActivity extends AppCompatActivity {
             Log.e(TAG, "Error during onDestroy", e);
         }
 
+        // 清理视频播放器资源
+        if (mVideoPlayer != null) {
+            mVideoPlayer.cleanup();
+            mVideoPlayer = null;
+        }
+
+        // 清理截图工具资源
+        if (mWebView != null) {
+            WebViewScreenshotUtil.cleanup(mWebView);
+        }
+
         super.onDestroy();
+    }
+
+    // ========== 增强客户端回调方法 ==========
+
+    @Override
+    public void onProgressChanged(int progress) {
+        if (mProgressBar != null) {
+            mProgressBar.setProgress(progress);
+        }
+    }
+
+    @Override
+    public void onTitleReceived(String title) {
+        // 更新标签页标题
+        updateCurrentTabInfo(mWebView != null ? mWebView.getUrl() : null, title);
+    }
+
+    @Override
+    public void onJsAlert(String message, android.webkit.JsResult result) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("网页消息")
+            .setMessage(message)
+            .setPositiveButton("确定", (dialog, which) -> result.confirm())
+            .setCancelable(false)
+            .show();
+    }
+
+    @Override
+    public void onJsConfirm(String message, android.webkit.JsResult result) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("确认")
+            .setMessage(message)
+            .setPositiveButton("确定", (dialog, which) -> result.confirm())
+            .setNegativeButton("取消", (dialog, which) -> result.cancel())
+            .setCancelable(false)
+            .show();
+    }
+
+    @Override
+    public void onJsPrompt(String message, String defaultValue, android.webkit.JsPromptResult result) {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        builder.setTitle("输入");
+
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setText(defaultValue);
+        builder.setView(input);
+
+        builder.setPositiveButton("确定", (dialog, which) -> {
+            String value = input.getText().toString();
+            result.confirm(value);
+        });
+        builder.setNegativeButton("取消", (dialog, which) -> result.cancel());
+
+        builder.setCancelable(false);
+        builder.show();
+    }
+
+    @Override
+    public void onWebViewError(String url, int errorCode, String description) {
+        android.util.Log.e(TAG, "WebView error: " + errorCode + " - " + description + " for URL: " + url);
+
+        // 特殊处理百度ORB错误
+        if (isBaiduOrbError(description)) {
+            android.util.Log.w(TAG, "Baidu ORB error detected, suppressing error message: " + description);
+            return; // 不显示错误消息，因为我们已经通过拦截器处理了
+        }
+
+        // 处理图片加载相关错误
+        if (description != null && (description.contains("image") || description.contains("图片") ||
+            description.contains("loading") || url != null && isImageUrl(url))) {
+            // 图片加载失败，尝试重试
+            handleImageLoadError(url, errorCode, description);
+        } else if (isNetworkError(errorCode, description)) {
+            // 网络错误，显示网络相关提示
+            handleNetworkError(url, errorCode, description);
+        } else {
+            // 其他错误，使用Toast管理器防止消息过多
+            String errorMessage = getErrorMessage(errorCode, description);
+            if (mToastManager != null) {
+                mToastManager.showToast(errorMessage, Toast.LENGTH_SHORT);
+            } else {
+                Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * 处理图片加载错误
+     */
+    private void handleImageLoadError(String url, int errorCode, String description) {
+        android.util.Log.w(TAG, "Handling image load error for URL: " + url);
+
+        // 停止当前的加载状态
+        showLoadingState(false, "");
+
+        // 显示图片加载失败的提示
+        runOnUiThread(() -> {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("图片加载失败")
+                    .setMessage("图片无法正常加载，可能是网络问题或图片格式不支持。\n\n错误详情: " + description)
+                    .setPositiveButton("重试", (dialog, which) -> {
+                        // 重新加载页面
+                        if (mWebView != null) {
+                            mWebView.reload();
+                        }
+                    })
+                    .setNegativeButton("刷新页面", (dialog, which) -> {
+                        // 强制刷新页面
+                        if (mWebView != null) {
+                            mWebView.clearCache(true);
+                            mWebView.reload();
+                        }
+                    })
+                    .setNeutralButton("切换图片模式", (dialog, which) -> {
+                        // 切换图像加载设置
+                        toggleImageLoading();
+                    })
+                    .setCancelable(true)
+                    .show();
+        });
+    }
+
+    /**
+     * 判断URL是否为图片链接
+     */
+    private boolean isImageUrl(String url) {
+        if (url == null) return false;
+        String lowerUrl = url.toLowerCase();
+        return lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
+               lowerUrl.endsWith(".png") || lowerUrl.endsWith(".gif") ||
+               lowerUrl.endsWith(".webp") || lowerUrl.endsWith(".bmp") ||
+               lowerUrl.contains(".jpg") || lowerUrl.contains(".jpeg") ||
+               lowerUrl.contains(".png") || lowerUrl.contains(".gif") ||
+               lowerUrl.contains(".webp") || lowerUrl.contains(".bmp");
+    }
+
+    /**
+     * 处理页面加载超时
+     */
+    private void handleLoadingTimeout(String url) {
+        android.util.Log.w(TAG, "Page loading timeout for URL: " + url);
+
+        // 检查网络连接
+        if (!isNetworkAvailable()) {
+            runOnUiThread(() -> {
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+                builder.setTitle("网络连接失败")
+                        .setMessage("无法连接到网络，请检查网络设置后重试。")
+                        .setPositiveButton("重试", (dialog, which) -> {
+                            if (mWebView != null) {
+                                mWebView.reload();
+                            }
+                        })
+                        .setNegativeButton("设置网络", (dialog, which) -> {
+                            startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));
+                        })
+                        .setCancelable(true)
+                        .show();
+            });
+            return;
+        }
+
+        // 网络正常但加载超时，可能是图片加载问题
+        runOnUiThread(() -> {
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+            builder.setTitle("页面加载超时")
+                    .setMessage("页面加载时间过长，可能是图片加载问题或网络状况不佳。")
+                    .setPositiveButton("重试", (dialog, which) -> {
+                        if (mWebView != null) {
+                            mWebView.reload();
+                        }
+                    })
+                    .setNegativeButton("跳过图片加载", (dialog, which) -> {
+                        // 禁用图片加载后重试
+                        if (mWebView != null) {
+                            WebSettings settings = mWebView.getSettings();
+                            settings.setLoadsImagesAutomatically(false);
+                            settings.setBlockNetworkImage(true);
+                            mWebView.reload();
+                        }
+                    })
+                    .setNeutralButton("强制刷新", (dialog, which) -> {
+                        if (mWebView != null) {
+                            mWebView.clearCache(true);
+                            mWebView.reload();
+                        }
+                    })
+                    .setCancelable(true)
+                    .show();
+        });
+    }
+
+    /**
+     * 检查网络连接是否可用
+     */
+    private boolean isNetworkAvailable() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+                return activeNetwork != null && activeNetwork.isConnected();
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Failed to check network availability", e);
+        }
+        return false;
+    }
+
+    @Override
+    public void onPageStarted(String url) {
+        currentUrl = url;
+        updateAddressBar(url);
+        showLoadingState(true, "正在连接到 " + Uri.parse(url).getHost() + "...");
+        showProgress(true);
+
+        // 设置加载超时和自动重试
+        mLoadingTimeoutHandler.removeCallbacksAndMessages(null);
+        mLoadingTimeoutHandler.postDelayed(() -> {
+            if (isPageLoading) {
+                handleLoadingTimeout(url);
+            }
+        }, 15000);
+    }
+
+    @Override
+    public void onPageFinished(String url) {
+        currentUrl = url;
+        updateAddressBar(url);
+        updateBookmarkButton();
+        showLoadingState(false, "");
+        showProgress(false);
+
+        // 取消加载超时
+        mLoadingTimeoutHandler.removeCallbacksAndMessages(null);
+
+        // 更新当前标签页的信息
+        updateCurrentTabInfo(url, mWebView != null ? mWebView.getTitle() : null);
+
+        // 记录浏览历史
+        addToHistory(url, mWebView != null ? mWebView.getTitle() : null);
+
+        // 注入用户脚本
+        injectUserScripts(url);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // 处理文件选择结果
+        if (mEnhancedChromeClient != null) {
+            mEnhancedChromeClient.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    // ========== 截图功能 ==========
+
+    /**
+     * 截取可见区域
+     */
+    public void takeScreenshot() {
+        if (mWebView != null) {
+            WebViewScreenshotUtil.takeScreenshot(mWebView, this, WebViewScreenshotUtil.ScreenshotType.VISIBLE_AREA);
+        }
+    }
+
+    /**
+     * 截取全屏
+     */
+    public void takeFullScreenshot() {
+        if (mWebView != null) {
+            WebViewScreenshotUtil.takeScreenshot(mWebView, this, WebViewScreenshotUtil.ScreenshotType.FULL_PAGE);
+        }
+    }
+
+    /**
+     * 截取自定义尺寸
+     */
+    public void takeCustomScreenshot(int width, int height) {
+        if (mWebView != null) {
+            WebViewScreenshotUtil.ScreenshotCallback callback = new WebViewScreenshotUtil.ScreenshotCallback() {
+                @Override
+                public void onScreenshotTaken(android.graphics.Bitmap bitmap, android.net.Uri imageUri) {
+                    android.util.Log.d(TAG, "Custom screenshot taken: " + imageUri);
+                    Toast.makeText(WebViewActivity.this, "自定义截图已保存", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onScreenshotError(String error) {
+                    android.util.Log.e(TAG, "Custom screenshot error: " + error);
+                    Toast.makeText(WebViewActivity.this, "截图失败: " + error, Toast.LENGTH_SHORT).show();
+                }
+            };
+
+            WebViewScreenshotUtil.captureCustomSize(mWebView, this, width, height, callback);
+        }
     }
 
     /**
@@ -2996,71 +3190,6 @@ public class WebViewActivity extends AppCompatActivity {
     }
     
     /**
-     * 加载默认脚本
-     */
-    private void loadDefaultScripts() {
-        if (mUserScriptManager == null) return;
-
-        try {
-            // 加载assets中的默认脚本
-            mUserScriptManager.loadDefaultScriptsFromAssets();
-
-            // 确保关键脚本默认启用
-            java.util.List<com.hippo.ehviewer.userscript.UserScript> scripts = mUserScriptManager.getAllScripts();
-            for (com.hippo.ehviewer.userscript.UserScript script : scripts) {
-                String scriptId = script.getId();
-                // 确保百度拦截和APP拦截脚本默认启用
-                if (scriptId.contains("baidu_app_blocker") ||
-                    scriptId.contains("app_intercept_blocker") ||
-                    scriptId.contains("enhanced_app_blocker") ||
-                    scriptId.contains("universal_ad_blocker")) {
-                    script.setEnabled(true);
-                    android.util.Log.d("WebViewActivity", "默认启用脚本: " + scriptId);
-                }
-            }
-
-            // 保存更新后的脚本状态
-            if (mScriptStorage != null) {
-                mScriptStorage.saveScripts(scripts);
-            }
-
-            android.util.Log.d("WebViewActivity", "默认脚本加载完成，共" + scripts.size() + "个脚本");
-
-        } catch (Exception e) {
-            android.util.Log.e("WebViewActivity", "加载默认脚本失败", e);
-        }
-    }
-
-    /**
-     * 仅加载核心脚本（启动优化）
-     */
-    private void loadEssentialScriptsOnly() {
-        if (mUserScriptManager == null) return;
-
-        try {
-            // 只加载核心的广告拦截脚本
-            java.util.List<com.hippo.ehviewer.userscript.UserScript> scripts = mUserScriptManager.getAllScripts();
-            for (com.hippo.ehviewer.userscript.UserScript script : scripts) {
-                String scriptId = script.getId();
-                // 只启用最核心的拦截脚本
-                if (scriptId.contains("baidu_app_blocker") ||
-                    scriptId.contains("app_intercept_blocker")) {
-                    script.setEnabled(true);
-                    android.util.Log.d("WebViewActivity", "快速启用核心脚本: " + scriptId);
-                } else {
-                    // 其他脚本延迟到需要时再启用
-                    script.setEnabled(false);
-                }
-            }
-
-            android.util.Log.d("WebViewActivity", "核心脚本快速加载完成");
-
-        } catch (Exception e) {
-            android.util.Log.e("WebViewActivity", "加载核心脚本失败", e);
-        }
-    }
-
-    /**
      * 创建新标签页（从智能菜单调用）
      */
     public void createNewTabFromMenu() {
@@ -3070,8 +3199,472 @@ public class WebViewActivity extends AppCompatActivity {
             mWebView.loadUrl(homeUrl);
             EditText omniboxInput = findViewById(R.id.omnibox_input);
             if (omniboxInput != null) {
+                // 临时移除文本监听器，防止触发搜索建议
+                if (mOmniboxTextWatcher != null) {
+                    omniboxInput.removeTextChangedListener(mOmniboxTextWatcher);
+                }
                 omniboxInput.setText(homeUrl);
+                // 重新添加文本监听器
+                if (mOmniboxTextWatcher != null) {
+                    omniboxInput.addTextChangedListener(mOmniboxTextWatcher);
+                }
             }
+        }
+    }
+
+    /**
+     * 请求地理位置权限
+     */
+    private void requestLocationPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+
+                android.util.Log.d(TAG, "Requesting location permission");
+                requestPermissions(new String[]{
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                }, 100);
+            } else {
+                android.util.Log.d(TAG, "Location permission already granted");
+            }
+        }
+    }
+
+    /**
+     * 处理权限请求结果
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 100) {
+            boolean locationGranted = false;
+            for (int i = 0; i < permissions.length; i++) {
+                if (android.Manifest.permission.ACCESS_FINE_LOCATION.equals(permissions[i]) ||
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION.equals(permissions[i])) {
+                    if (grantResults.length > i && grantResults[i] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        locationGranted = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!locationGranted) {
+                android.util.Log.w(TAG, "Location permission denied by user");
+            } else {
+                android.util.Log.d(TAG, "Location permission granted");
+            }
+        }
+    }
+
+    /**
+     * 判断是否是百度ORB错误
+     */
+    private boolean isBaiduOrbError(String description) {
+        return description != null && description.contains("ERR_BLOCKED_BY_ORB") &&
+               description.contains("baidu.com");
+    }
+
+    /**
+     * 判断是否是网络错误
+     */
+    private boolean isNetworkError(int errorCode, String description) {
+        // WebView错误码：-2表示主机名解析失败，-6表示连接失败等
+        return errorCode == -2 || errorCode == -6 || errorCode == -8 ||
+               (description != null && (description.contains("net::") ||
+                description.contains("connection") || description.contains("timeout")));
+    }
+
+    /**
+     * 处理网络错误
+     */
+    private void handleNetworkError(String url, int errorCode, String description) {
+        android.util.Log.w(TAG, "Network error for URL: " + url);
+
+        // 检查网络连接状态
+        if (!isNetworkAvailable()) {
+            if (mToastManager != null) {
+                mToastManager.showToast("网络连接不可用，请检查网络设置", Toast.LENGTH_SHORT);
+            } else {
+                Toast.makeText(this, "网络连接不可用，请检查网络设置", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            if (mToastManager != null) {
+                mToastManager.showToast("网络连接失败，正在重试...", Toast.LENGTH_SHORT);
+            } else {
+                Toast.makeText(this, "网络连接失败，正在重试...", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * 获取错误消息
+     */
+    private String getErrorMessage(int errorCode, String description) {
+        // 处理特定的错误码
+        switch (errorCode) {
+            case -2:
+                return "无法解析域名，请检查网络连接";
+            case -6:
+                return "连接超时，请检查网络连接";
+            case -8:
+                return "连接被重置，请稍后重试";
+            case -10:
+                return "连接失败，请检查网络设置";
+            case -11:
+                return "连接被拒绝，请检查防火墙设置";
+            case -12:
+                return "网络不可用，请检查网络连接";
+            case -13:
+                return "代理服务器错误";
+            case -14:
+                return "重定向次数过多";
+            case -15:
+                return "SSL握手失败";
+            default:
+                // 根据错误描述提供更详细的信息
+                if (description != null) {
+                    String desc = description.toLowerCase();
+
+                    if (desc.contains("timeout") || desc.contains("time out")) {
+                        return "网络请求超时，请检查网络连接";
+                    } else if (desc.contains("certificate") || desc.contains("ssl")) {
+                        return "SSL证书验证失败，请检查网络安全设置";
+                    } else if (desc.contains("connection") && desc.contains("refused")) {
+                        return "服务器拒绝连接，请稍后重试";
+                    } else if (desc.contains("network") && desc.contains("unreachable")) {
+                        return "网络不可达，请检查网络连接";
+                    } else if (desc.contains("dns") || desc.contains("resolve")) {
+                        return "DNS解析失败，请检查网络设置";
+                    } else if (desc.contains("blocked") || desc.contains("forbidden")) {
+                        return "内容被阻止访问";
+                    } else if (desc.contains("not found") || desc.contains("404")) {
+                        return "页面未找到，请检查URL是否正确";
+                    } else if (desc.contains("server error") || desc.contains("500")) {
+                        return "服务器内部错误，请稍后重试";
+                    } else if (desc.contains("网络错误") || desc.contains("network error")) {
+                        return "网络连接出现问题，请检查网络设置";
+                    } else if (desc.contains("err_blocked_by_orb")) {
+                        return "内容被安全策略阻止（这是正常现象）";
+                    } else {
+                        // 如果是中文错误消息，保留原样
+                        return description;
+                    }
+                }
+
+                // 默认错误消息
+                return "页面加载失败，请检查网络连接后重试";
+        }
+    }
+
+
+    /**
+     * Toast管理器 - 防止Toast消息过多
+     */
+    private static class ToastManager {
+        private android.content.Context mContext;
+        private Toast mCurrentToast;
+        private long mLastToastTime = 0;
+        private static final long TOAST_THROTTLE_TIME = 2000; // 2秒内只显示一个Toast
+
+        public ToastManager(android.content.Context context) {
+            this.mContext = context;
+        }
+
+        public void showToast(String message, int duration) {
+            long currentTime = System.currentTimeMillis();
+
+            // 检查是否在节流时间内
+            if (currentTime - mLastToastTime < TOAST_THROTTLE_TIME) {
+                android.util.Log.d("ToastManager", "Toast throttled: " + message);
+                return;
+            }
+
+            // 取消之前的Toast
+            if (mCurrentToast != null) {
+                mCurrentToast.cancel();
+            }
+
+            // 显示新Toast
+            mCurrentToast = Toast.makeText(mContext, message, duration);
+            mCurrentToast.show();
+
+            mLastToastTime = currentTime;
+            android.util.Log.d("ToastManager", "Toast shown: " + message);
+        }
+
+        public void showToast(int resId, int duration) {
+            showToast(mContext.getString(resId), duration);
+        }
+    }
+
+    /**
+     * 系统错误处理器 - 处理系统级服务错误
+     */
+    private static class SystemErrorHandler {
+        private android.content.Context mContext;
+        private long mLastThermalErrorTime = 0;
+        private static final long THERMAL_ERROR_THROTTLE = 300000; // 5分钟节流
+
+        public SystemErrorHandler(android.content.Context context) {
+            this.mContext = context;
+        }
+
+        /**
+         * 处理热管理系统错误
+         */
+        public void handleThermalStatsError() {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - mLastThermalErrorTime > THERMAL_ERROR_THROTTLE) {
+                android.util.Log.w("SystemErrorHandler", "OplusThermalStats error detected, this is system-level and usually not critical");
+                mLastThermalErrorTime = currentTime;
+
+                // 可以选择性地记录到Firebase Analytics
+                try {
+                    com.google.firebase.analytics.FirebaseAnalytics.getInstance(mContext)
+                        .logEvent("thermal_stats_error", null);
+                } catch (Exception e) {
+                    android.util.Log.d("SystemErrorHandler", "Firebase not available, skipping analytics");
+                }
+            }
+        }
+
+        /**
+         * 处理性能监控错误
+         */
+        public void handlePerformanceError(String serviceName, String error) {
+            android.util.Log.d("SystemErrorHandler", "Performance service error in " + serviceName + ": " + error);
+            // 这些通常是系统级错误，不需要用户干预
+        }
+
+        /**
+         * 处理网络统计错误
+         */
+        public void handleNetworkStatsError() {
+            android.util.Log.d("SystemErrorHandler", "Network stats error detected, usually system-level");
+        }
+
+        /**
+         * 处理MIDAS服务错误
+         */
+        public void handleMidasError() {
+            android.util.Log.d("SystemErrorHandler", "MIDAS service error detected, usually system-level");
+        }
+
+        /**
+         * 处理电池服务错误
+         */
+        public void handleBatteryError() {
+            android.util.Log.d("SystemErrorHandler", "Battery service error detected, usually system-level");
+        }
+    }
+
+    /**
+     * 处理系统兼容性问题
+     */
+    private void handleSystemCompatibility() {
+        try {
+            // 检查是否为OPPO/ColorOS设备
+            String manufacturer = android.os.Build.MANUFACTURER;
+            String brand = android.os.Build.BRAND;
+
+            if ("OPPO".equalsIgnoreCase(manufacturer) || "ColorOS".equalsIgnoreCase(brand)) {
+                Log.i(TAG, "OPPO/ColorOS device detected in WebViewActivity, applying compatibility fixes");
+
+                // 设置WebView兼容性配置
+                setupOppoWebViewCompatibility();
+
+                // 处理系统服务错误
+                handleSystemServiceErrors();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error handling system compatibility in WebViewActivity", e);
+        }
+    }
+
+    /**
+     * 设置OPPO WebView兼容性
+     */
+    private void setupOppoWebViewCompatibility() {
+        try {
+            // 设置WebView数据目录，避免系统服务错误
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                String processName = getProcessName();
+                if (processName != null && !processName.equals(getPackageName())) {
+                    // 多进程WebView配置
+                    WebView.setDataDirectorySuffix(processName);
+                }
+            }
+
+            // 设置WebView渲染模式
+            if (mWebView != null) {
+                mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+                // 额外的OpenGL兼容性设置
+                try {
+                    android.webkit.WebSettings settings = mWebView.getSettings();
+                    settings.setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH);
+
+                    // 彻底解决OpenGL渲染问题
+                    setupOpenGLCompatibility();
+
+                } catch (Exception e) {
+                    android.util.Log.w(TAG, "Error setting WebView render mode", e);
+                }
+            }
+
+        } catch (Exception e) {
+            Log.w(TAG, "Error setting up OPPO WebView compatibility", e);
+        }
+    }
+
+    /**
+     * 处理系统服务错误
+     */
+    private void handleSystemServiceErrors() {
+        try {
+            // 检查系统服务是否可用
+            if (getSystemService(Context.CONNECTIVITY_SERVICE) == null) {
+                Log.w(TAG, "Connectivity service not available, network features may not work");
+            }
+
+            if (getSystemService(Context.DOWNLOAD_SERVICE) == null) {
+                Log.w(TAG, "Download service not available, downloads may not work");
+            }
+
+            // 检查Cookie管理器
+            CookieManager cookieManager = CookieManager.getInstance();
+            if (cookieManager == null) {
+                Log.w(TAG, "Cookie manager not available");
+            }
+
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking system services in WebViewActivity", e);
+        }
+    }
+
+    /**
+     * 获取进程名称
+     */
+    private String getProcessName() {
+        try {
+            int pid = android.os.Process.myPid();
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                for (android.app.ActivityManager.RunningAppProcessInfo processInfo : am.getRunningAppProcesses()) {
+                    if (processInfo.pid == pid) {
+                        return processInfo.processName;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error getting process name", e);
+        }
+        return null;
+    }
+
+    /**
+     * 设置OpenGL兼容性
+     */
+    private void setupOpenGLCompatibility() {
+        try {
+            // 尝试不同的渲染模式来解决兼容性问题
+            boolean compatibilitySet = false;
+
+            // 方法1: 强制软件渲染
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    mWebView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                    compatibilitySet = true;
+                    android.util.Log.d(TAG, "OpenGL compatibility: Software rendering enabled");
+                }
+            } catch (Exception e) {
+                android.util.Log.w(TAG, "Software rendering failed", e);
+            }
+
+            // 方法2: 如果软件渲染失败，尝试硬件渲染但禁用一些特性
+            if (!compatibilitySet) {
+                try {
+                    mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                    // 禁用可能导致问题的硬件加速特性
+                    System.setProperty("debug.hwui.disable_draw_defer", "true");
+                    System.setProperty("debug.hwui.render_dirty_regions", "false");
+                    compatibilitySet = true;
+                    android.util.Log.d(TAG, "OpenGL compatibility: Hardware rendering with restrictions");
+                } catch (Exception e) {
+                    android.util.Log.w(TAG, "Hardware rendering with restrictions failed", e);
+                }
+            }
+
+            // 方法3: 最后的降级方案
+            if (!compatibilitySet) {
+                try {
+                    // 完全禁用硬件加速
+                    mWebView.setLayerType(View.LAYER_TYPE_NONE, null);
+                    android.util.Log.d(TAG, "OpenGL compatibility: No acceleration (fallback)");
+                } catch (Exception e) {
+                    android.util.Log.w(TAG, "All OpenGL compatibility methods failed", e);
+                }
+            }
+
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "Error in setupOpenGLCompatibility", e);
+        }
+    }
+
+    /**
+     * 系统错误监控器 - 检测并处理系统级别错误
+     */
+    private static class SystemErrorMonitor {
+        private android.content.Context mContext;
+        private long mLastMemoryWarningTime = 0;
+        private static final long MEMORY_WARNING_THROTTLE = 60000; // 1分钟节流
+
+        public SystemErrorMonitor(android.content.Context context) {
+            this.mContext = context;
+        }
+
+        /**
+         * 处理内存警告
+         */
+        public void handleMemoryWarning() {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - mLastMemoryWarningTime > MEMORY_WARNING_THROTTLE) {
+                android.util.Log.w("SystemErrorMonitor", "Low memory condition detected");
+                mLastMemoryWarningTime = currentTime;
+
+                // 可以在这里添加内存优化措施
+                // 比如清理缓存、减少并发操作等
+            }
+        }
+
+        /**
+         * 处理OpenGL渲染错误
+         */
+        public void handleOpenGLError() {
+            android.util.Log.d("SystemErrorMonitor", "OpenGL swap behavior error detected, usually hardware-related");
+        }
+
+        /**
+         * 处理MediaProvider错误
+         */
+        public void handleMediaProviderError() {
+            android.util.Log.d("SystemErrorMonitor", "MediaProvider error detected, usually file system related");
+        }
+
+        /**
+         * 处理性能监控错误
+         */
+        public void handlePerformanceMonitorError() {
+            android.util.Log.d("SystemErrorMonitor", "Performance monitor error detected, system-level issue");
+        }
+
+        /**
+         * 处理网络统计错误
+         */
+        public void handleNetworkStatsError() {
+            android.util.Log.d("SystemErrorMonitor", "Network stats error detected, usually system service issue");
         }
     }
 }

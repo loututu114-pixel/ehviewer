@@ -1502,6 +1502,9 @@ public class Settings {
     // Google Play服务兼容性设置
     public static final String KEY_GOOGLE_PLAY_SERVICES_FALLBACK = "google_play_services_fallback";
 
+    // OPPO多媒体白名单设置
+    public static final String KEY_OPPO_MULTIMEDIA_WHITELIST = "oppo_multimedia_whitelist";
+
     /**
      * 获取Google Play服务降级模式状态
      */
@@ -1514,5 +1517,12 @@ public class Settings {
      */
     public static void putGooglePlayServicesFallback(boolean fallback) {
         putBoolean(KEY_GOOGLE_PLAY_SERVICES_FALLBACK, fallback);
+    }
+
+    /**
+     * 设置OPPO多媒体白名单
+     */
+    public static void putOppoMultimediaWhitelist(boolean enabled) {
+        putBoolean(KEY_OPPO_MULTIMEDIA_WHITELIST, enabled);
     }
 }

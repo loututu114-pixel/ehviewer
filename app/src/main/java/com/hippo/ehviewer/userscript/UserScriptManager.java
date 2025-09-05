@@ -2,6 +2,10 @@ package com.hippo.ehviewer.userscript;
 
 import android.content.Context;
 import android.webkit.WebView;
+import android.util.Log;
+import com.hippo.ehviewer.R;
+import com.hippo.ehviewer.client.X5WebViewManager;
+import com.hippo.ehviewer.util.WebViewKernelDetector;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,13 +20,19 @@ public class UserScriptManager {
     private List<UserScript> userScripts;
     private ScriptStorage scriptStorage;
     private boolean isEnabled;
+    private X5WebViewManager x5Manager;
+    private X5UserScriptManager x5ScriptManager;
 
-    private UserScriptManager(Context context) {
+    protected UserScriptManager(Context context) {
         this.context = context;
         this.userScripts = new CopyOnWriteArrayList<>();
         this.scriptStorage = new ScriptStorage(context);
         this.isEnabled = true;
-        
+
+        // 延迟初始化X5相关组件，避免循环依赖
+        this.x5Manager = null;
+        this.x5ScriptManager = null;
+
         // 加载已保存的脚本
         loadPersistedScripts();
     }
@@ -132,7 +142,7 @@ public class UserScriptManager {
     /**
      * 验证脚本安全性
      */
-    private boolean isValidScript(UserScript script) {
+    protected boolean isValidScript(UserScript script) {
         if (script == null || script.getContent() == null) {
             return false;
         }
@@ -203,11 +213,54 @@ public class UserScriptManager {
     }
 
     /**
-     * 为WebView注入用户脚本
+     * 为WebView注入用户脚本（自动检测内核类型）
      */
     public void injectScripts(WebView webView, String url) {
         if (!isEnabled) return;
 
+        // 使用内核检测器进行精确检测
+        WebViewKernelDetector.KernelType kernelType = WebViewKernelDetector.detectKernelType(webView);
+
+        Log.d("UserScriptManager", "Detected WebView kernel: " + WebViewKernelDetector.getKernelDescription(kernelType));
+
+        try {
+            switch (kernelType) {
+                case X5_TENCENT:
+                    // 确保X5组件已初始化
+                    initializeX5Components();
+                    // 使用X5专用脚本管理器
+                    Log.d("UserScriptManager", "Using X5 script injection for X5 WebView");
+                    if (x5ScriptManager != null) {
+                        x5ScriptManager.injectScriptsForX5(webView, url);
+                    } else {
+                        Log.w("UserScriptManager", "X5 script manager not available, fallback to system WebView");
+                        injectScriptsToSystemWebView(webView, url);
+                    }
+                    break;
+
+                case CHROMIUM:
+                    // 使用标准Chromium脚本注入
+                    Log.d("UserScriptManager", "Using Chromium-compatible script injection");
+                    injectScriptsToSystemWebView(webView, url);
+                    break;
+
+                case SYSTEM_WEBVIEW:
+                default:
+                    // 使用系统WebView脚本注入
+                    Log.d("UserScriptManager", "Using system WebView script injection");
+                    injectScriptsToSystemWebView(webView, url);
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e("UserScriptManager", "Script injection failed, kernel: " + kernelType, e);
+            // 发生错误时不影响基本浏览功能
+        }
+    }
+
+    /**
+     * 为系统WebView注入用户脚本
+     */
+    private void injectScriptsToSystemWebView(WebView webView, String url) {
         List<UserScript> matchingScripts = getMatchingScripts(url);
         for (UserScript script : matchingScripts) {
             injectScript(webView, script);
@@ -256,5 +309,62 @@ public class UserScriptManager {
      */
     public boolean isEnabled() {
         return isEnabled;
+    }
+
+    /**
+     * 延迟初始化X5管理器
+     */
+    private void initializeX5Components() {
+        if (x5Manager == null) {
+            x5Manager = X5WebViewManager.getInstance();
+        }
+        if (x5ScriptManager == null && x5Manager.isX5Available()) {
+            x5ScriptManager = X5UserScriptManager.getInstance(context);
+        }
+    }
+
+    /**
+     * 检查X5脚本注入是否支持
+     */
+    public boolean isX5ScriptInjectionSupported() {
+        initializeX5Components();
+        return x5ScriptManager != null && x5ScriptManager.isX5ScriptInjectionSupported();
+    }
+
+    /**
+     * 获取X5脚本注入状态信息
+     */
+    public String getX5ScriptInjectionStatus() {
+        initializeX5Components();
+        if (x5ScriptManager != null) {
+            return x5ScriptManager.getX5ScriptInjectionStatus();
+        }
+        return "X5脚本管理器未初始化";
+    }
+
+    /**
+     * 获取WebView内核类型描述
+     */
+    public String getWebViewKernelDescription() {
+        initializeX5Components();
+        if (x5Manager != null && x5Manager.isX5Available() && x5Manager.isX5Initialized()) {
+            return "腾讯X5内核 (版本: " + (x5Manager.getX5Version() != null ? x5Manager.getX5Version() : "未知") + ")";
+        } else {
+            return "系统WebView内核";
+        }
+    }
+
+    /**
+     * 获取推荐的脚本注入方式
+     */
+    public String getRecommendedInjectionMethod() {
+        initializeX5Components();
+        if (isX5ScriptInjectionSupported()) {
+            return "推荐使用X5专用脚本注入器 (更好的兼容性)";
+        } else if (x5Manager != null && x5Manager.isX5Initialized() && !x5Manager.isX5Available()) {
+            return "X5初始化失败，使用系统WebView脚本注入";
+        } else {
+            return "使用系统WebView脚本注入 (X5未初始化)";
+        }
     }
 }

@@ -38,6 +38,15 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="4dp">
 
+                <!-- 安全/协议图标 -->
+                <ImageView
+                    android:id="@+id/security_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_security"
+                    android:tint="@color/chrome_icon_tint" />
+
                 <!-- Chrome Omnibox 输入框 -->
                 <EditText
                     android:id="@+id/omnibox_input"
@@ -78,16 +87,15 @@
                     android:contentDescription="添加书签"
                     android:layout_marginEnd="4dp" />
 
-                <!-- 搜索按钮 -->
+                <!-- Chrome 更多选项按钮 -->
                 <ImageButton
-                    android:id="@+id/search_button"
+                    android:id="@+id/more_options_button"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_search"
+                    android:src="@drawable/ic_more_vert"
                     android:tint="@color/chrome_icon_tint"
-                    android:contentDescription="搜索"
-                    android:layout_marginEnd="4dp" />
+                    android:contentDescription="更多选项" />
 
             </LinearLayout>
 

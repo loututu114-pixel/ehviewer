@@ -337,7 +337,7 @@ public class SearchBar extends CardView implements View.OnClickListener,
             return;
         }
         String query = mEditText.getText().toString().trim();
-        query.replaceAll("\n","");
+        query = query.replaceAll("\\n", "").replaceAll("\\r", "");
         if (!mAllowEmptySearch && TextUtils.isEmpty(query)) {
             return;
         }
