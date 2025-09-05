@@ -98,6 +98,84 @@ const playButtonSelectors = [
   - 添加xvideos.es支持
   - 改进全屏功能
 
+## 新增修复内容 (2024-09-05 第二次更新)
+
+### 3. 播放/暂停功能深度修复
+- **增强事件绑定**: 使用捕获阶段确保事件优先处理
+- **Promise处理**: 正确处理video.play()的Promise返回值
+- **状态同步**: 实时通知Android层播放状态变化
+- **错误处理**: 完善的播放失败处理和错误反馈
+
+### 4. 全屏功能重构
+- **原生全屏优先**: 优先使用WebView原生全屏API
+- **多重回退机制**: webkit、moz、ms等浏览器兼容
+- **智能检测**: 自动检测可用全屏API
+- **错误回退**: 全屏失败时自动回退到MediaPlayerActivity
+
+### 5. VideoJavaScriptInterface 扩展
+- **新增播放控制方法**: playVideo(), pauseVideo(), togglePlayPause()
+- **增强状态监听**: 完善的播放状态同步
+- **错误处理接口**: 统一的错误处理机制
+
+## 技术实现改进
+
+### 播放控制优化
+```javascript
+// 改进的播放/暂停处理
+var playPromise = video.play();
+if (playPromise !== undefined) {
+    playPromise.then(function() {
+        console.log('Video started successfully');
+        // 通知Android层
+        if (typeof Android !== 'undefined' && Android.onPlayStateChanged) {
+            Android.onPlayStateChanged(true);
+        }
+    }).catch(function(error) {
+        console.error('Video play failed:', error);
+    });
+}
+```
+
+### 全屏处理优化
+```javascript
+// 多重全屏API支持
+if (video.requestFullscreen) {
+    video.requestFullscreen();
+} else if (video.webkitRequestFullscreen) {
+    video.webkitRequestFullscreen();
+} else if (video.mozRequestFullScreen) {
+    video.mozRequestFullScreen();
+} else if (video.msRequestFullscreen) {
+    video.msRequestFullscreen();
+}
+```
+
+## 测试验证
+
+### 播放控制测试
+1. **播放功能**: ✅ 点击播放按钮应能开始播放
+2. **暂停功能**: ✅ 点击暂停按钮应能停止播放
+3. **状态同步**: ✅ 播放状态应正确通知Android层
+4. **错误处理**: ✅ 播放失败时应有适当的错误提示
+
+### 全屏功能测试
+1. **全屏按钮**: ✅ 点击全屏按钮应进入全屏模式
+2. **双击全屏**: ✅ 双击视频区域应进入全屏
+3. **退出全屏**: ✅ 再次点击应退出全屏
+4. **兼容性**: ✅ 支持不同浏览器的全屏API
+
+## 更新日志
+- **2024-09-05 (第二次更新)**: 播放/暂停和全屏功能深度修复
+  - 增强播放/暂停事件处理和状态同步
+  - 重构全屏功能，使用原生API优先
+  - 扩展VideoJavaScriptInterface接口
+  - 改进错误处理和用户反馈机制
+- **2024-09-05 (初始修复)**: 播放按钮点击修复
+  - 增强播放按钮检测和点击处理
+  - 优化脚本注入时机
+  - 添加xvideos.es支持
+  - 改进全屏功能
+
 ## 后续改进计划
 - [ ] 添加更多xvideos页面布局支持
 - [ ] 优化移动端播放体验
