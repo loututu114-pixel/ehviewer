@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_view_app_info"
+        android:title="应用信息"
+        android:icon="@drawable/ic_file"
+        app:showAsAction="ifRoom"
+        android:visible="false" />
+
+    <item
+        android:id="@+id/action_uninstall_app"
+        android:title="卸载应用"
+        android:icon="@drawable/ic_close_all"
+        app:showAsAction="ifRoom"
+        android:visible="false" />
+
+    <item
+        android:id="@+id/action_extract_apk"
+        android:title="提取APK"
+        android:icon="@drawable/ic_file"
+        app:showAsAction="ifRoom"
+        android:visible="false" />
+
+    <item
+        android:id="@+id/action_manage_apps"
+        android:title="应用管理"
+        android:icon="@drawable/ic_browser"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_settings"
+        android:title="设置"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_help"
+        android:title="帮助"
+        app:showAsAction="never" />
+
+</menu>

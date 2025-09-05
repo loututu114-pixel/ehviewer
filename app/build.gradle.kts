@@ -52,6 +52,15 @@ android {
         checkReleaseBuilds = true
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -59,11 +68,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"com.hippo.ehviewer.fileprovider\"")
+            buildConfigField("String", "CHANNEL_CODE", "\"3001\"")
         }
         debug {
             applicationIdSuffix = ".debug"
             buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"com.hippo.ehviewer.debug.fileprovider\"")
+            buildConfigField("String", "CHANNEL_CODE", "\"0000\"")
         }
     }
 
@@ -129,6 +141,7 @@ dependencies {
     implementation("org.ccil.cowan.tagsoup:tagsoup:1.2.1")
     implementation("org.greenrobot:eventbus:3.3.1")
     implementation("com.alibaba:fastjson:1.2.83")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // UI components
     implementation("com.github.ybq:Android-SpinKit:1.4.0")

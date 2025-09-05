@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 反馈类型选择 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="反馈类型"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="8dp" />
+
+        <RadioGroup
+            android:id="@+id/feedback_type_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <RadioButton
+                android:id="@+id/feedback_type_bug"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🐛 错误报告"
+                android:textSize="14sp"
+                android:checked="false" />
+
+            <RadioButton
+                android:id="@+id/feedback_type_feature"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💡 功能建议"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/feedback_type_performance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚡ 性能问题"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/feedback_type_ui"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎨 界面体验"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/feedback_type_general"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💭 一般建议"
+                android:textSize="14sp"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/feedback_type_praise"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="👏 表扬夸奖"
+                android:textSize="14sp" />
+
+        </RadioGroup>
+
+        <!-- 反馈内容 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="详细描述 *"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/feedback_content"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:background="@drawable/edittext_background"
+            android:padding="12dp"
+            android:hint="请详细描述您遇到的问题、建议或想法..."
+            android:textSize="14sp"
+            android:gravity="top|start"
+            android:inputType="textMultiLine"
+            android:scrollbars="vertical"
+            android:layout_marginBottom="16dp"
+            android:maxLength="1000" />
+
+        <!-- 联系方式 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="联系方式（可选）"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/feedback_contact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/edittext_background"
+            android:padding="12dp"
+            android:hint="QQ、微信、邮箱等（便于我们联系您）"
+            android:textSize="14sp"
+            android:inputType="text"
+            android:layout_marginBottom="16dp"
+            android:maxLength="100" />
+
+        <!-- 评分 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="总体评价"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="8dp" />
+
+        <RadioGroup
+            android:id="@+id/feedback_rating_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <RadioButton
+                android:id="@+id/rating_5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐⭐⭐⭐⭐"
+                android:textSize="12sp"
+                android:layout_weight="1"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/rating_4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐⭐⭐⭐"
+                android:textSize="12sp"
+                android:layout_weight="1" />
+
+            <RadioButton
+                android:id="@+id/rating_3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐⭐⭐"
+                android:textSize="12sp"
+                android:layout_weight="1" />
+
+            <RadioButton
+                android:id="@+id/rating_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐⭐"
+                android:textSize="12sp"
+                android:layout_weight="1" />
+
+            <RadioButton
+                android:id="@+id/rating_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐"
+                android:textSize="12sp"
+                android:layout_weight="1" />
+
+        </RadioGroup>
+
+        <!-- 提示文本 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💝 您的反馈对EhViewer的改进非常重要！我们会认真对待每一条意见和建议。"
+            android:textSize="12sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textStyle="italic"
+            android:lineSpacingExtra="2dp"
+            android:padding="8dp"
+            android:background="@drawable/feedback_hint_bg" />
+
+    </LinearLayout>
+
+</ScrollView>

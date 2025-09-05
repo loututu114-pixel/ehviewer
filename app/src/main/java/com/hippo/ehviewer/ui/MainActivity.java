@@ -39,6 +39,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -157,6 +158,12 @@ public final class MainActivity extends StageActivity
     // 浏览器相关组件
     private NetworkDetector mNetworkDetector;
     private SearchEngineManager mSearchEngineManager;
+    
+    // 智能提示管理器
+    private SmartTipsManager mSmartTipsManager;
+    
+    // 性能优化组件
+    private com.hippo.ehviewer.cache.MemoryOptimizer mMemoryOptimizer;
 
     private int mNavCheckedItem = 0;
 
@@ -433,6 +440,13 @@ public final class MainActivity extends StageActivity
 
     @Override
     protected void onCreate2(@Nullable Bundle savedInstanceState) {
+        // 检查是否需要显示设置向导
+        if (SetupWizardActivity.shouldShowSetupWizard(this)) {
+            Intent setupIntent = new Intent(this, SetupWizardActivity.class);
+            startActivity(setupIntent);
+            return;
+        }
+
         // 检查并强化应用的存在感（默认浏览器设置）
         strengthenAppPresence();
         Intent intent = getIntent();
@@ -486,6 +500,12 @@ public final class MainActivity extends StageActivity
 
         // 初始化浏览器组件
         initializeBrowserComponents();
+        
+        // 初始化性能优化组件
+        initializePerformanceOptimizers();
+        
+        // 初始化智能提示管理器
+        initializeSmartTipsManager();
 
         // 测试底部导航栏
         testBottomNavigation();
@@ -1229,6 +1249,94 @@ public final class MainActivity extends StageActivity
             }
         } else {
             android.util.Log.e("MainActivity", "Bottom navigation test - view is null");
+        }
+    }
+
+    /**
+     * 初始化性能优化组件
+     */
+    private void initializePerformanceOptimizers() {
+        try {
+            // 初始化内存优化器
+            mMemoryOptimizer = com.hippo.ehviewer.cache.MemoryOptimizer.getInstance(this);
+            
+            // 添加内存压力监听器
+            mMemoryOptimizer.addMemoryPressureListener(new com.hippo.ehviewer.cache.MemoryOptimizer.MemoryPressureListener() {
+                @Override
+                public void onMemoryPressure(com.hippo.ehviewer.cache.MemoryOptimizer.MemoryPressureLevel level) {
+                    // 根据内存压力级别调整UI和功能
+                    handleMemoryPressure(level);
+                }
+                
+                @Override
+                public void onMemoryRecovered() {
+                    // 内存恢复，可以恢复一些功能
+                    android.util.Log.d("MainActivity", "Memory pressure recovered");
+                }
+            });
+            
+            android.util.Log.d("MainActivity", "Performance optimizers initialized successfully");
+            
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to initialize performance optimizers", e);
+        }
+    }
+    
+    /**
+     * 处理内存压力
+     */
+    private void handleMemoryPressure(com.hippo.ehviewer.cache.MemoryOptimizer.MemoryPressureLevel level) {
+        try {
+            switch (level) {
+                case HIGH:
+                    // 高内存压力：减少动画、降低图片质量
+                    android.util.Log.w("MainActivity", "High memory pressure detected - reducing animations");
+                    // 可以禁用一些动画或降低图片加载质量
+                    break;
+                    
+                case CRITICAL:
+                    // 临界内存压力：立即清理不必要的资源
+                    android.util.Log.e("MainActivity", "Critical memory pressure - performing emergency cleanup");
+                    // 可以关闭一些非关键功能，清理缓存
+                    if (mSmartTipsManager != null) {
+                        mSmartTipsManager.hideAllTips();
+                    }
+                    break;
+                    
+                default:
+                    // 低或中等压力：记录日志
+                    android.util.Log.d("MainActivity", "Memory pressure level: " + level);
+                    break;
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error handling memory pressure", e);
+        }
+    }
+
+    /**
+     * 初始化智能提示管理器
+     */
+    private void initializeSmartTipsManager() {
+        try {
+            // 延迟初始化，确保UI完全加载
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try {
+                    mSmartTipsManager = new SmartTipsManager(this);
+                    
+                    // 初始化提示容器（如果主布局中有的话）
+                    View rootView = findViewById(R.id.draw_view);
+                    if (rootView instanceof ViewGroup) {
+                        mSmartTipsManager.initializeTipsContainer((ViewGroup) rootView);
+                    }
+                    
+                    android.util.Log.d("MainActivity", "SmartTipsManager initialized successfully");
+                } catch (Exception e) {
+                    android.util.Log.e("MainActivity", "Failed to initialize SmartTipsManager", e);
+                }
+            }, 2000); // 延迟2秒，确保用户已经完成基本交互
+            
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error setting up SmartTipsManager", e);
         }
     }
 

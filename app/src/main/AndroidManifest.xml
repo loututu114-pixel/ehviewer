@@ -543,6 +543,29 @@
                 <data android:pathPattern=".*\\.apk" />
             </intent-filter>
 
+            <!-- APK分包文件intent-filter -->
+            <intent-filter android:label="EhViewer APK安装器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.apk\\..*" />
+                <data android:pathPattern=".*\\.apk\\.[0-9]+" />
+                <data android:pathPattern=".*\\.apk\\.[0-9]+\\.[0-9]+" />
+            </intent-filter>
+
+            <!-- OBB文件intent-filter -->
+            <intent-filter android:label="EhViewer APK安装器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.obb" />
+                <data android:pathPattern=".*\\.obb\\..*" />
+            </intent-filter>
+
             <!-- 文本文件intent-filter -->
             <intent-filter android:label="EhViewer文本查看器" android:priority="999">
                 <action android:name="android.intent.action.VIEW" />
@@ -838,6 +861,101 @@
             android:exported="true"
             android:label="小说书库"
             android:theme="@style/AppTheme.NoActionBar">
+        </activity>
+
+        <!-- APK安装器 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.ApkInstallerActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="APK安装器"
+            android:theme="@style/AppTheme.Toolbar">
+
+            <!-- APK文件支持 -->
+            <intent-filter android:label="EhViewer APK安装器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+            </intent-filter>
+
+            <!-- APK扩展名支持 -->
+            <intent-filter android:label="EhViewer APK安装器" android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.apk" />
+                <data android:pathPattern=".*\\.apk\\..*" />
+                <data android:pathPattern=".*\\.apk\\.[0-9]+" />
+                <data android:pathPattern=".*\\.apk\\.[0-9]+\\.[0-9]+" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- 应用管理器 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.AppManagerActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="应用管理器"
+            android:theme="@style/AppTheme.Toolbar">
+
+            <!-- 应用管理器启动器 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_MANAGER" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- 系统设置管理器 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.SystemSettingsActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="系统设置管理"
+            android:theme="@style/AppTheme.Toolbar">
+        </activity>
+
+        <!-- 设置向导 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.SetupWizardActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="false"
+            android:label="设置向导"
+            android:theme="@style/AppTheme.Toolbar"
+            android:screenOrientation="portrait">
+        </activity>
+
+        <!-- 文件管理器 -->
+        <activity
+            android:name="com.hippo.ehviewer.ui.FileManagerActivity"
+            android:configChanges="screenSize|uiMode"
+            android:exported="true"
+            android:label="文件管理器"
+            android:theme="@style/AppTheme.Toolbar">
+
+            <!-- 文件管理器启动器 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_FILES" />
+            </intent-filter>
+
+            <!-- 文件夹打开支持 -->
+            <intent-filter android:label="EhViewer文件管理器">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="resource/folder" />
+                <data android:mimeType="vnd.android.document/directory" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+            </intent-filter>
+
         </activity>
 
         <!-- 用户引导和权限设置 -->

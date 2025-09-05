@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
-  "lastUpdate": "2024-01-01T00:00:00Z",
+  "version": "1.0.1",
+  "lastUpdate": "2025-09-04T10:00:00Z",
   "searchConfig": {
     "homepage": {
       "enabled": true,
-      "url": "https://www.google.com",
-      "china": "https://www.baidu.com",
+      "url": "https://main.eh-viewer.com/",
+      "china": "https://main.eh-viewer.com/",
       "title": "默认首页",
       "customOptions": [
         {

@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.hippo.ehviewer.R;
+import com.hippo.ehviewer.ui.browser.RealtimeSuggestionManager;
 import com.hippo.ehviewer.ui.browser.RealtimeSuggestionManager.SuggestionItem;
 
 import java.util.List;
@@ -28,12 +29,16 @@ public class SmartAddressBarWidget extends FrameLayout {
 
     // UI组件
     private EditText mAddressEditText;
-    private ImageButton mRefreshButton;
+    private com.google.android.material.button.MaterialButton mClearButton;
+    private com.google.android.material.button.MaterialButton mRefreshButton;
     private RecyclerView mSuggestionsRecyclerView;
+    private com.google.android.material.card.MaterialCardView mAddressBarContainer;
+    private com.google.android.material.card.MaterialCardView mSuggestionsContainer;
 
     // 数据组件
     private RealtimeSuggestionManager mSuggestionManager;
     private EnhancedSuggestionAdapter mSuggestionAdapter;
+    private AddressBarAnimator mAnimator;
 
     // 状态变量
     private String mCurrentUrl = "";
@@ -70,18 +75,24 @@ public class SmartAddressBarWidget extends FrameLayout {
         LayoutInflater.from(context).inflate(R.layout.widget_smart_address_bar, this, true);
 
         // 初始化UI组件
+        mAddressBarContainer = findViewById(R.id.address_bar_container);
+        mSuggestionsContainer = findViewById(R.id.suggestions_container);
         mAddressEditText = findViewById(R.id.address_edit_text);
+        mClearButton = findViewById(R.id.clear_button);
         mRefreshButton = findViewById(R.id.refresh_button);
         mSuggestionsRecyclerView = findViewById(R.id.suggestions_recycler_view);
 
         // 初始化数据组件
-        mSuggestionManager = RealtimeSuggestionManager.getInstance();
-        mSuggestionAdapter = new EnhancedSuggestionAdapter();
+        mSuggestionManager = RealtimeSuggestionManager.getInstance(getContext());
+        mSuggestionAdapter = new EnhancedSuggestionAdapter(getContext());
+        mAnimator = new AddressBarAnimator();
 
         // 设置RecyclerView
         mSuggestionsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
         mSuggestionsRecyclerView.setAdapter(mSuggestionAdapter);
-        mSuggestionsRecyclerView.setVisibility(View.GONE);
+        
+        // 初始化动画状态
+        mAnimator.animateInitialEntry(mAddressBarContainer, mSuggestionsContainer);
 
         // 设置监听器
         setupListeners();
@@ -111,6 +122,11 @@ public class SmartAddressBarWidget extends FrameLayout {
             return false;
         });
 
+        // 地址栏焦点变化监听
+        mAddressEditText.setOnFocusChangeListener((v, hasFocus) -> {
+            mAnimator.animateFocusChange(mAddressBarContainer, hasFocus, null);
+        });
+        
         // 地址栏编辑器动作监听
         mAddressEditText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO ||
@@ -135,10 +151,18 @@ public class SmartAddressBarWidget extends FrameLayout {
             }
         });
 
+        // 清除按钮点击监听
+        mClearButton.setOnClickListener(v -> {
+            mAddressEditText.setText("");
+            mAddressEditText.requestFocus();
+            mAnimator.animateClearButtonVisibility(mClearButton, false);
+        });
+
         // 刷新按钮点击监听
         mRefreshButton.setOnClickListener(v -> {
             String currentText = mAddressEditText.getText().toString().trim();
             if (!currentText.isEmpty()) {
+                mAnimator.animateRefreshButton(mRefreshButton, true);
                 submitUrl(currentText);
             }
         });
@@ -148,6 +172,9 @@ public class SmartAddressBarWidget extends FrameLayout {
      * 处理文本变化
      */
     private void handleTextChanged(String query) {
+        // 更新清除按钮可见性
+        updateClearButtonVisibility(query);
+        
         if (query.isEmpty()) {
             hideSuggestions();
             return;
@@ -259,6 +286,10 @@ public class SmartAddressBarWidget extends FrameLayout {
      * 处理建议项点击
      */
     private void handleSuggestionClick(SuggestionItem item) {
+        // 记录用户点击行为用于智能学习
+        String currentQuery = mAddressEditText.getText().toString().trim();
+        mSuggestionManager.recordSuggestionClick(currentQuery, item);
+        
         if (item.url != null && !item.url.isEmpty()) {
             setAddressText(item.url);
             submitUrl(item.url);
@@ -289,17 +320,24 @@ public class SmartAddressBarWidget extends FrameLayout {
         mCurrentSuggestions = suggestions;
         mSuggestionAdapter.setSuggestions(suggestions);
         mSuggestionAdapter.setCurrentQuery(query);
-        mSuggestionsRecyclerView.setVisibility(View.VISIBLE);
-        clearSelectionState();
+        
+        // 使用动画显示建议列表
+        mAnimator.showSuggestions(mSuggestionsContainer, () -> {
+            // 动画完成后的回调
+            clearSelectionState();
+        });
     }
 
     /**
      * 隐藏建议列表
      */
     private void hideSuggestions() {
-        mSuggestionsRecyclerView.setVisibility(View.GONE);
-        mCurrentSuggestions = null;
-        clearSelectionState();
+        // 使用动画隐藏建议列表
+        mAnimator.hideSuggestions(mSuggestionsContainer, () -> {
+            // 动画完成后的回调
+            mCurrentSuggestions = null;
+            clearSelectionState();
+        });
     }
 
     /**
@@ -364,6 +402,7 @@ public class SmartAddressBarWidget extends FrameLayout {
     public void setAddressText(String text) {
         mAddressEditText.setText(text);
         mAddressEditText.setSelection(text.length());
+        updateClearButtonVisibility(text);
     }
 
     /**
@@ -415,13 +454,34 @@ public class SmartAddressBarWidget extends FrameLayout {
      * 显示加载状态
      */
     public void showLoadingState() {
-        mRefreshButton.setImageResource(R.drawable.ic_loading);
+        mAnimator.animateRefreshButton(mRefreshButton, true);
     }
 
     /**
      * 显示正常状态
      */
     public void showNormalState() {
-        mRefreshButton.setImageResource(R.drawable.ic_refresh);
+        mAnimator.animateRefreshButton(mRefreshButton, false);
+    }
+    
+    /**
+     * 销毁时取消所有动画
+     */
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (mAnimator != null) {
+            mAnimator.cancelAllAnimations();
+        }
+    }
+
+    /**
+     * 更新清除按钮可见性
+     */
+    private void updateClearButtonVisibility(String text) {
+        if (mClearButton != null) {
+            boolean shouldShow = !text.isEmpty();
+            mAnimator.animateClearButtonVisibility(mClearButton, shouldShow);
+        }
     }
 }

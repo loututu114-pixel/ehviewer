@@ -1,67 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="56dp"
-    android:background="?android:attr/selectableItemBackground"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp">
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="2dp"
+    app:cardBackgroundColor="@color/modern_surface"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@android:color/transparent"
+    app:strokeWidth="0dp"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:stateListAnimator="@animator/suggestion_item_elevation">
 
-    <!-- 类型图标 -->
-    <ImageView
-        android:id="@+id/suggestion_type_icon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="12dp"
-        android:contentDescription="建议类型"
-        android:src="@drawable/ic_suggestion"
-        android:tint="@android:color/darker_gray" />
-
-    <!-- 内容区域 -->
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:minHeight="72dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
 
-        <!-- 标题文本 -->
-        <TextView
-            android:id="@+id/suggestion_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@android:color/black"
-            android:textSize="16sp"
-            android:textStyle="normal"
-            tools:text="GitHub - Where the world builds software" />
+        <!-- 类型图标 -->
+        <ImageView
+            android:id="@+id/suggestion_type_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="16dp"
+            android:contentDescription="建议类型图标"
+            android:src="@drawable/ic_search"
+            android:tint="@color/icon_search" />
 
-        <!-- URL文本 -->
-        <TextView
-            android:id="@+id/suggestion_url"
-            android:layout_width="match_parent"
+        <!-- 内容区域 -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp"
-            android:visibility="gone"
-            tools:text="github.com"
-            tools:visibility="visible" />
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- 标题文本 -->
+            <TextView
+                android:id="@+id/suggestion_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/modern_on_surface"
+                android:textSize="16sp"
+                android:lineSpacingExtra="2dp"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="0.01"
+                tools:text="GitHub - Where the world builds software" />
+
+            <!-- 副标题/URL文本 -->
+            <TextView
+                android:id="@+id/suggestion_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/modern_on_surface_variant"
+                android:textSize="14sp"
+                android:lineSpacingExtra="1dp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                tools:text="github.com • 开发者社区平台"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+
+        <!-- 尾随区域 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginStart="12dp">
+
+            <!-- 元数据标签 -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/suggestion_metadata_chip"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="2小时前"
+                android:textColor="@color/modern_on_surface_variant"
+                android:textSize="12sp"
+                app:chipBackgroundColor="@color/modern_background"
+                app:chipStrokeColor="@android:color/transparent"
+                app:chipStrokeWidth="0dp"
+                app:chipMinHeight="28dp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- 类型emoji标识 -->
+            <TextView
+                android:id="@+id/suggestion_type_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:minWidth="24dp"
+                android:minHeight="24dp"
+                tools:text="🔍" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- 类型标识 -->
-    <TextView
-        android:id="@+id/suggestion_type_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textColor="@android:color/holo_blue_dark"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        tools:text="🔍" />
-
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

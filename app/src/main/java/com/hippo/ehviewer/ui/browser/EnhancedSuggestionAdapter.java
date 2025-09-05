@@ -1,5 +1,6 @@
 package com.hippo.ehviewer.ui.browser;
 
+import android.content.Context;
 import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -52,6 +53,24 @@ public class EnhancedSuggestionAdapter extends RecyclerView.Adapter<RecyclerView
     private String mCurrentQuery = "";
     private int mSelectedPosition = -1;
     private OnSuggestionClickListener mListener;
+    private Context mContext;
+
+    public EnhancedSuggestionAdapter(Context context) {
+        this.mContext = context;
+    }
+
+    /**
+     * 获取主题强调色
+     */
+    private int getAccentColor() {
+        TypedValue typedValue = new TypedValue();
+        mContext.getTheme().resolveAttribute(android.R.attr.colorAccent, typedValue, true);
+        if (typedValue.resourceId != 0) {
+            return ContextCompat.getColor(mContext, typedValue.resourceId);
+        } else {
+            return typedValue.data != 0 ? typedValue.data : android.graphics.Color.BLUE;
+        }
+    }
 
     // 回调接口
     public interface OnSuggestionClickListener {
@@ -65,6 +84,9 @@ public class EnhancedSuggestionAdapter extends RecyclerView.Adapter<RecyclerView
 
     @Override
     public int getItemViewType(int position) {
+        if (position < 0 || position >= mItems.size()) {
+            return VIEW_TYPE_SUGGESTION;
+        }
         return mItems.get(position).isHeader ? VIEW_TYPE_GROUP_HEADER : VIEW_TYPE_SUGGESTION;
     }
 
@@ -84,6 +106,9 @@ public class EnhancedSuggestionAdapter extends RecyclerView.Adapter<RecyclerView
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (position < 0 || position >= mItems.size()) {
+            return;
+        }
         GroupedSuggestionItem item = mItems.get(position);
 
         if (holder instanceof GroupHeaderViewHolder) {
@@ -228,9 +253,12 @@ public class EnhancedSuggestionAdapter extends RecyclerView.Adapter<RecyclerView
 
         // 设置选中状态
         boolean isSelected = position == mSelectedPosition;
-        holder.itemView.setBackgroundResource(
-            isSelected ? R.drawable.suggestion_item_background : android.R.color.transparent
-        );
+        holder.itemView.setSelected(isSelected);
+        if (isSelected) {
+            holder.itemView.setBackgroundResource(R.drawable.suggestion_item_background);
+        } else {
+            holder.itemView.setBackgroundResource(0); // 清除背景
+        }
 
         // 设置点击监听
         holder.itemView.setOnClickListener(v -> {
@@ -265,7 +293,7 @@ public class EnhancedSuggestionAdapter extends RecyclerView.Adapter<RecyclerView
         if (index >= 0) {
             // 高亮匹配部分
             spannable.setSpan(new ForegroundColorSpan(
-                ContextCompat.getColor(spannable.getSpans(0, spannable.length(), Object.class)[0].getClass().getEnclosingClass().getResourceId("colorAccent", "color", null), android.R.color.holo_blue_light)),
+                getAccentColor()),
                 index, index + query.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             spannable.setSpan(new StyleSpan(Typeface.BOLD),
                 index, index + query.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
