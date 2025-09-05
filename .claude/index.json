@@ -1,0 +1,158 @@
+{
+  "timestamp": "2025-09-04T15:06:50.000Z",
+  "project": {
+    "name": "EhViewerh",
+    "type": "Android",
+    "version": "1.9.9.19",
+    "versionCode": "189919",
+    "description": "功能强大的Android图片浏览器应用，集成浏览器功能、用户脚本管理、文件管理等特性"
+  },
+  "modules": [
+    {
+      "path": "app",
+      "name": "主应用模块",
+      "type": "Android Application",
+      "language": "Java/Kotlin",
+      "description": "EhViewer主应用模块，包含所有核心功能",
+      "entryPoints": [
+        "src/main/java/com/hippo/ehviewer/EhApplication.java",
+        "src/main/java/com/hippo/ehviewer/ui/splash/SplashActivity.java",
+        "src/main/java/com/hippo/ehviewer/ui/MainActivity.java",
+        "src/main/java/com/hippo/ehviewer/ui/WebViewActivity.java"
+      ],
+      "keyFeatures": [
+        "图片浏览和画廊管理",
+        "内置浏览器功能",
+        "用户脚本系统",
+        "下载管理",
+        "文件管理器",
+        "媒体播放器"
+      ],
+      "subModules": [
+        {
+          "path": "src/main/java/com/hippo/ehviewer/ui",
+          "name": "用户界面层",
+          "description": "包含所有Activity、Fragment和UI组件"
+        },
+        {
+          "path": "src/main/java/com/hippo/ehviewer/client",
+          "name": "网络客户端层",
+          "description": "HTTP客户端、Cookie管理、网络配置"
+        },
+        {
+          "path": "src/main/java/com/hippo/ehviewer/userscript",
+          "name": "用户脚本系统",
+          "description": "Tampermonkey风格的用户脚本管理和执行"
+        },
+        {
+          "path": "src/main/java/com/hippo/ehviewer/download",
+          "name": "下载管理系统",
+          "description": "文件下载、断点续传、下载队列管理"
+        },
+        {
+          "path": "src/main/assets",
+          "name": "内置脚本资源",
+          "description": "预置的用户增强脚本，支持各种网站优化"
+        }
+      ],
+      "buildConfig": {
+        "minSdk": 23,
+        "targetSdk": 29,
+        "compileSdk": 35,
+        "buildTools": "Gradle Kotlin DSL",
+        "signingConfig": "debug keystore"
+      },
+      "dependencies": [
+        "AndroidX Core/AppCompat/Material Design",
+        "OkHttp3网络库",
+        "Firebase Analytics/Crashlytics",
+        "腾讯X5浏览器内核",
+        "GreenDAO数据库",
+        "各种Seven332开源库"
+      ]
+    },
+    {
+      "path": "channel-3001-sdk",
+      "name": "渠道SDK模块", 
+      "type": "External Module",
+      "description": "渠道3001的SDK模块，用于渠道统计和特定功能"
+    }
+  ],
+  "architecture": {
+    "pattern": "MVP + Repository",
+    "layers": [
+      "UI Layer (Activities, Fragments, Views)",
+      "Business Layer (Managers, Services)",
+      "Data Layer (Database, Network, Cache)",
+      "Native Layer (C++ components via JNI)"
+    ],
+    "keyComponents": [
+      "EhApplication - 应用入口和全局管理",
+      "WebViewActivity - 内置浏览器核心",
+      "UserScriptManager - 用户脚本管理系统",
+      "DownloadManager - 下载管理核心",
+      "EhClient - 网络请求客户端"
+    ]
+  },
+  "features": [
+    "图片画廊浏览和管理",
+    "功能完整的内置浏览器",
+    "Tampermonkey风格用户脚本系统",
+    "多种文件格式支持 (图片/视频/音频/文档/压缩包)",
+    "APK安装器功能",
+    "文件管理器",
+    "密码自动填充",
+    "离线缓存管理",
+    "桌面小部件支持",
+    "Firebase推送通知",
+    "渠道统计分析"
+  ],
+  "userScriptAssets": [
+    "universal_ad_blocker.js - 通用广告拦截",
+    "chinese_sites_optimizer.js - 中文网站优化", 
+    "bilibili_enhancer.js - B站增强功能",
+    "zhihu_enhancer.js - 知乎增强功能",
+    "twitter_enhancer.js - Twitter增强功能",
+    "video_player_enhancer.js - 视频播放器增强",
+    "novel_reader_enhancer.js - 小说阅读器增强",
+    "download_sites_optimizer.js - 下载站点优化",
+    "mobile_adaptation_enhancer.js - 移动端适配增强",
+    "malware_blocker.js - 恶意软件拦截",
+    "app_intercept_blocker.js - 应用拦截器",
+    "youth_sites_optimizer.js - 青少年网站优化",
+    "adult_site_enhancer.js - 成人网站增强",
+    "image_optimizer.js - 图片优化器",
+    "novel_drama_enhancer.js - 小说影视增强"
+  ],
+  "scanCoverage": {
+    "totalFiles": "约1000+",
+    "scannedFiles": "约150",
+    "coveragePercent": "15%",
+    "keyAreasScanned": [
+      "应用入口和配置文件",
+      "主要Activity和UI组件",
+      "用户脚本系统架构",
+      "构建配置和依赖管理",
+      "AndroidManifest完整分析"
+    ],
+    "gaps": [
+      "具体Activity实现细节",
+      "数据库Schema和DAO层",
+      "网络层具体实现",
+      "本地化资源文件",
+      "测试代码覆盖"
+    ]
+  },
+  "nextSteps": [
+    "深度扫描用户脚本管理器实现 (userscript包)",
+    "分析浏览器核心功能 (WebViewActivity相关)",
+    "扫描下载管理系统架构",
+    "分析数据库设计和缓存策略",
+    "检查本地化和主题系统"
+  ],
+  "truncated": false,
+  "generatedFiles": [
+    "CLAUDE.md (根级)",
+    ".claude/index.json (索引文件)"
+  ]
+}

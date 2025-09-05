@@ -55,6 +55,7 @@ import com.hippo.ehviewer.util.AppOptimizationManager;
 import com.hippo.ehviewer.util.SystemErrorHandler;
 import com.hippo.ehviewer.util.LogMonitor;
 import com.hippo.ehviewer.util.SystemMonitor;
+import com.hippo.ehviewer.util.UserEnvironmentDetector;
 import com.hippo.ehviewer.client.data.EhNewsDetail;
 import com.hippo.ehviewer.client.data.GalleryDetail;
 import com.hippo.ehviewer.client.data.userTag.UserTagList;
@@ -77,6 +78,7 @@ import com.hippo.lib.yorozuya.FileUtils;
 import com.hippo.lib.yorozuya.IntIdGenerator;
 import com.hippo.lib.yorozuya.OSUtils;
 import com.hippo.lib.yorozuya.SimpleHandler;
+import com.hippo.ehviewer.analytics.ChannelTracker;
 
 import org.conscrypt.Conscrypt;
 
@@ -221,6 +223,13 @@ public class EhApplication extends RecordingApplication {
             Analytics.start(this);
         }
 
+        // 初始化渠道统计SDK
+        try {
+            ChannelTracker.initialize(this, BuildConfig.CHANNEL_CODE);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to initialize ChannelTracker", e);
+        }
+
         // Do io tasks in new thread
         new AsyncTask<Void, Void, Void>() {
             @Override
@@ -265,7 +274,52 @@ public class EhApplication extends RecordingApplication {
             debugPrint();
         }
 
+        // 初始化用户环境检测
+        initializeUserEnvironmentDetection();
+
         initialized = true;
+    }
+
+    /**
+     * 初始化用户环境检测
+     */
+    private void initializeUserEnvironmentDetection() {
+        Log.d(TAG, "Initializing user environment detection...");
+        
+        UserEnvironmentDetector detector = UserEnvironmentDetector.getInstance(this);
+        detector.startDetection(new UserEnvironmentDetector.DetectionCallback() {
+            @Override
+            public void onDetectionSuccess(UserEnvironmentDetector.EnvironmentInfo environmentInfo) {
+                Log.i(TAG, "User environment detected successfully: " + environmentInfo.toString());
+                
+                // 可以在这里根据环境信息调整应用行为
+                applyEnvironmentSettings(environmentInfo);
+            }
+            
+            @Override
+            public void onDetectionFailed(String error) {
+                Log.w(TAG, "User environment detection failed: " + error);
+                // 检测失败时使用默认设置
+                UserEnvironmentDetector.EnvironmentInfo defaultInfo = 
+                    UserEnvironmentDetector.getInstance(EhApplication.this).getEnvironmentInfo();
+                applyEnvironmentSettings(defaultInfo);
+            }
+            
+            @Override
+            public void onDetectionProgress(String message) {
+                Log.d(TAG, "Environment detection progress: " + message);
+            }
+        });
+    }
+    
+    /**
+     * 根据环境信息应用设置
+     */
+    private void applyEnvironmentSettings(UserEnvironmentDetector.EnvironmentInfo environmentInfo) {
+        // 这里可以根据环境信息调整全局设置
+        // 比如设置默认搜索引擎、首页等
+        Log.d(TAG, "Applied environment settings for region: " + environmentInfo.regionType + 
+              ", network: " + environmentInfo.networkEnvironment);
     }
 
     private void clearTempDir() {

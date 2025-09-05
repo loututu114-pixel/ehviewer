@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- 工具栏 -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+
+    <!-- 路径信息栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@android:color/white"
+        android:elevation="2dp"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/current_path_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="当前路径"
+            android:textSize="14sp"
+            android:textColor="@android:color/black"
+            android:fontFamily="monospace"
+            android:ellipsize="start"
+            android:singleLine="true"
+            tools:text="/storage/emulated/0/EhViewer" />
+
+        <TextView
+            android:id="@+id/storage_info_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="存储信息"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            tools:text="存储空间: 25.6 GB 已用 / 64.0 GB 总计 (38.4 GB 可用)" />
+
+    </LinearLayout>
+
+    <!-- 文件列表 -->
+    <ListView
+        android:id="@+id/file_list_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="1dp"
+        android:scrollbars="vertical"
+        android:fastScrollEnabled="true" />
+
+</LinearLayout>

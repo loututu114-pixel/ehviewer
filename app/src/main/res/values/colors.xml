@@ -301,6 +301,13 @@
     <color name="clear_button_normal">@color/modern_on_surface_variant</color>
     <color name="clear_button_pressed">@color/modern_primary</color>
 
+    <!-- 智能建议图标颜色 -->
+    <color name="icon_history">#1976D2</color>        <!-- Blue 700 -->
+    <color name="icon_bookmark">#F57F17</color>       <!-- Amber 800 -->
+    <color name="icon_search">#388E3C</color>         <!-- Green 700 -->
+    <color name="icon_domain">#7B1FA2</color>         <!-- Purple 700 -->
+    <color name="icon_trending">#E64A19</color>       <!-- Deep Orange 700 -->
+
     <!-- 缺失的颜色资源 -->
     <color name="primary_color">@color/modern_primary</color>
     <color name="success_color">#4CAF50</color>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 智能菜单项ID定义 -->
+    
+    <!-- 浏览器功能组 -->
+    <item name="menu_browser_home" type="id"/>
+    <item name="menu_new_tab" type="id"/>
+    <item name="menu_bookmarks" type="id"/>
+    <item name="menu_history" type="id"/>
+    <item name="menu_downloads" type="id"/>
+    
+    <!-- 系统功能组 -->
+    <item name="menu_system_search" type="id"/>
+    <item name="menu_file_manager" type="id"/>
+    <item name="menu_app_manager" type="id"/>
+    <item name="menu_system_settings" type="id"/>
+    
+    <!-- EhViewer特色功能组 -->
+    <item name="menu_set_default" type="id"/>
+    <item name="menu_private_mode" type="id"/>
+    <item name="menu_quick_actions" type="id"/>
+    
+    <!-- 智能小贴士ID -->
+    <item name="smart_tip_container" type="id"/>
+    <item name="smart_tip_icon" type="id"/>
+    <item name="smart_tip_title" type="id"/>
+    <item name="smart_tip_content" type="id"/>
+    <item name="smart_tip_action" type="id"/>
+    <item name="smart_tip_dismiss" type="id"/>
+</resources>

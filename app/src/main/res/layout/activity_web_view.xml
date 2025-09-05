@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/web_view_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="?android:attr/colorBackground">
+    android:background="?android:attr/colorBackground"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <!-- 顶部地址栏区域 -->
     <LinearLayout
+        android:id="@+id/top_bar"
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:background="?android:attr/colorBackground"
@@ -14,27 +17,18 @@
         android:gravity="center_vertical"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:elevation="2dp">
+        android:elevation="2dp"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
-        <!-- 地址栏 -->
-        <EditText
-            android:id="@+id/address_bar"
+        <!-- Chrome风格智能地址栏 -->
+        <com.hippo.ehviewer.ui.browser.SmartAddressBarWidget
+            android:id="@+id/smart_address_bar"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/edit_text_background"
-            android:hint="输入网址或搜索内容"
-            android:imeOptions="actionGo"
-            android:inputType="textUri"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:singleLine="true"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textColorHint="?android:attr/textColorSecondary"
-            android:textSize="14sp"
-            android:drawablePadding="8dp" />
+            android:layout_marginEnd="8dp" />
 
         <!-- 搜索/访问按钮 -->
         <ImageButton
@@ -52,23 +46,60 @@
 
     <!-- 分割线 -->
     <View
+        android:id="@+id/divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
+        android:layout_below="@id/top_bar"
         android:background="?android:attr/listDivider" />
 
-    <!-- 主内容区域 -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipe_refresh_layout"
+    <!-- Smart Tips 容器 -->
+    <ScrollView
+        android:id="@+id/smart_tips_container"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="wrap_content"
+        android:layout_below="@id/divider"
+        android:background="?android:attr/colorBackground"
+        android:elevation="4dp"
+        android:visibility="gone"
+        android:maxHeight="200dp">
 
-        <WebView
-            android:id="@+id/web_view"
+        <LinearLayout
+            android:id="@+id/smart_tips_layout"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp" />
 
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </ScrollView>
+
+    <!-- 主内容区域 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/smart_tips_container"
+        android:layout_above="@id/bottom_bar">
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <WebView
+                android:id="@+id/web_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        <!-- Loading State View -->
+        <include
+            android:id="@+id/loading_state_view"
+            layout="@layout/loading_state_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="visible" />
+
+    </FrameLayout>
 
     <!-- 进度条 -->
     <ProgressBar
@@ -76,13 +107,16 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
+        android:layout_below="@id/divider"
         android:progressDrawable="@drawable/progress_horizontal"
         android:visibility="gone" />
 
     <!-- 底部导航栏 -->
     <LinearLayout
+        android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="56dp"
+        android:layout_alignParentBottom="true"
         android:background="?android:attr/colorBackground"
         android:orientation="horizontal"
         android:gravity="center_vertical"
@@ -157,4 +191,4 @@
 
     </LinearLayout>
 
-</LinearLayout>
+</RelativeLayout>

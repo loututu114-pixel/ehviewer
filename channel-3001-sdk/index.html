@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>渠道3001 - 统计集成</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: none;
+        }
+        .success {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #1565c0;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .config-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 渠道3001统计集成</h1>
+
+        <div id="loading" class="status info">
+            🔄 SDK正在初始化...
+        </div>
+
+        <div id="success" class="status success">
+            ✅ SDK已成功加载并初始化！
+        </div>
+
+        <div class="config-info">
+            <h3>⚙️ 当前配置</h3>
+            <p><strong>渠道号：</strong><span id="channel-code">3001</span></p>
+            <p><strong>软件ID：</strong><span id="software-id">com.yourcompany.app</span></p>
+            <p><strong>SDK版本：</strong><span id="sdk-version">1.0.0</span></p>
+            <p><strong>状态：</strong><span id="status">初始化中...</span></p>
+        </div>
+
+        <button onclick="testActivate()">🚀 激活统计（产生收益）</button>
+        <button onclick="testInstall()">📥 安装统计</button>
+        <button onclick="testDownload()">⬇️ 下载统计</button>
+        <button onclick="showConfig()">ℹ️ 显示配置</button>
+
+        <div id="result" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- 引入渠道3001专用SDK -->
+    <script src="./simple-sdk.js"></script>
+
+    <script>
+        // 页面加载完成后的初始化
+        window.addEventListener('load', async function() {
+            console.log('渠道3001 SDK集成页面已加载');
+
+            try {
+                // 等待SDK初始化
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 显示配置信息
+                const config = SimplePromotionTracker.getConfig();
+                document.getElementById('channel-code').textContent = config.channel;
+                document.getElementById('software-id').textContent = config.softwareId;
+                document.getElementById('sdk-version').textContent = config.version;
+                document.getElementById('status').textContent = '已就绪';
+
+                // 显示成功状态
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+
+                console.log('渠道3001 SDK初始化完成:', config);
+
+            } catch (error) {
+                console.error('SDK初始化失败:', error);
+                document.getElementById('status').textContent = '初始化失败';
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        // 测试激活统计
+        async function testActivate() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '统计中...';
+            button.style.background = '#ff9800';
+
+            try {
+                const result = await SimplePromotionTracker.trackActivate();
+                if (result.success) {
+                    showResult('✅ 激活统计成功！获得收益 ¥0.5', 'success');
+                } else {
+                    showResult('❌ 激活统计失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showResult('❌ 激活统计失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+                button.style.background = '#2196f3';
+            }
+        }
+
+        // 测试安装统计
+        async function testInstall() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '统计中...';
+
+            try {
+                const result = await SimplePromotionTracker.trackInstall();
+                if (result.success) {
+                    showResult('✅ 安装统计成功！', 'success');
+                } else {
+                    showResult('❌ 安装统计失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showResult('❌ 安装统计失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // 测试下载统计
+        async function testDownload() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '统计中...';
+
+            try {
+                const result = await SimplePromotionTracker.trackDownload();
+                if (result.success) {
+                    showResult('✅ 下载统计成功！', 'success');
+                } else {
+                    showResult('❌ 下载统计失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showResult('❌ 下载统计失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // 显示配置
+        function showConfig() {
+            const config = SimplePromotionTracker.getConfig();
+            const configText = JSON.stringify(config, null, 2);
+            showResult('<pre>' + configText + '</pre>', 'info');
+        }
+
+        // 显示结果
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = type;
+            resultDiv.style.display = 'block';
+
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // 页面离开提示
+        window.addEventListener('beforeunload', function() {
+            console.log('渠道3001集成页面即将关闭');
+        });
+    </script>
+</body>
+</html>

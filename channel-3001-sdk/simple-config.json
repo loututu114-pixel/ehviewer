@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "channel": "3001",
+  "apiUrl": "https://qudao.eh-viewer.com/api",
+  "autoInit": true,
+  "debug": false,
+  "softwareId": "com.yourcompany.app",
+  "trackEvents": {
+    "install": true,
+    "download": true,
+    "activate": true
+  }
+}

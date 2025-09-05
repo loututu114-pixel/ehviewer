@@ -79,7 +79,7 @@ public class ChromeStyleAddressBarDemoActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         // 清理资源
-        RealtimeSuggestionManager.getInstance().destroy();
+        RealtimeSuggestionManager.getInstance(this).destroy();
         NetworkSuggestionProvider.getInstance().destroy();
     }
 }

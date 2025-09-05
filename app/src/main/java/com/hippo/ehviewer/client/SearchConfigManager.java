@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.hippo.ehviewer.R;
+import com.hippo.ehviewer.util.UserEnvironmentDetector;
 import com.hippo.util.AppHelper;
 import com.hippo.util.IoThreadPoolExecutor;
 
@@ -123,21 +124,33 @@ public class SearchConfigManager {
         // 加载本地配置
         loadLocalConfig();
 
+        // 解析当前配置
+        parseConfig();
+        
         // 检查是否需要更新配置
         if (shouldUpdateConfig()) {
             updateConfigAsync();
-        } else {
-            parseConfig();
         }
 
         mInitialized = true;
     }
 
     /**
-     * 检测国家代码
+     * 检测国家代码 - 优先使用全局环境检测结果
      */
     private void detectCountryCode() {
         try {
+            // 首先尝试从全局环境检测器获取结果
+            UserEnvironmentDetector detector = UserEnvironmentDetector.getInstance(mContext);
+            UserEnvironmentDetector.EnvironmentInfo envInfo = detector.getEnvironmentInfo();
+            
+            if (envInfo != null && envInfo.country != null && !envInfo.country.isEmpty()) {
+                mCountryCode = envInfo.country;
+                Log.d(TAG, "Using country code from global environment detector: " + mCountryCode);
+                return;
+            }
+            
+            // 后备方案：使用系统Locale
             mCountryCode = Locale.getDefault().getCountry();
             if (mCountryCode == null || mCountryCode.isEmpty()) {
                 // 尝试通过Geocoder获取国家代码
@@ -290,6 +303,177 @@ public class SearchConfigManager {
     }
 
     /**
+     * 解析配置并设置当前搜索引擎
+     */
+    private void parseConfig() {
+        if (mConfigJson == null) {
+            Log.w(TAG, "Config JSON is null, using fallback engine");
+            createFallbackEngine();
+            return;
+        }
+        
+        try {
+            // 清空现有引擎列表
+            mAvailableEngines.clear();
+            
+            JSONObject searchConfig = mConfigJson.optJSONObject("searchConfig");
+            if (searchConfig == null) {
+                Log.w(TAG, "No searchConfig found, using fallback engine");
+                createFallbackEngine();
+                return;
+            }
+            
+            // 解析所有可用引擎
+            JSONObject engines = searchConfig.optJSONObject("engines");
+            if (engines != null) {
+                parseEngines(engines);
+            }
+            
+            // 根据用户环境选择默认引擎
+            selectDefaultEngine(searchConfig);
+            
+            Log.d(TAG, "Config parsed successfully. Available engines: " + mAvailableEngines.size() + 
+                  ", Current engine: " + (mCurrentEngine != null ? mCurrentEngine.name : "null"));
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to parse config", e);
+            createFallbackEngine();
+        }
+    }
+    
+    /**
+     * 解析搜索引擎列表
+     */
+    private void parseEngines(JSONObject engines) {
+        String[] engineIds = {"google", "baidu", "bing", "duckduckgo", "sogou"};
+        
+        for (String engineId : engineIds) {
+            JSONObject engineConfig = engines.optJSONObject(engineId);
+            if (engineConfig != null) {
+                try {
+                    String name = engineConfig.optString("name", engineId);
+                    String url = engineConfig.optString("url", "");
+                    String icon = engineConfig.optString("icon", "");
+                    String suggestUrl = engineConfig.optString("suggest", null);
+                    
+                    if (!url.isEmpty()) {
+                        SearchEngine engine = new SearchEngine(engineId, name, url, icon, suggestUrl);
+                        mAvailableEngines.add(engine);
+                        Log.d(TAG, "Added search engine: " + name);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to parse engine: " + engineId, e);
+                }
+            }
+        }
+    }
+    
+    /**
+     * 根据用户环境选择默认搜索引擎
+     */
+    private void selectDefaultEngine(JSONObject searchConfig) {
+        try {
+            // 优先使用全局环境检测结果
+            UserEnvironmentDetector detector = UserEnvironmentDetector.getInstance(mContext);
+            UserEnvironmentDetector.EnvironmentInfo envInfo = detector.getEnvironmentInfo();
+            
+            String preferredEngineId = null;
+            
+            // 根据环境信息选择搜索引擎
+            if (envInfo != null && envInfo.regionType != null) {
+                switch (envInfo.regionType) {
+                    case CHINA:
+                    case CHINA_HK:
+                    case CHINA_TW:
+                    case CHINA_MO:
+                        preferredEngineId = "baidu";
+                        Log.d(TAG, "Chinese region detected, preferring Baidu");
+                        break;
+                    case INTERNATIONAL:
+                        preferredEngineId = "google";
+                        Log.d(TAG, "International region detected, preferring Google");
+                        break;
+                    default:
+                        break;
+                }
+            }
+            
+            // 如果环境检测没有结果，使用配置文件中的地区设置
+            if (preferredEngineId == null) {
+                if (isChineseRegion()) {
+                    JSONObject chinaConfig = searchConfig.optJSONObject("china");
+                    if (chinaConfig != null) {
+                        preferredEngineId = chinaConfig.optString("engine", "baidu");
+                        Log.d(TAG, "Using China config engine: " + preferredEngineId);
+                    } else {
+                        preferredEngineId = "baidu";
+                    }
+                } else {
+                    JSONObject defaultConfig = searchConfig.optJSONObject("default");
+                    if (defaultConfig != null) {
+                        preferredEngineId = defaultConfig.optString("engine", "google");
+                        Log.d(TAG, "Using default config engine: " + preferredEngineId);
+                    } else {
+                        preferredEngineId = "google";
+                    }
+                }
+            }
+            
+            // 设置当前引擎
+            if (preferredEngineId != null) {
+                switchEngine(preferredEngineId);
+                
+                if (mCurrentEngine == null) {
+                    Log.w(TAG, "Preferred engine not found, using first available");
+                    if (!mAvailableEngines.isEmpty()) {
+                        mCurrentEngine = mAvailableEngines.get(0);
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to select default engine", e);
+            if (!mAvailableEngines.isEmpty()) {
+                mCurrentEngine = mAvailableEngines.get(0);
+            }
+        }
+    }
+    
+    /**
+     * 检查是否为中国地区
+     */
+    private boolean isChineseRegion() {
+        if (mCountryCode != null) {
+            return "CN".equals(mCountryCode) || "HK".equals(mCountryCode) || 
+                   "TW".equals(mCountryCode) || "MO".equals(mCountryCode);
+        }
+        return false;
+    }
+    
+    /**
+     * 创建后备搜索引擎
+     */
+    private void createFallbackEngine() {
+        mAvailableEngines.clear();
+        
+        // 根据用户地区创建后备引擎
+        if (isChineseRegion()) {
+            mCurrentEngine = new SearchEngine("baidu", "百度", 
+                "https://www.baidu.com/s?wd=%s", 
+                "https://www.baidu.com/favicon.ico", 
+                "https://www.baidu.com/su?wd=%s");
+        } else {
+            mCurrentEngine = new SearchEngine("google", "Google", 
+                "https://www.google.com/search?q=%s", 
+                "https://www.google.com/favicon.ico", 
+                "https://www.google.com/complete/search?client=firefox&q=%s");
+        }
+        
+        mAvailableEngines.add(mCurrentEngine);
+        Log.d(TAG, "Created fallback engine: " + mCurrentEngine.name);
+    }
+
+    /**
      * 异步更新配置
      */
     private void updateConfigAsync() {
@@ -432,153 +616,6 @@ public class SearchConfigManager {
         }
     }
 
-    /**
-     * 解析配置
-     */
-    private void parseConfig() {
-        if (mConfigJson == null) return;
-
-        try {
-            // 解析搜索引擎
-            parseEngines();
-
-            // 选择当前搜索引擎
-            selectCurrentEngine();
-
-            // 解析URL模式
-            parseUrlPatterns();
-
-            Log.d(TAG, "Config parsed successfully, current engine: " + (mCurrentEngine != null ? mCurrentEngine.name : "null"));
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to parse config", e);
-        }
-    }
-
-    /**
-     * 解析搜索引擎配置
-     */
-    private void parseEngines() throws JSONException {
-        mAvailableEngines.clear();
-
-        JSONObject searchConfig = mConfigJson.optJSONObject("searchConfig");
-        if (searchConfig == null) return;
-
-        JSONObject engines = searchConfig.optJSONObject("engines");
-        if (engines == null) return;
-
-        JSONArray names = engines.names();
-        if (names == null) return;
-
-        for (int i = 0; i < names.length(); i++) {
-            String engineId = names.getString(i);
-            JSONObject engineConfig = engines.getJSONObject(engineId);
-
-            String name = engineConfig.optString("name", engineId);
-            String url = engineConfig.optString("url", "");
-            String icon = engineConfig.optString("icon", "");
-            String suggestUrl = engineConfig.optString("suggest", null);
-
-            if (!url.isEmpty()) {
-                SearchEngine engine = new SearchEngine(engineId, name, url, icon, suggestUrl);
-                mAvailableEngines.add(engine);
-            }
-        }
-
-        Log.d(TAG, "Parsed " + mAvailableEngines.size() + " search engines");
-    }
-
-    /**
-     * 选择当前搜索引擎
-     */
-    private void selectCurrentEngine() {
-        if (mConfigJson == null) return;
-
-        try {
-            JSONObject searchConfig = mConfigJson.optJSONObject("searchConfig");
-            if (searchConfig == null) return;
-
-            String engineId = null;
-
-            // 优先级：渠道配置 > 国家配置 > 默认配置
-            JSONObject channelMapping = searchConfig.optJSONObject("channelMapping");
-            if (channelMapping != null && mChannelCode != null) {
-                JSONObject channelConfig = channelMapping.optJSONObject(mChannelCode);
-                if (channelConfig != null) {
-                    engineId = channelConfig.optString("engine", null);
-                    Log.d(TAG, "Selected engine by channel: " + engineId);
-                }
-            }
-
-            if (engineId == null) {
-                JSONObject countryMapping = searchConfig.optJSONObject("countryMapping");
-                if (countryMapping != null && mCountryCode != null) {
-                    String countryEngine = countryMapping.optString(mCountryCode, null);
-                    if (countryEngine != null) {
-                        JSONObject countryConfig = searchConfig.optJSONObject(countryEngine);
-                        if (countryConfig != null) {
-                            engineId = countryConfig.optString("engine", null);
-                            Log.d(TAG, "Selected engine by country: " + engineId);
-                        }
-                    }
-                }
-            }
-
-            if (engineId == null) {
-                JSONObject defaultConfig = searchConfig.optJSONObject("default");
-                if (defaultConfig != null) {
-                    engineId = defaultConfig.optString("engine", null);
-                    Log.d(TAG, "Selected default engine: " + engineId);
-                }
-            }
-
-            // 查找对应的搜索引擎
-            if (engineId != null) {
-                for (SearchEngine engine : mAvailableEngines) {
-                    if (engineId.equals(engine.id)) {
-                        mCurrentEngine = engine;
-                        break;
-                    }
-                }
-            }
-
-            // 如果没找到，使用第一个可用的搜索引擎
-            if (mCurrentEngine == null && !mAvailableEngines.isEmpty()) {
-                mCurrentEngine = mAvailableEngines.get(0);
-                Log.d(TAG, "Using first available engine: " + mCurrentEngine.name);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to select current engine", e);
-        }
-    }
-
-    /**
-     * 解析URL模式
-     */
-    private void parseUrlPatterns() throws JSONException {
-        mUrlPatterns.clear();
-
-        JSONObject urlPatterns = mConfigJson.optJSONObject("urlPatterns");
-        if (urlPatterns == null) return;
-
-        String urlRegex = urlPatterns.optString("urlRegex", "");
-        String ipRegex = urlPatterns.optString("ipRegex", "");
-        String domainRegex = urlPatterns.optString("domainRegex", "");
-        String localhostRegex = urlPatterns.optString("localhostRegex", "");
-
-        if (!urlRegex.isEmpty()) {
-            mUrlPatterns.put("url", Pattern.compile(urlRegex, Pattern.CASE_INSENSITIVE));
-        }
-        if (!ipRegex.isEmpty()) {
-            mUrlPatterns.put("ip", Pattern.compile(ipRegex, Pattern.CASE_INSENSITIVE));
-        }
-        if (!domainRegex.isEmpty()) {
-            mUrlPatterns.put("domain", Pattern.compile(domainRegex, Pattern.CASE_INSENSITIVE));
-        }
-        if (!localhostRegex.isEmpty()) {
-            mUrlPatterns.put("localhost", Pattern.compile(localhostRegex, Pattern.CASE_INSENSITIVE));
-        }
-    }
 
     /**
      * 判断输入是否为URL

@@ -662,6 +662,120 @@ public class UserBehaviorAnalyzer {
     }
     
     /**
+     * 记录搜索行为
+     */
+    public void recordSearch(String query, int resultCount, boolean successful, String source) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("query", query);
+        params.put("result_count", resultCount);
+        params.put("successful", successful);
+        params.put("source", source);
+        recordFeatureUsage("search", params);
+    }
+
+    /**
+     * 记录域名访问
+     */
+    public void recordDomainVisit(String domain, long visitTime, double engagementScore) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("domain", domain);
+        params.put("visit_time", visitTime);
+        params.put("engagement_score", engagementScore);
+        recordFeatureUsage("domain_visit", params);
+    }
+
+    /**
+     * 获取个性化建议（两个参数版本）
+     */
+    public List<String> getPersonalizedSuggestions(String query, int maxResults) {
+        List<String> suggestions = new ArrayList<>();
+        
+        try {
+            // 基于用户行为历史生成建议
+            Map<Integer, Double> hourlyProb = calculateHourlyUsageProbability();
+            Map<Integer, Double> weeklyProb = calculateWeeklyUsageProbability();
+            
+            // 获取最活跃的功能作为建议基础
+            List<String> topFeatures = featureUsage.entrySet().stream()
+                .sorted((e1, e2) -> Long.compare(e2.getValue().usageCount, e1.getValue().usageCount))
+                .limit(maxResults)
+                .map(Map.Entry::getKey)
+                .collect(java.util.stream.Collectors.toList());
+            
+            // 如果查询不为空，优先匹配相关功能
+            if (query != null && !query.trim().isEmpty()) {
+                String queryLower = query.toLowerCase();
+                for (String feature : topFeatures) {
+                    if (feature.toLowerCase().contains(queryLower) || queryLower.contains(feature.toLowerCase())) {
+                        suggestions.add(feature + "相关建议");
+                        if (suggestions.size() >= maxResults) break;
+                    }
+                }
+            }
+            
+            // 补充通用建议
+            while (suggestions.size() < maxResults && suggestions.size() < topFeatures.size()) {
+                String feature = topFeatures.get(suggestions.size());
+                if (!suggestions.contains(feature + "相关建议")) {
+                    suggestions.add("基于" + feature + "的建议");
+                }
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error generating personalized suggestions", e);
+            // 返回默认建议
+            suggestions.add("浏览历史");
+            suggestions.add("热门内容");
+            suggestions.add("个性化推荐");
+        }
+        
+        return suggestions;
+    }
+
+    /**
+     * 获取分析报告
+     */
+    public String getAnalyticsReport() {
+        StringBuilder report = new StringBuilder();
+        UserBehaviorSummary summary = getBehaviorSummary();
+        
+        report.append("=== 用户行为分析报告 ===\n");
+        report.append("总会话数: ").append(summary.totalSessions).append("\n");
+        report.append("平均会话时长: ").append(summary.averageSessionDuration).append("ms\n");
+        report.append("最活跃时间: ").append(summary.mostActiveHour).append("时\n");
+        report.append("最活跃星期: ").append(summary.mostActiveDay).append("\n");
+        report.append("使用功能数: ").append(summary.uniqueFeatures).append("\n");
+        report.append("使用模式: ").append(summary.usagePattern).append("\n");
+        report.append("参与度: ").append(summary.engagementLevel).append("\n");
+        
+        // 添加功能使用排行
+        report.append("\n=== 功能使用排行 ===\n");
+        featureUsage.entrySet().stream()
+            .sorted((e1, e2) -> Long.compare(e2.getValue().usageCount, e1.getValue().usageCount))
+            .limit(10)
+            .forEach(entry -> {
+                report.append(entry.getKey()).append(": ")
+                      .append(entry.getValue().usageCount).append("次\n");
+            });
+        
+        return report.toString();
+    }
+
+    /**
+     * 清理过期数据
+     */
+    public void cleanupExpiredData() {
+        executor.execute(() -> {
+            try {
+                cleanupOldData();
+                Log.d(TAG, "Expired data cleanup completed");
+            } catch (Exception e) {
+                Log.e(TAG, "Error cleaning up expired data", e);
+            }
+        });
+    }
+
+    /**
      * 获取使用统计摘要
      */
     public UserBehaviorSummary getBehaviorSummary() {
