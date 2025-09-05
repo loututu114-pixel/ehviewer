@@ -153,23 +153,20 @@ public class SearchSuggestionsManager {
     private List<SuggestionItem> generateSuggestions(String query) {
         List<SuggestionItem> suggestions = new ArrayList<>();
 
-        // 添加历史记录建议
+        // 只有在用户输入内容时才显示建议
         if (query.isEmpty()) {
-            suggestions.addAll(getHistorySuggestions());
-        } else {
-            suggestions.addAll(getFilteredHistorySuggestions(query));
+            return suggestions;
         }
+
+        // 添加历史记录建议
+        suggestions.addAll(getFilteredHistorySuggestions(query));
 
         // 添加书签建议
-        if (!query.isEmpty()) {
-            suggestions.addAll(getBookmarkSuggestions(query));
-        }
+        suggestions.addAll(getBookmarkSuggestions(query));
 
         // 添加搜索建议
-        if (!query.isEmpty()) {
-            suggestions.addAll(getSearchSuggestions(query));
-            suggestions.addAll(getNewTabSuggestions(query));
-        }
+        suggestions.addAll(getSearchSuggestions(query));
+        suggestions.addAll(getNewTabSuggestions(query));
 
         // 添加快捷操作
         suggestions.addAll(getQuickActionSuggestions(query));
@@ -182,31 +179,6 @@ public class SearchSuggestionsManager {
         return suggestions;
     }
 
-    /**
-     * 获取历史记录建议
-     */
-    private List<SuggestionItem> getHistorySuggestions() {
-        List<SuggestionItem> suggestions = new ArrayList<>();
-
-        try {
-            // 获取最近的历史记录
-            List<com.hippo.ehviewer.client.data.HistoryInfo> historyItems = mHistoryManager.getRecentHistory(5);
-
-            for (com.hippo.ehviewer.client.data.HistoryInfo item : historyItems) {
-                suggestions.add(new SuggestionItem(
-                    SuggestionType.HISTORY,
-                    item.title != null ? item.title : item.url,
-                    item.url,
-                    item.url,
-                    R.drawable.ic_history
-                ));
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to get history suggestions", e);
-        }
-
-        return suggestions;
-    }
 
     /**
      * 获取筛选的历史记录建议

@@ -103,12 +103,12 @@ public class VideoPlayerEnhancer {
         "" +
         "// XVideos特殊处理 - 改进版" +
         "function enhanceXVideos() {" +
-        "    if (window.location.hostname.includes('xvideos.com')) {" +
+        "    if (window.location.hostname.includes('xvideos.com') || window.location.hostname.includes('xvideos.es')) {" +
         "        console.log('Applying XVideos enhancements');" +
         "        " +
         "        // 延迟执行，确保页面完全加载" +
         "        setTimeout(function() {" +
-        "            // 查找所有可能的播放器容器" +
+        "            // 查找所有可能的播放器容器和播放按钮" +
         "            var playerSelectors = [" +
         "                '#player'," +
         "                '.video-player'," +
@@ -117,14 +117,44 @@ public class VideoPlayerEnhancer {
         "                '#main-video-player'," +
         "                '.video-container'," +
         "                '#videoWrapper'," +
-        "                '.video-wrapper'" +
+        "                '.video-wrapper'," +
+        "                '#video-player-bg'," +
+        "                '.video-bg-pic'," +
+        "                '#video-player-2'," +
+        "                '.video-player-2'" +
+        "            ];" +
+        "            " +
+        "            var playButtonSelectors = [" +
+        "                '.play-button'," +
+        "                '#play-button'," +
+        "                '.btn-play'," +
+        "                '#btn-play'," +
+        "                '.play-icon'," +
+        "                '.play-btn'," +
+        "                '[data-play-button]'," +
+        "                '.video-play-button'," +
+        "                '#video-play-button'," +
+        "                '.big-play-button'," +
+        "                '.play-overlay'" +
         "            ];" +
         "            " +
         "            var playerContainer = null;" +
+        "            var playButton = null;" +
+        "            " +
+        "            // 查找播放器容器" +
         "            for (var i = 0; i < playerSelectors.length; i++) {" +
         "                playerContainer = document.querySelector(playerSelectors[i]);" +
         "                if (playerContainer) {" +
         "                    console.log('Found XVideos player container:', playerSelectors[i]);" +
+        "                    break;" +
+        "                }" +
+        "            }" +
+        "            " +
+        "            // 查找播放按钮" +
+        "            for (var j = 0; j < playButtonSelectors.length; j++) {" +
+        "                playButton = document.querySelector(playButtonSelectors[j]);" +
+        "                if (playButton) {" +
+        "                    console.log('Found XVideos play button:', playButtonSelectors[j]);" +
         "                    break;" +
         "                }" +
         "            }" +
@@ -140,6 +170,60 @@ public class VideoPlayerEnhancer {
         "            " +
         "            if (playerContainer) {" +
         "                playerContainer.style.position = 'relative';" +
+        "                " +
+        "                // 增强播放按钮的点击功能" +
+        "                if (playButton) {" +
+        "                    console.log('Enhancing XVideos play button');" +
+        "                    " +
+        "                    // 移除可能存在的pointer-events限制" +
+        "                    playButton.style.pointerEvents = 'auto';" +
+        "                    playButton.style.cursor = 'pointer';" +
+        "                    playButton.style.zIndex = '9999';" +
+        "                    " +
+        "                    // 确保按钮可见" +
+        "                    playButton.style.display = 'block';" +
+        "                    playButton.style.visibility = 'visible';" +
+        "                    playButton.style.opacity = '1';" +
+        "                    " +
+        "                    // 添加额外的点击事件监听器" +
+        "                    var originalOnClick = playButton.onclick;" +
+        "                    playButton.onclick = function(e) {" +
+        "                        console.log('XVideos play button clicked (enhanced)');" +
+        "                        e.preventDefault();" +
+        "                        e.stopPropagation();" +
+        "                        " +
+        "                        // 尝试多种播放方式" +
+        "                        try {" +
+        "                            var video = document.querySelector('video');" +
+        "                            if (video) {" +
+        "                                if (video.paused) {" +
+        "                                    video.play();" +
+        "                                    console.log('Video started via enhanced play button');" +
+        "                                } else {" +
+        "                                    video.pause();" +
+        "                                    console.log('Video paused via enhanced play button');" +
+        "                                }" +
+        "                            }" +
+        "                        } catch (err) {" +
+        "                            console.error('Error in enhanced play button:', err);" +
+        "                        }" +
+        "                        " +
+        "                        // 调用原始点击处理" +
+        "                        if (originalOnClick) {" +
+        "                            originalOnClick.call(this, e);" +
+        "                        }" +
+        "                        " +
+        "                        return false;" +
+        "                    };" +
+        "                    " +
+        "                    // 移除可能存在的CSS阻止点击" +
+        "                    var computedStyle = window.getComputedStyle(playButton);" +
+        "                    if (computedStyle.pointerEvents === 'none') {" +
+        "                        playButton.style.setProperty('pointer-events', 'auto', 'important');" +
+        "                    }" +
+        "                    " +
+        "                    console.log('XVideos play button enhanced successfully');" +
+        "                }" +
         "                " +
         "                // 检查是否已经有全屏按钮" +
         "                var existingBtn = playerContainer.querySelector('.ehviewer-fullscreen-btn');" +
@@ -702,7 +786,50 @@ public class VideoPlayerEnhancer {
             "if (window.EhVideoEnhanced) return;" +
             "window.EhVideoEnhanced = true;" +
             
-            // 等待DOM准备就绪，增加重试机制
+            // 增强的等待机制，专门处理xvideos等成人网站
+            "function waitForPageReady(callback, retries) {" +
+            "    retries = retries || 0;" +
+            "    if (retries > 15) {" + // 最多重试15次，适应慢加载的成人网站
+            "        console.log('EhViewer: Page ready timeout, proceeding anyway');" +
+            "        callback();" +
+            "        return;" +
+            "    }" +
+            "    " +
+            "    // 检查多种页面就绪条件" +
+            "    var isReady = false;" +
+            "    " +
+            "    // 检查DOM基本元素" +
+            "    if (document.body && document.body.children.length > 0) {" +
+            "        isReady = true;" +
+            "    }" +
+            "    " +
+            "    // 检查视频相关元素（针对视频网站）" +
+            "    if (window.location.hostname.includes('xvideos') || " +
+            "        window.location.hostname.includes('pornhub') || " +
+            "        window.location.hostname.includes('xhamster')) {" +
+            "        var videos = document.querySelectorAll('video');" +
+            "        var playButtons = document.querySelectorAll('.play-button, #play-button, .btn-play');" +
+            "        if (videos.length > 0 || playButtons.length > 0) {" +
+            "            isReady = true;" +
+            "            console.log('EhViewer: Video site elements detected');" +
+            "        }" +
+            "    }" +
+            "    " +
+            "    // 检查页面加载状态" +
+            "    if (document.readyState === 'complete' || document.readyState === 'interactive') {" +
+            "        isReady = true;" +
+            "    }" +
+            "    " +
+            "    if (isReady) {" +
+            "        console.log('EhViewer: Page ready, proceeding with enhancement');" +
+            "        callback();" +
+            "    } else {" +
+            "        console.log('EhViewer: Waiting for page ready, attempt ' + (retries + 1));" +
+            "        setTimeout(function() { waitForPageReady(callback, retries + 1); }, 800);" +
+            "    }" +
+            "}" +
+            "" +
+            // 等待视频元素
             "function waitForVideos(callback, retries) {" +
             "    retries = retries || 0;" +
             "    if (retries > 10) return;" + // 最多重试10次
@@ -787,7 +914,30 @@ public class VideoPlayerEnhancer {
             "    }" +
             "});" +
             
-            "console.log('EhViewer: Video enhancement script loaded');" +
+            "// 使用增强的等待机制" +
+            "waitForPageReady(function() {" +
+            "    // 页面准备就绪后，初始化视频增强" +
+            "    enhanceXVideos();" +
+            "    enhancePornhub();" +
+            "    enhanceYouTube();" +
+            "    enhanceWebPlayers();" +
+            "    " +
+            "    // 增强其他色情网站" +
+            "    if (window.location.hostname.includes('xhamster.com')) {" +
+            "        enhanceXHamster();" +
+            "    }" +
+            "    if (window.location.hostname.includes('xnxx.com')) {" +
+            "        enhanceXNXX();" +
+            "    }" +
+            "    if (window.location.hostname.includes('redtube.com')) {" +
+            "        enhanceRedTube();" +
+            "    }" +
+            "    if (window.location.hostname.includes('xvideos.es')) {" +
+            "        enhanceXVideosES();" +
+            "    }" +
+            "});" +
+            "" +
+            "console.log('EhViewer: Enhanced video enhancement script loaded');" +
             "})();";
         
         try {

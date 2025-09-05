@@ -159,61 +159,28 @@ public class EmbeddedVideoPlayer extends FrameLayout {
      */
     private void injectVideoEnhancementScript() {
         if (webView == null) return;
-        
-        String script = "(function() {" +
-            "if (window.EhVideoEnhanced) return;" +
-            "window.EhVideoEnhanced = true;" +
-            
-            // 等待DOM准备就绪
-            "function waitForVideos(callback) {" +
-            "    var checkVideos = function() {" +
-            "        var videos = document.querySelectorAll('video');" +
-            "        if (videos.length > 0) {" +
-            "            callback(videos);" +
-            "        } else {" +
-            "            setTimeout(checkVideos, 500);" +
-            "        }" +
+
+        // 加载外部增强脚本
+        String script = "try {" +
+            "    var script = document.createElement('script');" +
+            "    script.src = 'file:///android_asset/enhanced_video_player.js';" +
+            "    script.onload = function() {" +
+            "        console.log('EhViewer: Enhanced video player script loaded successfully');" +
             "    };" +
-            "    checkVideos();" +
-            "}" +
-            
-            // 增强视频元素
-            "waitForVideos(function(videos) {" +
-            "    for (var i = 0; i < videos.length; i++) {" +
-            "        var video = videos[i];" +
-            "        " +
-            "        // 添加点击事件处理" +
-            "        video.addEventListener('click', function(e) {" +
-            "            if (e.detail === 2) {" + // 双击
-            "                Android.requestFullscreen();" +
-            "            }" +
-            "        });" +
-            "        " +
-            "        // 添加全屏请求处理" +
-            "        video.addEventListener('webkitfullscreenchange', function() {" +
-            "            if (document.webkitFullscreenElement) {" +
-            "                Android.onEnterFullscreen();" +
-            "            } else {" +
-            "                Android.onExitFullscreen();" +
-            "            }" +
-            "        });" +
-            "        " +
-            "        // 设置视频属性" +
-            "        video.setAttribute('controls', 'true');" +
-            "        video.setAttribute('playsinline', 'true');" +
-            "        video.style.width = '100%';" +
-            "        video.style.height = 'auto';" +
-            "    }" +
-            "});" +
-            
-            "})();";
-        
+            "    script.onerror = function() {" +
+            "        console.error('EhViewer: Failed to load enhanced video player script');" +
+            "    };" +
+            "    document.head.appendChild(script);" +
+            "} catch (e) {" +
+            "    console.error('EhViewer: Error loading enhanced video player script:', e);" +
+            "}";
+
         try {
             webView.evaluateJavascript(script, result -> {
-                Log.d(TAG, "Video enhancement script injected: " + result);
+                Log.d(TAG, "Enhanced video player script injected: " + result);
             });
         } catch (Exception e) {
-            Log.e(TAG, "Failed to inject video enhancement script", e);
+            Log.e(TAG, "Failed to inject enhanced video player script", e);
         }
     }
 

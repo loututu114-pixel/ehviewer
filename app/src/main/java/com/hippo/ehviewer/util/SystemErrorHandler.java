@@ -243,17 +243,22 @@ public class SystemErrorHandler {
     private class PerformanceServiceErrorHandler implements ErrorHandler {
         @Override
         public void handleError(String logMessage, ErrorStats stats) {
-            Log.w(TAG, "Performance service error detected: " + logMessage);
+            // Performance service errors are system-level and usually benign
+            if (stats.getCount() == 1) {
+                Log.d(TAG, "Performance service error detected (system-level, usually benign): " + logMessage);
+            } else if (stats.getCount() > 10) {
+                Log.w(TAG, "Frequent performance service errors detected: " + logMessage);
+            }
 
-            // Only handle if error occurs frequently
-            if (stats.getCount() > 5) {
-                Log.i(TAG, "Performance service errors are frequent, applying mitigation");
+            // Only handle if error occurs very frequently
+            if (stats.getCount() > 20) {
+                Log.i(TAG, "Performance service errors are very frequent, applying mitigation");
 
                 // Reduce system monitoring frequency
                 // This is a placeholder - actual implementation would depend on the specific service
 
                 // Clear error stats after handling
-                if (stats.getTimeSinceFirstOccurrence() > 300000) { // 5 minutes
+                if (stats.getTimeSinceFirstOccurrence() > 600000) { // 10 minutes
                     stats.count.set(0);
                 }
             }
@@ -318,15 +323,30 @@ public class SystemErrorHandler {
     private class DiskIOErrorHandler implements ErrorHandler {
         @Override
         public void handleError(String logMessage, ErrorStats stats) {
-            Log.w(TAG, "Disk I/O error detected: " + logMessage);
-
-            // Check disk space and clean up if necessary
-            mainHandler.post(() -> {
-                MemoryManager memoryManager = MemoryManager.getInstance(context);
-                if (memoryManager.isDiskSpaceLow()) {
-                    memoryManager.clearApplicationCache();
+            // Read-only file system errors are common and expected in some scenarios
+            if (logMessage.contains("Read-only file system")) {
+                if (stats.getCount() == 1) {
+                    Log.d(TAG, "Read-only file system detected (this is normal in some system states)");
+                } else if (stats.getCount() > 5) {
+                    Log.w(TAG, "Frequent read-only file system errors detected: " + logMessage);
                 }
-            });
+            } else {
+                Log.w(TAG, "Disk I/O error detected: " + logMessage);
+            }
+
+            // Only perform cleanup for non-read-only errors or if errors are frequent
+            if (!logMessage.contains("Read-only file system") || stats.getCount() > 10) {
+                mainHandler.post(() -> {
+                    try {
+                        MemoryManager memoryManager = MemoryManager.getInstance(context);
+                        if (memoryManager.isDiskSpaceLow()) {
+                            memoryManager.clearApplicationCache();
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error during disk cleanup", e);
+                    }
+                });
+            }
         }
     }
 
@@ -509,23 +529,32 @@ public class SystemErrorHandler {
     private class CrossDeviceErrorHandler implements ErrorHandler {
         @Override
         public void handleError(String logMessage, ErrorStats stats) {
-            Log.w(TAG, "CrossDevice error detected: " + logMessage);
+            // Only log warnings for frequent CrossDevice errors, as these are often expected for regular apps
+            if (stats.getCount() > 10) {
+                Log.w(TAG, "Frequent CrossDevice errors detected (" + stats.getCount() + "): " + logMessage);
+            } else if (stats.getCount() == 1) {
+                Log.d(TAG, "CrossDevice error detected (this is normal for regular apps): " + logMessage);
+            }
 
-            // Handle CrossDevice errors immediately
-            mainHandler.post(() -> {
-                try {
-                    CrossDeviceErrorRecovery recovery = CrossDeviceErrorRecovery.getInstance(context);
-                    recovery.handleCrossDeviceError(logMessage, null);
+            // Handle CrossDevice errors immediately, but only if not too frequent
+            if (stats.getCount() <= 5) {
+                mainHandler.post(() -> {
+                    try {
+                        CrossDeviceErrorRecovery recovery = CrossDeviceErrorRecovery.getInstance(context);
+                        recovery.handleCrossDeviceError(logMessage, null);
 
-                    Log.i(TAG, "CrossDevice error recovery initiated");
+                        if (stats.getCount() == 1) {
+                            Log.i(TAG, "CrossDevice error recovery initiated");
+                        }
 
-                } catch (Exception e) {
-                    Log.w(TAG, "Error during CrossDevice error recovery", e);
-                }
-            });
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error during CrossDevice error recovery", e);
+                    }
+                });
+            }
 
             // Clear error stats after handling to prevent duplicate recovery attempts
-            if (stats.getTimeSinceFirstOccurrence() > 60000) { // 1 minute
+            if (stats.getTimeSinceFirstOccurrence() > 300000) { // 5 minutes
                 stats.count.set(0);
             }
         }

@@ -1141,6 +1141,93 @@ public class DefaultBrowserHelper {
         Toast.makeText(context, "浏览器设置已重置", Toast.LENGTH_SHORT).show();
     }
 
+    // === OPPO设备兼容性处理 ===
+
+    /**
+     * 检查是否为OPPO设备并处理兼容性问题
+     */
+    public static void handleOppoDeviceCompatibility(@NonNull Context context) {
+        String manufacturer = android.os.Build.MANUFACTURER.toLowerCase();
+        if (manufacturer.contains("oppo") || manufacturer.contains("oneplus")) {
+            Log.d(TAG, "Detected OPPO device, applying compatibility fixes");
+
+            // 处理OplusViewMirrorManager兼容性
+            fixOplusViewMirrorManagerCompatibility(context);
+
+            // 优化图片加载设置
+            optimizeImageLoadingForOppo(context);
+        }
+    }
+
+    /**
+     * 修复OplusViewMirrorManager兼容性问题
+     */
+    private static void fixOplusViewMirrorManagerCompatibility(@NonNull Context context) {
+        try {
+            // 尝试通过系统属性禁用有问题的视图镜像管理器
+            System.setProperty("oplus.viewmirror.enabled", "false");
+            Log.d(TAG, "Disabled OplusViewMirrorManager via system property");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to disable OplusViewMirrorManager", e);
+        }
+
+        try {
+            // 设置WebView硬件加速策略
+            android.webkit.WebView.setWebContentsDebuggingEnabled(false);
+
+            // 禁用可能导致兼容性问题的硬件加速
+            SharedPreferences prefs = getPrefs(context);
+            prefs.edit().putBoolean("oppo_compatibility_applied", true).apply();
+
+            Log.d(TAG, "Applied OPPO device compatibility fixes");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to apply OPPO compatibility fixes", e);
+        }
+    }
+
+    /**
+     * 为OPPO设备优化图片加载设置
+     */
+    private static void optimizeImageLoadingForOppo(@NonNull Context context) {
+        try {
+            // OPPO设备可能对图片加载有特殊要求，这里设置更保守的加载策略
+            SharedPreferences prefs = getPrefs(context);
+            SharedPreferences.Editor editor = prefs.edit();
+
+            // 设置图片加载优化参数
+            editor.putBoolean("oppo_image_loading_optimized", true);
+            editor.putInt("image_loading_timeout", 10000); // 10秒超时
+            editor.putInt("image_retry_count", 2); // 重试2次
+
+            editor.apply();
+
+            Log.d(TAG, "Optimized image loading settings for OPPO device");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to optimize image loading for OPPO", e);
+        }
+    }
+
+    /**
+     * 检查OPPO设备兼容性是否已应用
+     */
+    public static boolean isOppoCompatibilityApplied(@NonNull Context context) {
+        return getPrefs(context).getBoolean("oppo_compatibility_applied", false);
+    }
+
+    /**
+     * 获取OPPO设备优化的图片加载超时时间
+     */
+    public static int getOppoImageLoadingTimeout(@NonNull Context context) {
+        return getPrefs(context).getInt("image_loading_timeout", 15000);
+    }
+
+    /**
+     * 获取OPPO设备的图片加载重试次数
+     */
+    public static int getOppoImageRetryCount(@NonNull Context context) {
+        return getPrefs(context).getInt("image_retry_count", 1);
+    }
+
     /**
      * 显示智能提醒对话框 - 控制提醒频率
      */

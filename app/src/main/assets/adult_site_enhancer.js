@@ -151,6 +151,11 @@
 
     // 视频播放优化
     function optimizeVideoPlayback() {
+        // XVideos特殊处理 - 增强播放按钮功能
+        if (window.location.hostname.includes('xvideos.com') || window.location.hostname.includes('xvideos.es')) {
+            enhanceXVideosPlayback();
+        }
+
         // 自动播放设置
         if (config.autoPlay) {
             setTimeout(() => {
@@ -382,6 +387,139 @@
         const prevButtons = document.querySelectorAll('a:contains("上一"), a:contains("Previous"), .prev-video');
         if (prevButtons.length > 0) {
             prevButtons[0].click();
+        }
+    }
+
+    // XVideos播放增强
+    function enhanceXVideosPlayback() {
+        GM_log('增强XVideos播放功能');
+
+        // 延迟执行，确保页面元素加载完成
+        setTimeout(() => {
+            // 查找播放按钮的所有可能选择器
+            const playButtonSelectors = [
+                '.play-button',
+                '#play-button',
+                '.btn-play',
+                '#btn-play',
+                '.play-icon',
+                '.play-btn',
+                '[data-play-button]',
+                '.video-play-button',
+                '#video-play-button',
+                '.big-play-button',
+                '.play-overlay',
+                '.video-element',
+                '.play-button-big'
+            ];
+
+            let playButton = null;
+
+            // 查找播放按钮
+            for (const selector of playButtonSelectors) {
+                playButton = document.querySelector(selector);
+                if (playButton) {
+                    GM_log('找到XVideos播放按钮: ' + selector);
+                    break;
+                }
+            }
+
+            // 如果没找到播放按钮，尝试查找视频元素并为其添加播放控制
+            if (!playButton) {
+                const video = document.querySelector('video');
+                if (video) {
+                    GM_log('未找到播放按钮，直接增强视频元素');
+                    enhanceVideoElement(video);
+                }
+                return;
+            }
+
+            // 增强播放按钮
+            enhancePlayButton(playButton);
+
+        }, 3000); // 延迟3秒执行
+    }
+
+    function enhancePlayButton(button) {
+        try {
+            // 移除可能存在的pointer-events限制
+            button.style.pointerEvents = 'auto';
+            button.style.cursor = 'pointer';
+            button.style.zIndex = '9999';
+
+            // 确保按钮可见
+            button.style.display = 'block';
+            button.style.visibility = 'visible';
+            button.style.opacity = '1';
+
+            // 保存原始点击处理
+            const originalOnClick = button.onclick;
+
+            // 添加增强的点击处理
+            button.onclick = function(e) {
+                GM_log('XVideos播放按钮被点击 (增强版)');
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                try {
+                    const video = document.querySelector('video');
+                    if (video) {
+                        if (video.paused) {
+                            video.play();
+                            GM_log('通过增强按钮开始播放视频');
+                        } else {
+                            video.pause();
+                            GM_log('通过增强按钮暂停视频');
+                        }
+                    }
+                } catch (err) {
+                    GM_log('播放控制错误: ' + err.message);
+                }
+
+                // 调用原始点击处理
+                if (originalOnClick) {
+                    originalOnClick.call(this, e);
+                }
+
+                return false;
+            };
+
+            // 移除可能存在的CSS阻止点击
+            const computedStyle = window.getComputedStyle(button);
+            if (computedStyle.pointerEvents === 'none') {
+                button.style.setProperty('pointer-events', 'auto', 'important');
+            }
+
+            GM_log('XVideos播放按钮增强完成');
+
+        } catch (e) {
+            GM_log('增强播放按钮时出错: ' + e.message);
+        }
+    }
+
+    function enhanceVideoElement(video) {
+        try {
+            // 为视频元素添加控制
+            video.setAttribute('controls', 'true');
+            video.setAttribute('playsinline', 'false');
+
+            // 添加双击播放/暂停
+            video.addEventListener('dblclick', function(e) {
+                e.preventDefault();
+                if (this.paused) {
+                    this.play();
+                    GM_log('双击播放视频');
+                } else {
+                    this.pause();
+                    GM_log('双击暂停视频');
+                }
+            });
+
+            GM_log('XVideos视频元素增强完成');
+
+        } catch (e) {
+            GM_log('增强视频元素时出错: ' + e.message);
         }
     }
 

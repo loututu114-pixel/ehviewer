@@ -35,6 +35,12 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- 系统兼容性权限 -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- 密码自动填充权限 -->
     <uses-permission android:name="android.permission.BIND_AUTOFILL_SERVICE" />
@@ -43,6 +49,9 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- OPPO SchedAssist权限 -->
+    <uses-permission android:name="oplus.permission.SCHEDASSIST" />
+    <uses-permission android:name="com.oplus.permission.SCHEDASSIST" />
     <!--  用于获取wifi状态  -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
@@ -56,24 +65,6 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- 浏览器角色权限 (Android 10+) -->
     <uses-permission android:name="com.android.permission.REQUEST_ROLE" />
-
-    <!-- CrossDeviceService权限修复 -->
-    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
-    <uses-permission android:name="android.permission.MANAGE_DEVICE_ADMINS" />
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
-
-    <!-- 系统调度和性能优化权限 -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_VPN" />
-    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
-    <uses-permission android:name="android.permission.UPDATE_DEVICE_STATS" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.DUMP" />
-    <uses-permission android:name="android.permission.READ_LOGS" />
 
     <uses-feature
         android:glEsVersion="0x00020000"
@@ -1105,6 +1096,59 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="default" />
+
+        <!-- 系统兼容性配置 -->
+        <meta-data
+            android:name="android.supports_size_changes"
+            android:value="true" />
+        <meta-data
+            android:name="android.window_background_fallback"
+            android:resource="@android:color/transparent" />
+
+        <!-- 配件服务配置 - 解决AccessoryServicesLocation错误 -->
+        <meta-data
+            android:name="AccessoryServicesLocation"
+            android:value="/system/framework/" />
+
+        <!-- 多媒体白名单配置 - 解决whitelist错误 -->
+        <meta-data
+            android:name="oplus.multimedia.whitelist"
+            android:value="true" />
+        <meta-data
+            android:name="coloros.multimedia.whitelist"
+            android:value="true" />
+
+        <!-- 系统服务兼容性配置 -->
+        <meta-data
+            android:name="android.content.pm.dexopt"
+            android:value="true" />
+        <meta-data
+            android:name="android.content.pm.secondary.dexopt"
+            android:value="true" />
+
+        <!-- OPPO系统兼容性配置 -->
+        <meta-data
+            android:name="oplus.schedassist.enabled"
+            android:value="false" />
+        <meta-data
+            android:name="coloros.schedassist.enabled"
+            android:value="false" />
+
+        <!-- 图形渲染兼容性 -->
+        <meta-data
+            android:name="android.graphics.renderthread"
+            android:value="true" />
+        <meta-data
+            android:name="android.graphics.swapbehavior"
+            android:value="0" />
+
+        <!-- ColorX配置 -->
+        <meta-data
+            android:name="oplus.colorx.enabled"
+            android:value="false" />
+        <meta-data
+            android:name="coloros.colorx.enabled"
+            android:value="false" />
             
         <!-- 深度链接处理Activity -->
         <activity

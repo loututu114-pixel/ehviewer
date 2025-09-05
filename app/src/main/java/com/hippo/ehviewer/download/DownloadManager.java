@@ -55,6 +55,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class DownloadManager implements SpiderQueen.OnSpiderListener {
 
@@ -810,47 +811,83 @@ public class DownloadManager implements SpiderQueen.OnSpiderListener {
         ensureDownload();
     }
 
-    @SuppressLint("StaticFieldLeak")
+    /**
+     * 并发重置所有阅读进度 - 优化版本
+     */
     public void resetAllReadingProgress() {
         LinkedList<DownloadInfo> list = new LinkedList<>(mAllInfoList);
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                GalleryInfo galleryInfo = new GalleryInfo();
-                for (DownloadInfo downloadInfo : list) {
-                    galleryInfo.gid = downloadInfo.gid;
-                    galleryInfo.token = downloadInfo.token;
-                    galleryInfo.title = downloadInfo.title;
-                    galleryInfo.thumb = downloadInfo.thumb;
-                    galleryInfo.category = downloadInfo.category;
-                    galleryInfo.posted = downloadInfo.posted;
-                    galleryInfo.uploader = downloadInfo.uploader;
-                    galleryInfo.rating = downloadInfo.rating;
+        // 使用线程池并发处理，提高效率
+        IoThreadPoolExecutor.getInstance().execute(() -> {
+            // 分批处理，避免一次性占用太多资源
+            final int BATCH_SIZE = 10;
+            List<DownloadInfo> batch = new ArrayList<>(BATCH_SIZE);
 
-                    UniFile downloadDir = SpiderDen.getGalleryDownloadDir(galleryInfo);
-                    if (downloadDir == null) {
-                        continue;
-                    }
-                    UniFile file = downloadDir.findFile(".ehviewer");
-                    if (file == null) {
-                        continue;
-                    }
-                    SpiderInfo spiderInfo = SpiderInfo.read(file);
-                    if (spiderInfo == null) {
-                        continue;
-                    }
-                    spiderInfo.startPage = 0;
+            for (DownloadInfo downloadInfo : list) {
+                batch.add(downloadInfo);
 
-                    try {
-                        spiderInfo.write(file.openOutputStream());
-                    } catch (IOException e) {
-                        Log.e(TAG, "Can't write SpiderInfo", e);
-                    }
+                if (batch.size() >= BATCH_SIZE) {
+                    processResetBatch(new ArrayList<>(batch));
+                    batch.clear();
                 }
-                return null;
             }
-        }.executeOnExecutor(IoThreadPoolExecutor.getInstance());
+
+            // 处理剩余的批次
+            if (!batch.isEmpty()) {
+                processResetBatch(batch);
+            }
+        });
+    }
+
+    /**
+     * 并发处理一批重置任务
+     */
+    private void processResetBatch(List<DownloadInfo> batch) {
+        // 为每个批次创建子任务并发执行
+        List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (DownloadInfo downloadInfo : batch) {
+            java.util.concurrent.CompletableFuture<Void> future = java.util.concurrent.CompletableFuture.runAsync(() -> {
+                GalleryInfo galleryInfo = new GalleryInfo();
+                galleryInfo.gid = downloadInfo.gid;
+                galleryInfo.token = downloadInfo.token;
+                galleryInfo.title = downloadInfo.title;
+                galleryInfo.thumb = downloadInfo.thumb;
+                galleryInfo.category = downloadInfo.category;
+                galleryInfo.posted = downloadInfo.posted;
+                galleryInfo.uploader = downloadInfo.uploader;
+                galleryInfo.rating = downloadInfo.rating;
+
+                UniFile downloadDir = SpiderDen.getGalleryDownloadDir(galleryInfo);
+                if (downloadDir == null) {
+                    return;
+                }
+                UniFile file = downloadDir.findFile(".ehviewer");
+                if (file == null) {
+                    return;
+                }
+                SpiderInfo spiderInfo = SpiderInfo.read(file);
+                if (spiderInfo == null) {
+                    return;
+                }
+                spiderInfo.startPage = 0;
+
+                try {
+                    spiderInfo.write(file.openOutputStream());
+                } catch (IOException e) {
+                    Log.e(TAG, "Can't write SpiderInfo", e);
+                }
+            }, IoThreadPoolExecutor.getInstance());
+
+            futures.add(future);
+        }
+
+        // 等待所有子任务完成
+        try {
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).get();
+        } catch (Exception e) {
+            Log.e(TAG, "Error waiting for reset batch completion", e);
+        }
     }
 
     // Update in DB
