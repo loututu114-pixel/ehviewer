@@ -347,8 +347,21 @@ public class GalleryActivity extends EhActivity implements SeekBar.OnSeekBarChan
             finish();
             return;
         }
-        mGalleryProvider.start();
 
+        // 异步启动GalleryProvider，避免阻塞UI
+        new Thread(() -> {
+            mGalleryProvider.start();
+            runOnUiThread(() -> {
+                // 在UI线程中继续初始化
+                initializeGalleryView(savedInstanceState);
+            });
+        }).start();
+    }
+
+    /**
+     * 初始化GalleryView（在GalleryProvider启动完成后调用）
+     */
+    private void initializeGalleryView(@Nullable Bundle savedInstanceState) {
         // Get start page
         int startPage;
         if (savedInstanceState == null) {

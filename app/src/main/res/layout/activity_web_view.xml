@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/web_view_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -7,77 +8,101 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
-    <!-- 顶部地址栏区域 -->
-    <LinearLayout
+    <!-- Chrome Material Design 3 地址栏区域 -->
+    <FrameLayout
         android:id="@+id/top_bar"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:background="?android:attr/colorBackground"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:elevation="2dp"
-        android:clipChildren="false"
-        android:clipToPadding="false">
-
-        <!-- Chrome风格智能地址栏 -->
-        <com.hippo.ehviewer.ui.browser.SmartAddressBarWidget
-            android:id="@+id/smart_address_bar"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp" />
-
-        <!-- 搜索/访问按钮 -->
-        <ImageButton
-            android:id="@+id/go_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="搜索/访问"
-            android:src="@drawable/ic_search"
-            android:tint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
-
-    </LinearLayout>
-
-    <!-- 分割线 -->
-    <View
-        android:id="@+id/divider"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_below="@id/top_bar"
-        android:background="?android:attr/listDivider" />
-
-    <!-- Smart Tips 容器 -->
-    <ScrollView
-        android:id="@+id/smart_tips_container"
-        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/divider"
         android:background="?android:attr/colorBackground"
-        android:elevation="4dp"
-        android:visibility="gone"
-        android:maxHeight="200dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp">
 
-        <LinearLayout
-            android:id="@+id/smart_tips_layout"
+        <!-- Chrome Omnibox容器 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/omnibox_container"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="8dp" />
+            android:layout_height="56dp"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/chrome_omnibox_bg"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/chrome_omnibox_stroke">
 
-    </ScrollView>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="4dp">
+
+                <!-- Chrome Omnibox 输入框 -->
+                <EditText
+                    android:id="@+id/omnibox_input"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="搜索 Google 或输入网址"
+                    android:textSize="16sp"
+                    android:textColor="@color/chrome_text_primary"
+                    android:textColorHint="@color/chrome_text_secondary"
+                    android:singleLine="true"
+                    android:imeOptions="actionGo"
+                    android:inputType="textUri"
+                    android:selectAllOnFocus="true"
+                    android:paddingEnd="8dp" />
+
+                <!-- Chrome 清除按钮 -->
+                <ImageButton
+                    android:id="@+id/clear_button"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_clear_chrome"
+                    android:tint="@color/chrome_icon_tint"
+                    android:contentDescription="清除"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp" />
+
+                <!-- Chrome 收藏按钮 -->
+                <ImageButton
+                    android:id="@+id/bookmark_button_chrome"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_bookmark_border"
+                    android:tint="@color/chrome_icon_tint"
+                    android:contentDescription="添加书签"
+                    android:layout_marginEnd="4dp" />
+
+                <!-- 搜索按钮 -->
+                <ImageButton
+                    android:id="@+id/search_button"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_search"
+                    android:tint="@color/chrome_icon_tint"
+                    android:contentDescription="搜索"
+                    android:layout_marginEnd="4dp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </FrameLayout>
+
 
     <!-- 主内容区域 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/smart_tips_container"
-        android:layout_above="@id/bottom_bar">
+        android:layout_below="@id/top_bar"
+        android:layout_above="@id/bottom_bar"
+        android:layout_marginTop="8dp">
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipe_refresh_layout"
@@ -106,89 +131,71 @@
         android:id="@+id/progress_bar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_below="@id/divider"
-        android:progressDrawable="@drawable/progress_horizontal"
+        android:layout_height="2dp"
+        android:layout_below="@id/top_bar"
         android:visibility="gone" />
 
     <!-- 底部导航栏 -->
     <LinearLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:background="?android:attr/colorBackground"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:elevation="8dp">
+        android:gravity="center_vertical">
 
         <!-- 主页按钮 -->
         <ImageButton
             android:id="@+id/home_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:contentDescription="主页"
-            android:src="@drawable/ic_home"
-            android:tint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
+            android:src="@drawable/ic_home" />
 
         <!-- 历史按钮 -->
         <ImageButton
             android:id="@+id/history_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:contentDescription="历史"
-            android:src="@drawable/ic_history"
-            android:tint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
+            android:src="@drawable/ic_history" />
 
         <!-- 书签按钮 -->
         <ImageButton
             android:id="@+id/bookmark_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:contentDescription="书签"
-            android:src="@drawable/ic_bookmark_border"
-            android:tint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
+            android:src="@drawable/ic_bookmark_border" />
 
         <!-- 多窗口按钮 -->
         <ImageButton
             android:id="@+id/tabs_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:contentDescription="多窗口"
-            android:src="@drawable/ic_tab"
-            android:tint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
+            android:src="@drawable/ic_tab" />
 
         <!-- 设置按钮 -->
         <ImageButton
             android:id="@+id/settings_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:contentDescription="设置"
-            android:src="@drawable/ic_settings"
-            android:tint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
+            android:src="@drawable/ic_settings" />
 
     </LinearLayout>
+
 
 </RelativeLayout>

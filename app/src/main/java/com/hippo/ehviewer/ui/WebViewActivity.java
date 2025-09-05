@@ -34,12 +34,13 @@ import com.hippo.ehviewer.client.data.BookmarkInfo;
 import com.hippo.ehviewer.client.AdBlockManager;
 import com.hippo.ehviewer.client.SearchConfigManager;
 import com.hippo.ehviewer.client.HistoryManager;
-import com.hippo.ehviewer.ui.browser.SmartAddressBarWidget;
-import com.hippo.ehviewer.ui.browser.RealtimeSuggestionManager;
 import com.hippo.ehviewer.util.UserEnvironmentDetector;
 import com.hippo.ehviewer.userscript.UserScriptManager;
 import com.hippo.ehviewer.userscript.ScriptStorage;
 import com.hippo.ehviewer.userscript.ScriptUpdater;
+
+// 搜索建议相关
+import com.hippo.ehviewer.ui.SearchSuggestionsManager;
 
 import android.util.Log;
 import android.view.Menu;
@@ -63,7 +64,6 @@ public class WebViewActivity extends AppCompatActivity {
     // UI组件
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private WebView mWebView;
-    private SmartAddressBarWidget mSmartAddressBar;
     private ImageButton mGoButton;
     private ImageButton mHomeButton;
     private ImageButton mHistoryButton;
@@ -81,6 +81,14 @@ public class WebViewActivity extends AppCompatActivity {
     private TextView mQuickHistoryButton;
     private TextView mQuickBookmarksButton;
 
+    // Chrome Omnibox 按钮
+    private ImageButton mSearchButton;
+    private ImageButton mBookmarkButtonChrome;
+    private ImageButton mClearButton;
+
+    // 搜索建议控制标志
+    private boolean mUserTyping = false; // 标记用户是否正在主动输入
+
     // 管理器
     private BookmarkManager mBookmarkManager;
     private AdBlockManager mAdBlockManager;
@@ -91,10 +99,13 @@ public class WebViewActivity extends AppCompatActivity {
     private UserScriptManager mUserScriptManager;
     private ScriptStorage mScriptStorage;
     private ScriptUpdater mScriptUpdater;
-    
+
     // 智能功能管理器
     private SmartMenuManager mSmartMenuManager;
     private SmartTipsManager mSmartTipsManager;
+
+    // 搜索建议管理器
+    private SearchSuggestionsManager mSearchSuggestionsManager;
 
     // 状态变量
     private boolean isDesktopMode = false;
@@ -128,28 +139,14 @@ public class WebViewActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_web_view);
 
-        // 初始化管理器
+        // 初始化管理器（核心管理器优先初始化）
             mBookmarkManager = BookmarkManager.getInstance(this);
-            mAdBlockManager = AdBlockManager.getInstance();
-        mSearchConfigManager = SearchConfigManager.getInstance(this);
         mHistoryManager = HistoryManager.getInstance(this);
 
-        // 初始化用户脚本管理器
-        mUserScriptManager = UserScriptManager.getInstance(this);
-        mScriptStorage = new ScriptStorage(this);
-        mScriptUpdater = new ScriptUpdater(this, mUserScriptManager, mScriptStorage);
-
-        // 初始化搜索配置管理器
-        mSearchConfigManager.initialize();
-
-        // 初始化智能功能管理器
-        mSmartMenuManager = new SmartMenuManager(this);
-        mSmartTipsManager = new SmartTipsManager(this);
-
-        // 初始化UI
+        // 初始化UI（优先显示界面）
             initializeViews();
 
-        // 设置WebView
+        // 设置WebView（基础设置）
         setupWebView();
 
         // 设置监听器
@@ -157,9 +154,55 @@ public class WebViewActivity extends AppCompatActivity {
 
         // 初始显示加载状态
         showLoadingState(true, "正在准备浏览器...");
-        
-        // 处理初始URL
+
+        // 处理初始URL（立即响应用户操作）
         handleInitialUrl();
+
+        // 异步初始化非核心组件
+        initializeNonCriticalComponents();
+    }
+
+    /**
+     * 异步初始化非核心组件，避免阻塞UI
+     */
+    private void initializeNonCriticalComponents() {
+        // 在后台线程中初始化非核心组件
+        new Thread(() -> {
+            try {
+                // 初始化广告拦截管理器
+                mAdBlockManager = AdBlockManager.getInstance();
+
+                // 初始化搜索配置管理器
+                mSearchConfigManager = SearchConfigManager.getInstance(this);
+                mSearchConfigManager.initialize();
+
+                // 初始化用户脚本管理器（延迟加载脚本）
+                mUserScriptManager = UserScriptManager.getInstance(this);
+                mScriptStorage = new ScriptStorage(this);
+                mScriptUpdater = new ScriptUpdater(this, mUserScriptManager, mScriptStorage);
+
+                // 延迟加载默认脚本（仅加载核心脚本）
+                loadEssentialScriptsOnly();
+
+                // 初始化智能功能管理器
+                mSmartMenuManager = new SmartMenuManager(this);
+                mSmartTipsManager = new SmartTipsManager(this);
+
+                // 初始化搜索建议管理器
+                mSearchSuggestionsManager = new SearchSuggestionsManager(this);
+
+                // 设置搜索建议监听器
+                setupSearchSuggestions();
+
+                runOnUiThread(() -> {
+                    // 加载完成后的UI更新
+                    updateLoadingStatus("浏览器准备完成");
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error initializing non-critical components", e);
+            }
+        }).start();
     }
 
     /**
@@ -168,8 +211,7 @@ public class WebViewActivity extends AppCompatActivity {
     private void initializeViews() {
         mSwipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         mWebView = findViewById(R.id.web_view);
-        mSmartAddressBar = findViewById(R.id.smart_address_bar);
-        mGoButton = findViewById(R.id.go_button);
+        // mGoButton = findViewById(R.id.go_button); // 暂时注释，资源不存在
         mHomeButton = findViewById(R.id.home_button);
         mHistoryButton = findViewById(R.id.history_button);
         mBookmarkButton = findViewById(R.id.bookmark_button);
@@ -182,6 +224,11 @@ public class WebViewActivity extends AppCompatActivity {
         mQuickSearchInput = findViewById(R.id.quick_search_input);
         mQuickSearchButton = findViewById(R.id.quick_search_button);
         mLoadingStatusText = findViewById(R.id.loading_status_text);
+
+        // 初始化新的搜索栏按钮
+        mSearchButton = findViewById(R.id.search_button);
+        mBookmarkButtonChrome = findViewById(R.id.bookmark_button_chrome);
+        mClearButton = findViewById(R.id.clear_button);
         mQuickHomeButton = findViewById(R.id.quick_home_button);
         mQuickHistoryButton = findViewById(R.id.quick_history_button);
         mQuickBookmarksButton = findViewById(R.id.quick_bookmarks_button);
@@ -407,44 +454,269 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
     /**
+     * 设置搜索建议功能
+     */
+    private void setupSearchSuggestions() {
+        if (mSearchSuggestionsManager == null) return;
+
+        // 获取地址栏输入框
+        EditText omniboxInput = findViewById(R.id.omnibox_input);
+        if (omniboxInput == null) return;
+
+        // 设置搜索建议监听器
+        mSearchSuggestionsManager.setOnSuggestionClickListener(new SearchSuggestionsManager.OnSuggestionClickListener() {
+            @Override
+            public void onSuggestionClick(SearchSuggestionsManager.SuggestionItem item) {
+                handleSuggestionClick(item);
+            }
+
+            @Override
+            public void onSuggestionLongClick(SearchSuggestionsManager.SuggestionItem item) {
+                handleSuggestionLongClick(item);
+            }
+        });
+
+        // 为输入框添加文本变化监听器
+        omniboxInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String query = s.toString().trim();
+
+                // 只有在用户主动输入时才显示搜索建议
+                if (mUserTyping) {
+                    if (query.length() > 0) {
+                        // 显示搜索建议
+                        View anchor = findViewById(R.id.omnibox_container);
+                        if (anchor != null) {
+                            mSearchSuggestionsManager.showSuggestions(anchor, query);
+                        }
+                        // 显示清除按钮
+                        if (mClearButton != null) {
+                            mClearButton.setVisibility(View.VISIBLE);
+                        }
+                    } else {
+                        // 隐藏搜索建议
+                        mSearchSuggestionsManager.hideSuggestions();
+                        // 隐藏清除按钮
+                        if (mClearButton != null) {
+                            mClearButton.setVisibility(View.GONE);
+                        }
+                    }
+                } else {
+                    // 如果不是用户主动输入，只控制清除按钮的显示
+                    if (mClearButton != null) {
+                        mClearButton.setVisibility(query.length() > 0 ? View.VISIBLE : View.GONE);
+                    }
+                }
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {}
+        });
+
+        // 当输入框焦点变化时控制搜索建议显示
+        omniboxInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                // 用户获得焦点，开始主动输入模式
+                mUserTyping = true;
+            } else {
+                // 用户失去焦点，结束主动输入模式
+                mUserTyping = false;
+                // 延迟隐藏，让点击建议有时间处理
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    mSearchSuggestionsManager.hideSuggestions();
+                }, 200);
+            }
+        });
+    }
+
+    /**
+     * 处理搜索建议点击
+     */
+    private void handleSuggestionClick(SearchSuggestionsManager.SuggestionItem item) {
+        if (item == null || item.url == null) return;
+
+        // 隐藏搜索建议
+        mSearchSuggestionsManager.hideSuggestions();
+
+        // 加载URL
+        loadUrl(item.url);
+
+        // 隐藏键盘
+        EditText omniboxInput = findViewById(R.id.omnibox_input);
+        if (omniboxInput != null) {
+            android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(omniboxInput.getWindowToken(), 0);
+            }
+        }
+
+        // 根据建议类型添加额外处理
+        switch (item.type) {
+            case HISTORY:
+                // 历史记录点击，可以添加统计等
+                break;
+            case BOOKMARK:
+                // 书签点击
+                break;
+            case SEARCH_SUGGESTION:
+                // 搜索建议点击
+                break;
+            case QUICK_ACTION:
+                // 快捷操作
+                break;
+            case NEW_TAB_ACTION:
+                // 新标签页操作 - 创建新标签页并加载URL
+                handleNewTabAction(item);
+                break;
+        }
+    }
+
+    /**
+     * 处理新标签页操作
+     */
+    private void handleNewTabAction(SearchSuggestionsManager.SuggestionItem item) {
+        if (item == null || item.url == null) return;
+
+        try {
+            // 创建新标签页
+            String title = item.title != null ? item.title : "新标签页";
+            createNewTab(title, item.url, true);
+
+            // 显示提示消息
+            Toast.makeText(this, "已在新标签页中打开", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create new tab", e);
+            Toast.makeText(this, "创建新标签页失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * 处理搜索建议长按
+     */
+    private void handleSuggestionLongClick(SearchSuggestionsManager.SuggestionItem item) {
+        if (item == null) return;
+
+        // 根据建议类型显示不同的上下文菜单
+        switch (item.type) {
+            case HISTORY:
+                showHistoryContextMenu(item);
+                break;
+            case BOOKMARK:
+                showBookmarkContextMenu(item);
+                break;
+            case NEW_TAB_ACTION:
+                showNewTabContextMenu(item);
+                break;
+            default:
+                // 其他类型的建议可以添加默认处理
+                break;
+        }
+    }
+
+    /**
+     * 显示历史记录上下文菜单
+     */
+    private void showHistoryContextMenu(SearchSuggestionsManager.SuggestionItem item) {
+        new AlertDialog.Builder(this)
+            .setTitle("历史记录操作")
+            .setItems(new String[]{"在新标签页中打开", "复制链接", "从历史记录中删除"}, (dialog, which) -> {
+                switch (which) {
+                    case 0: // 新标签页打开
+                        // 这里可以实现新标签页功能
+                        Toast.makeText(this, "新标签页功能开发中", Toast.LENGTH_SHORT).show();
+                        break;
+                    case 1: // 复制链接
+                        copyToClipboard(item.url);
+                        break;
+                    case 2: // 删除历史记录
+                        // 这里可以实现删除历史记录功能
+                        Toast.makeText(this, "删除历史记录功能开发中", Toast.LENGTH_SHORT).show();
+                        break;
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 显示书签上下文菜单
+     */
+    private void showBookmarkContextMenu(SearchSuggestionsManager.SuggestionItem item) {
+        new AlertDialog.Builder(this)
+            .setTitle("书签操作")
+            .setItems(new String[]{"在新标签页中打开", "复制链接", "编辑书签", "删除书签"}, (dialog, which) -> {
+                switch (which) {
+                    case 0: // 新标签页打开
+                        Toast.makeText(this, "新标签页功能开发中", Toast.LENGTH_SHORT).show();
+                        break;
+                    case 1: // 复制链接
+                        copyToClipboard(item.url);
+                        break;
+                    case 2: // 编辑书签
+                        Toast.makeText(this, "编辑书签功能开发中", Toast.LENGTH_SHORT).show();
+                        break;
+                    case 3: // 删除书签
+                        Toast.makeText(this, "删除书签功能开发中", Toast.LENGTH_SHORT).show();
+                        break;
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 显示新标签页上下文菜单
+     */
+    private void showNewTabContextMenu(SearchSuggestionsManager.SuggestionItem item) {
+        new AlertDialog.Builder(this)
+            .setTitle("新标签页操作")
+            .setItems(new String[]{"在新标签页中打开", "复制链接", "在当前标签页中打开"}, (dialog, which) -> {
+                switch (which) {
+                    case 0: // 新标签页打开
+                        handleNewTabAction(item);
+                        break;
+                    case 1: // 复制链接
+                        copyToClipboard(item.url);
+                        break;
+                    case 2: // 当前标签页打开
+                        loadUrl(item.url);
+                        break;
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 复制文本到剪贴板
+     */
+    private void copyToClipboard(String text) {
+        if (text == null) return;
+
+        android.content.ClipboardManager clipboard =
+            (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            android.content.ClipData clip = android.content.ClipData.newPlainText("URL", text);
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, "已复制到剪贴板", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
      * 设置监听器
      */
     private void setupListeners() {
-        // 智能地址栏
-        if (mSmartAddressBar != null) {
-            mSmartAddressBar.setOnAddressBarListener(new SmartAddressBarWidget.OnAddressBarListener() {
-                @Override
-                public void onUrlSubmit(String url) {
-                    // 使用SearchConfigManager处理输入
-                    String processedUrl = mSearchConfigManager.processInput(url);
-                    loadUrl(processedUrl);
-                }
-
-                @Override
-                public void onSuggestionClick(RealtimeSuggestionManager.SuggestionItem item) {
-                    // 处理建议点击
-                    String url = item.url;
-                    if (url != null && !url.isEmpty()) {
-                        loadUrl(url);
-                    } else {
-                        // 如果没有URL，当作搜索处理
-                        String processedUrl = mSearchConfigManager.processInput(item.text);
-                        loadUrl(processedUrl);
-                    }
-                }
-
-                @Override
-                public void onSuggestionLongClick(RealtimeSuggestionManager.SuggestionItem item) {
-                    // 长按建议的处理逻辑，可以添加到书签或复制等功能
-                    // 这里暂时留空，可以根据需要扩展
-                }
-            });
-        }
 
         // 搜索/访问按钮
         if (mGoButton != null) {
             mGoButton.setOnClickListener(v -> {
-                String input = mSmartAddressBar.getAddressText().trim();
+                EditText omniboxInput = findViewById(R.id.omnibox_input);
+                String input = omniboxInput != null ? omniboxInput.getText().toString().trim() : "";
                 if (!input.isEmpty()) {
                     // 使用SearchConfigManager处理输入
                     String processedUrl = mSearchConfigManager.processInput(input);
@@ -526,6 +798,44 @@ public class WebViewActivity extends AppCompatActivity {
                     String processedUrl = mSearchConfigManager.processInput(input);
                     loadUrl(processedUrl);
                 }
+            });
+        }
+
+        // Chrome Omnibox 搜索按钮
+        if (mSearchButton != null) {
+            mSearchButton.setOnClickListener(v -> {
+                EditText omniboxInput = findViewById(R.id.omnibox_input);
+                if (omniboxInput != null) {
+                    String input = omniboxInput.getText().toString().trim();
+                    if (!input.isEmpty()) {
+                        String processedUrl = mSearchConfigManager.processInput(input);
+                        loadUrl(processedUrl);
+                        // 隐藏键盘
+                        android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                        if (imm != null) {
+                            imm.hideSoftInputFromWindow(omniboxInput.getWindowToken(), 0);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chrome Omnibox 清除按钮
+        if (mClearButton != null) {
+            mClearButton.setOnClickListener(v -> {
+                EditText omniboxInput = findViewById(R.id.omnibox_input);
+                if (omniboxInput != null) {
+                    omniboxInput.setText("");
+                    omniboxInput.requestFocus();
+                }
+            });
+        }
+
+        // Chrome Omnibox 书签按钮
+        if (mBookmarkButtonChrome != null) {
+            mBookmarkButtonChrome.setOnClickListener(v -> {
+                addCurrentPageToBookmarks();
             });
         }
         
@@ -613,9 +923,14 @@ public class WebViewActivity extends AppCompatActivity {
      * 更新地址栏
      */
     private void updateAddressBar(String url) {
-        if (mSmartAddressBar != null && url != null) {
-            mSmartAddressBar.setAddressText(url);
-            mSmartAddressBar.setCurrentUrl(url);
+        EditText omniboxInput = findViewById(R.id.omnibox_input);
+        if (omniboxInput != null && url != null) {
+            // 临时禁用用户输入标志，避免页面加载时触发搜索建议
+            boolean wasUserTyping = mUserTyping;
+            mUserTyping = false;
+            omniboxInput.setText(url);
+            // 恢复用户输入标志
+            mUserTyping = wasUserTyping;
         }
     }
 
@@ -1782,14 +2097,6 @@ public class WebViewActivity extends AppCompatActivity {
             mProgressBar.setVisibility(show ? View.VISIBLE : View.GONE);
         }
         
-        // 更新智能地址栏的加载状态
-        if (mSmartAddressBar != null) {
-            if (show) {
-                mSmartAddressBar.showLoadingState();
-            } else {
-                mSmartAddressBar.showNormalState();
-            }
-        }
     }
     
     /**
@@ -1828,21 +2135,53 @@ public class WebViewActivity extends AppCompatActivity {
 
                     @Override
     protected void onDestroy() {
-        // 清理所有标签页的WebView资源
-        for (BrowserTab tab : mTabs) {
-                                    if (tab.webView != null) {
-                tab.webView.destroy();
+        try {
+            // 清理所有标签页的WebView资源
+            for (BrowserTab tab : mTabs) {
+                if (tab != null && tab.webView != null) {
+                    try {
+                        tab.webView.destroy();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error destroying WebView for tab", e);
+                    }
+                }
             }
-        }
-        mTabs.clear();
+            mTabs.clear();
 
-        // 清理当前WebView引用
-        mWebView = null;
+            // 清理当前WebView引用
+            mWebView = null;
 
-        // 清理用户脚本管理器
-        if (mScriptUpdater != null) {
-            mScriptUpdater.shutdown();
-            mScriptUpdater = null;
+            // 清理用户脚本管理器
+            if (mScriptUpdater != null) {
+                try {
+                    mScriptUpdater.shutdown();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error shutting down script updater", e);
+                }
+                mScriptUpdater = null;
+            }
+
+            // 清理其他管理器
+            if (mSmartMenuManager != null) {
+                try {
+                    // SmartMenuManager cleanup if needed
+                } catch (Exception e) {
+                    Log.e(TAG, "Error cleaning up smart menu manager", e);
+                }
+            }
+
+            // 清理搜索建议管理器
+            if (mSearchSuggestionsManager != null) {
+                try {
+                    mSearchSuggestionsManager.destroy();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error cleaning up search suggestions manager", e);
+                }
+                mSearchSuggestionsManager = null;
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error during onDestroy", e);
         }
 
         super.onDestroy();
@@ -2657,6 +2996,71 @@ public class WebViewActivity extends AppCompatActivity {
     }
     
     /**
+     * 加载默认脚本
+     */
+    private void loadDefaultScripts() {
+        if (mUserScriptManager == null) return;
+
+        try {
+            // 加载assets中的默认脚本
+            mUserScriptManager.loadDefaultScriptsFromAssets();
+
+            // 确保关键脚本默认启用
+            java.util.List<com.hippo.ehviewer.userscript.UserScript> scripts = mUserScriptManager.getAllScripts();
+            for (com.hippo.ehviewer.userscript.UserScript script : scripts) {
+                String scriptId = script.getId();
+                // 确保百度拦截和APP拦截脚本默认启用
+                if (scriptId.contains("baidu_app_blocker") ||
+                    scriptId.contains("app_intercept_blocker") ||
+                    scriptId.contains("enhanced_app_blocker") ||
+                    scriptId.contains("universal_ad_blocker")) {
+                    script.setEnabled(true);
+                    android.util.Log.d("WebViewActivity", "默认启用脚本: " + scriptId);
+                }
+            }
+
+            // 保存更新后的脚本状态
+            if (mScriptStorage != null) {
+                mScriptStorage.saveScripts(scripts);
+            }
+
+            android.util.Log.d("WebViewActivity", "默认脚本加载完成，共" + scripts.size() + "个脚本");
+
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "加载默认脚本失败", e);
+        }
+    }
+
+    /**
+     * 仅加载核心脚本（启动优化）
+     */
+    private void loadEssentialScriptsOnly() {
+        if (mUserScriptManager == null) return;
+
+        try {
+            // 只加载核心的广告拦截脚本
+            java.util.List<com.hippo.ehviewer.userscript.UserScript> scripts = mUserScriptManager.getAllScripts();
+            for (com.hippo.ehviewer.userscript.UserScript script : scripts) {
+                String scriptId = script.getId();
+                // 只启用最核心的拦截脚本
+                if (scriptId.contains("baidu_app_blocker") ||
+                    scriptId.contains("app_intercept_blocker")) {
+                    script.setEnabled(true);
+                    android.util.Log.d("WebViewActivity", "快速启用核心脚本: " + scriptId);
+                } else {
+                    // 其他脚本延迟到需要时再启用
+                    script.setEnabled(false);
+                }
+            }
+
+            android.util.Log.d("WebViewActivity", "核心脚本快速加载完成");
+
+        } catch (Exception e) {
+            android.util.Log.e("WebViewActivity", "加载核心脚本失败", e);
+        }
+    }
+
+    /**
      * 创建新标签页（从智能菜单调用）
      */
     public void createNewTabFromMenu() {
@@ -2664,8 +3068,9 @@ public class WebViewActivity extends AppCompatActivity {
         String homeUrl = mSearchConfigManager.getDefaultHomepageUrl();
         if (mWebView != null) {
             mWebView.loadUrl(homeUrl);
-            if (mSmartAddressBar != null) {
-                mSmartAddressBar.setAddressText(homeUrl);
+            EditText omniboxInput = findViewById(R.id.omnibox_input);
+            if (omniboxInput != null) {
+                omniboxInput.setText(homeUrl);
             }
         }
     }

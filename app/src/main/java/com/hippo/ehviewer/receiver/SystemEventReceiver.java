@@ -30,87 +30,57 @@ public class SystemEventReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         Log.d(TAG, "Received system event: " + action);
         
-        switch (action) {
-            // 网络状态变化
-            case ConnectivityManager.CONNECTIVITY_ACTION:
-                handleConnectivityChange(context, intent);
-                break;
-                
-            // 电池状态变化
-            case Intent.ACTION_BATTERY_CHANGED:
-                handleBatteryChange(context, intent);
-                break;
-                
-            // 充电状态变化
-            case Intent.ACTION_POWER_CONNECTED:
-                handlePowerConnected(context);
-                break;
-                
-            case Intent.ACTION_POWER_DISCONNECTED:
-                handlePowerDisconnected(context);
-                break;
-                
-            // 时区变化
-            case Intent.ACTION_TIMEZONE_CHANGED:
-                handleTimezoneChanged(context);
-                break;
-                
-            // 时间变化
-            case Intent.ACTION_TIME_CHANGED:
-                handleTimeChanged(context);
-                break;
-                
-            // 日期变化
-            case Intent.ACTION_DATE_CHANGED:
-                handleDateChanged(context);
-                break;
-                
-            // 存储卡状态
-            case Intent.ACTION_MEDIA_MOUNTED:
-            case Intent.ACTION_MEDIA_UNMOUNTED:
-                handleMediaStateChange(context, intent);
-                break;
-                
-            // 包安装/卸载
-            case Intent.ACTION_PACKAGE_ADDED:
-            case Intent.ACTION_PACKAGE_REMOVED:
-            case Intent.ACTION_PACKAGE_REPLACED:
-                handlePackageChange(context, intent);
-                break;
-                
-            // 屏幕开关
-            case Intent.ACTION_SCREEN_ON:
-                handleScreenOn(context);
-                break;
-                
-            case Intent.ACTION_SCREEN_OFF:
-                handleScreenOff(context);
-                break;
-                
-            // 用户解锁
-            case Intent.ACTION_USER_PRESENT:
-                handleUserPresent(context);
-                break;
-                
-            // 电池低电量
-            case Intent.ACTION_BATTERY_LOW:
-                handleBatteryLow(context);
-                break;
-                
-            // 电池恢复正常
-            case Intent.ACTION_BATTERY_OKAY:
-                handleBatteryOkay(context);
-                break;
-                
-            // 设备重启
-            case Intent.ACTION_REBOOT:
-                handleDeviceReboot(context);
-                break;
-                
-            // 语言区域变化
-            case Intent.ACTION_LOCALE_CHANGED:
-                handleLocaleChanged(context);
-                break;
+        try {
+            switch (action) {
+                // 网络状态变化
+                case ConnectivityManager.CONNECTIVITY_ACTION:
+                    handleConnectivityChange(context, intent);
+                    break;
+
+                // 电池状态变化 - 只处理重要的电池事件
+                case Intent.ACTION_BATTERY_LOW:
+                    handleBatteryLow(context);
+                    break;
+
+                case Intent.ACTION_BATTERY_OKAY:
+                    handleBatteryOkay(context);
+                    break;
+
+                // 充电状态变化
+                case Intent.ACTION_POWER_CONNECTED:
+                    handlePowerConnected(context);
+                    break;
+
+                case Intent.ACTION_POWER_DISCONNECTED:
+                    handlePowerDisconnected(context);
+                    break;
+
+                // 用户解锁 - 重要的用户交互事件
+                case Intent.ACTION_USER_PRESENT:
+                    handleUserPresent(context);
+                    break;
+
+                // 日期变化 - 用于每日任务
+                case Intent.ACTION_DATE_CHANGED:
+                    handleDateChanged(context);
+                    break;
+
+                // 其他事件暂时移除以减少不必要的处理
+                // case Intent.ACTION_BATTERY_CHANGED:
+                // case Intent.ACTION_TIMEZONE_CHANGED:
+                // case Intent.ACTION_TIME_CHANGED:
+                // case Intent.ACTION_MEDIA_MOUNTED:
+                // case Intent.ACTION_MEDIA_UNMOUNTED:
+                // case Intent.ACTION_PACKAGE_ADDED:
+                // case Intent.ACTION_PACKAGE_REMOVED:
+                // case Intent.ACTION_PACKAGE_REPLACED:
+                // case Intent.ACTION_SCREEN_ON:
+                // case Intent.ACTION_SCREEN_OFF:
+                // case Intent.ACTION_REBOOT:
+                // case Intent.ACTION_LOCALE_CHANGED:
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling system event: " + action, e);
         }
         
         // 每次接收到系统事件都尝试启动保活服务
@@ -286,16 +256,47 @@ public class SystemEventReceiver extends BroadcastReceiver {
      * 确保保活服务运行
      */
     private void ensureKeepAliveService(Context context) {
+        if (context == null) {
+            Log.w(TAG, "Context is null, cannot start keep alive service");
+            return;
+        }
+
         try {
+            // 检查服务是否已经在运行，避免重复启动
+            if (isServiceRunning(context, AppKeepAliveService.class.getName())) {
+                Log.d(TAG, "Keep alive service is already running");
+                return;
+            }
+
             Intent serviceIntent = new Intent(context, AppKeepAliveService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent);
             } else {
                 context.startService(serviceIntent);
             }
+            Log.d(TAG, "Keep alive service started successfully");
         } catch (Exception e) {
             Log.e(TAG, "Failed to start keep alive service", e);
         }
+    }
+
+    /**
+     * 检查服务是否正在运行
+     */
+    private boolean isServiceRunning(Context context, String serviceClassName) {
+        try {
+            android.app.ActivityManager manager = (android.app.ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (manager != null) {
+                for (android.app.ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+                    if (serviceClassName.equals(service.service.getClassName())) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking if service is running", e);
+        }
+        return false;
     }
     
     /**

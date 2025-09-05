@@ -352,6 +352,26 @@
         <!--        <item name="android:textColor">@color/text_color_chip_state_list</item>-->
     </style>
 
+    <style name="CustomChipAssist" parent="@style/Widget.MaterialComponents.Chip.Action">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/modern_on_surface_variant</item>
+        <item name="chipMinHeight">28dp</item>
+        <item name="chipBackgroundColor">@color/modern_background</item>
+        <item name="chipStrokeColor">@android:color/transparent</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <style name="CustomIconButton" parent="@style/Widget.MaterialComponents.Button.TextButton.Icon">
+        <item name="android:minWidth">48dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="iconSize">20dp</item>
+        <item name="iconTint">@color/modern_on_surface_variant</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="rippleColor">@color/modern_primary</item>
+    </style>
+
     <style name="ThemeChangeButtonStyleLight" parent="@style/Widget.AppCompat.Button.Borderless.Colored">
         <item name="textColor">@color/colorAccent</item>
         <item name="backgroundColor">@color/white</item>

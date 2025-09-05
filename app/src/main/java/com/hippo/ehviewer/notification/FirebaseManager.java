@@ -8,6 +8,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import androidx.annotation.NonNull;
+import com.hippo.ehviewer.Settings;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -51,6 +52,13 @@ public class FirebaseManager {
      */
     private void initializeFirebase() {
         try {
+            // 检查Google Play服务是否可用
+            if (!isGooglePlayServicesAvailable()) {
+                Log.w(TAG, "Google Play Services not available, Firebase will be disabled");
+                Settings.putGooglePlayServicesFallback(true);
+                return;
+            }
+
             // 初始化Firebase App
             if (FirebaseApp.getApps(context).isEmpty()) {
                 FirebaseApp.initializeApp(context);
@@ -58,18 +66,20 @@ public class FirebaseManager {
             } else {
                 Log.i(TAG, "Firebase already initialized");
             }
-            
+
             // 获取FCM Token
             retrieveAndSaveToken();
-            
+
             // 设置默认订阅
             setupDefaultSubscriptions();
-            
+
             // 定期检查token状态
             scheduleTokenCheck();
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize Firebase", e);
+            // 启用降级模式
+            Settings.putGooglePlayServicesFallback(true);
         }
     }
     
@@ -77,26 +87,38 @@ public class FirebaseManager {
      * 获取并保存FCM Token
      */
     private void retrieveAndSaveToken() {
-        FirebaseMessaging.getInstance().getToken()
-            .addOnCompleteListener(new OnCompleteListener<String>() {
-                @Override
-                public void onComplete(@NonNull Task<String> task) {
-                    if (!task.isSuccessful()) {
-                        Log.w(TAG, "Fetching FCM registration token failed", task.getException());
-                        return;
-                    }
+        try {
+            FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(new OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(@NonNull Task<String> task) {
+                        if (!task.isSuccessful()) {
+                            Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                            // 如果是网络或服务不可用错误，启用降级模式
+                            if (task.getException() != null &&
+                                task.getException().getMessage() != null &&
+                                task.getException().getMessage().contains("unavailable")) {
+                                Log.w(TAG, "Firebase service unavailable, enabling fallback mode");
+                                Settings.putGooglePlayServicesFallback(true);
+                            }
+                            return;
+                        }
 
-                    // Get new FCM registration token
-                    String token = task.getResult();
-                    Log.d(TAG, "FCM Token: " + token);
-                    
-                    // 保存token
-                    saveToken(token);
-                    
-                    // 发送到服务器
-                    sendTokenToServer(token);
-                }
-            });
+                        // Get new FCM registration token
+                        String token = task.getResult();
+                        Log.d(TAG, "FCM Token: " + token);
+
+                        // 保存token
+                        saveToken(token);
+
+                        // 发送到服务器
+                        sendTokenToServer(token);
+                    }
+                });
+        } catch (Exception e) {
+            Log.e(TAG, "Error retrieving FCM token", e);
+            Settings.putGooglePlayServicesFallback(true);
+        }
     }
     
     /**
@@ -186,36 +208,56 @@ public class FirebaseManager {
      * 订阅话题
      */
     public void subscribeToTopic(String topic) {
-        FirebaseMessaging.getInstance().subscribeToTopic(topic)
-            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                @Override
-                public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful()) {
-                        Log.d(TAG, "Subscribed to topic: " + topic);
-                        saveSubscription(topic, true);
-                    } else {
-                        Log.w(TAG, "Failed to subscribe to topic: " + topic, task.getException());
+        // 检查是否处于降级模式
+        if (isInFallbackMode()) {
+            Log.d(TAG, "Firebase service in fallback mode, skipping topic subscription: " + topic);
+            return;
+        }
+
+        try {
+            FirebaseMessaging.getInstance().subscribeToTopic(topic)
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Log.d(TAG, "Subscribed to topic: " + topic);
+                            saveSubscription(topic, true);
+                        } else {
+                            Log.w(TAG, "Failed to subscribe to topic: " + topic, task.getException());
+                        }
                     }
-                }
-            });
+                });
+        } catch (Exception e) {
+            Log.e(TAG, "Error subscribing to topic: " + topic, e);
+        }
     }
     
     /**
      * 取消订阅话题
      */
     public void unsubscribeFromTopic(String topic) {
-        FirebaseMessaging.getInstance().unsubscribeFromTopic(topic)
-            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                @Override
-                public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful()) {
-                        Log.d(TAG, "Unsubscribed from topic: " + topic);
-                        saveSubscription(topic, false);
-                    } else {
-                        Log.w(TAG, "Failed to unsubscribe from topic: " + topic, task.getException());
+        // 检查是否处于降级模式
+        if (isInFallbackMode()) {
+            Log.d(TAG, "Firebase service in fallback mode, skipping topic unsubscription: " + topic);
+            return;
+        }
+
+        try {
+            FirebaseMessaging.getInstance().unsubscribeFromTopic(topic)
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Log.d(TAG, "Unsubscribed from topic: " + topic);
+                            saveSubscription(topic, false);
+                        } else {
+                            Log.w(TAG, "Failed to unsubscribe from topic: " + topic, task.getException());
+                        }
                     }
-                }
-            });
+                });
+        } catch (Exception e) {
+            Log.e(TAG, "Error unsubscribing from topic: " + topic, e);
+        }
     }
     
     /**
@@ -410,6 +452,45 @@ public class FirebaseManager {
         }
     }
     
+    /**
+     * 检查Google Play服务是否可用
+     */
+    private boolean isGooglePlayServicesAvailable() {
+        try {
+            // 检查Google Play服务包是否存在
+            android.content.pm.PackageManager pm = context.getPackageManager();
+            pm.getPackageInfo("com.google.android.gms", 0);
+
+            // 检查Google Play服务版本是否足够
+            try {
+                Class<?> googleApiAvailabilityClass = Class.forName("com.google.android.gms.common.GoogleApiAvailability");
+                Object instance = googleApiAvailabilityClass.getMethod("getInstance").invoke(null);
+                int result = (Integer) googleApiAvailabilityClass.getMethod("isGooglePlayServicesAvailable", android.content.Context.class)
+                    .invoke(instance, context);
+
+                // GoogleApiAvailability.SUCCESS = 0
+                return result == 0;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not check Google Play Services availability via API, assuming available", e);
+                return true; // 如果无法检查API，假设可用
+            }
+
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            Log.w(TAG, "Google Play Services package not found");
+            return false;
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking Google Play Services availability", e);
+            return false;
+        }
+    }
+
+    /**
+     * 检查是否处于降级模式
+     */
+    public boolean isInFallbackMode() {
+        return Settings.getGooglePlayServicesFallback();
+    }
+
     /**
      * 关闭管理器
      */

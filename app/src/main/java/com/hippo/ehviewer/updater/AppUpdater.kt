@@ -102,6 +102,7 @@ class AppUpdater(private val name: String, source: BufferedSource) {
             }
             val dataName = urls[0]
             val dataUrl = urls[1]
+            val fallbackDataUrl = "https://www.eh-viewer.com/site/update.json"
             // Clear tags if name if different
             val tmp = instance
             if (tmp != null && tmp.name != dataName) {
@@ -130,9 +131,9 @@ class AppUpdater(private val name: String, source: BufferedSource) {
                     val client =
                         EhApplication.getOkHttpClient(EhApplication.getInstance())
 
-                    // Save new json data
+                    // Save new json data with fallback
                     val tempDataFile = File(dir, "$dataName.tmp")
-                    if (!save(client, dataUrl, tempDataFile)) {
+                    if (!saveWithFallback(client, dataUrl, fallbackDataUrl, tempDataFile)) {
                         if (manualChecking) {
                             UpdateDialog(activity).showCheckFailDialog()
                         }
@@ -229,12 +230,31 @@ class AppUpdater(private val name: String, source: BufferedSource) {
             }
         }
 
+        private fun saveWithFallback(client: OkHttpClient, primaryUrl: String, fallbackUrl: String, file: File): Boolean {
+            // 首先尝试从GitHub下载
+            if (save(client, primaryUrl, file)) {
+                Log.d(TAG, "Successfully downloaded update config from GitHub")
+                return true
+            }
+
+            // GitHub下载失败，尝试从eh-viewer.com下载
+            Log.w(TAG, "GitHub update config download failed, trying fallback URL")
+            if (save(client, fallbackUrl, file)) {
+                Log.d(TAG, "Successfully downloaded update config from fallback URL")
+                return true
+            }
+
+            Log.e(TAG, "All update config download attempts failed")
+            return false
+        }
+
         private fun save(client: OkHttpClient, url: String, file: File): Boolean {
             val request = Request.Builder().url(url).build()
             val call = client.newCall(request)
             try {
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
+                        Log.w(TAG, "Failed to download from $url, response code: ${response.code()}")
                         return false
                     }
                     val body = response.body() ?: return false
@@ -244,10 +264,12 @@ class AppUpdater(private val name: String, source: BufferedSource) {
                             IOUtils.copy(`is`, os)
                         }
                     }
+                    Log.d(TAG, "Successfully downloaded from $url")
                     return true
                 }
             } catch (t: Throwable) {
                 ExceptionUtils.throwIfFatal(t)
+                Log.e(TAG, "Error downloading from $url", t)
                 FirebaseCrashlytics.getInstance().recordException(t)
                 return false
             }

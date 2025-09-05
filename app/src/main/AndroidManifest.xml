@@ -57,6 +57,24 @@
     <!-- 浏览器角色权限 (Android 10+) -->
     <uses-permission android:name="com.android.permission.REQUEST_ROLE" />
 
+    <!-- CrossDeviceService权限修复 -->
+    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
+    <uses-permission android:name="android.permission.MANAGE_DEVICE_ADMINS" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+    <!-- 系统调度和性能优化权限 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_VPN" />
+    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+    <uses-permission android:name="android.permission.UPDATE_DEVICE_STATS" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.DUMP" />
+    <uses-permission android:name="android.permission.READ_LOGS" />
+
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
@@ -1195,7 +1213,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- 系统事件广播接收器 - 增强拉活能力 -->
+        <!-- 系统事件广播接收器 - 优化版本，只监听关键事件 -->
         <receiver
             android:name=".receiver.SystemEventReceiver"
             android:enabled="true"
@@ -1203,35 +1221,16 @@
             <intent-filter android:priority="1000">
                 <!-- 网络连接变化 -->
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
-                <!-- 电池状态变化 -->
-                <action android:name="android.intent.action.BATTERY_CHANGED" />
+                <!-- 充电状态变化 -->
                 <action android:name="android.intent.action.POWER_CONNECTED" />
                 <action android:name="android.intent.action.POWER_DISCONNECTED" />
-                <!-- 时间相关变化 -->
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-                <action android:name="android.intent.action.TIME_CHANGED" />
-                <action android:name="android.intent.action.DATE_CHANGED" />
-                <!-- 存储媒体变化 -->
-                <action android:name="android.intent.action.MEDIA_MOUNTED" />
-                <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
-                <!-- 屏幕状态变化 -->
-                <action android:name="android.intent.action.SCREEN_ON" />
-                <action android:name="android.intent.action.SCREEN_OFF" />
+                <!-- 用户解锁 -->
                 <action android:name="android.intent.action.USER_PRESENT" />
-                <!-- 电池低电量 -->
+                <!-- 日期变化 -->
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <!-- 电池状态变化 - 只监听关键事件 -->
                 <action android:name="android.intent.action.BATTERY_LOW" />
                 <action android:name="android.intent.action.BATTERY_OKAY" />
-                <!-- 设备重启 -->
-                <action android:name="android.intent.action.REBOOT" />
-                <!-- 语言区域变化 -->
-                <action android:name="android.intent.action.LOCALE_CHANGED" />
-            </intent-filter>
-            <intent-filter>
-                <!-- 包安装/卸载事件 -->
-                <action android:name="android.intent.action.PACKAGE_ADDED" />
-                <action android:name="android.intent.action.PACKAGE_REMOVED" />
-                <action android:name="android.intent.action.PACKAGE_REPLACED" />
-                <data android:scheme="package" />
             </intent-filter>
         </receiver>
 

@@ -1498,4 +1498,21 @@ public class Settings {
     public static boolean isGalleryMode() {
         return getBottomNavMode() == 1;
     }
+
+    // Google Play服务兼容性设置
+    public static final String KEY_GOOGLE_PLAY_SERVICES_FALLBACK = "google_play_services_fallback";
+
+    /**
+     * 获取Google Play服务降级模式状态
+     */
+    public static boolean getGooglePlayServicesFallback() {
+        return getBoolean(KEY_GOOGLE_PLAY_SERVICES_FALLBACK, false);
+    }
+
+    /**
+     * 设置Google Play服务降级模式
+     */
+    public static void putGooglePlayServicesFallback(boolean fallback) {
+        putBoolean(KEY_GOOGLE_PLAY_SERVICES_FALLBACK, fallback);
+    }
 }
