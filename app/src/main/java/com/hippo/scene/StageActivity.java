@@ -93,6 +93,21 @@ public abstract class StageActivity extends EhActivity {
     public abstract int getContainerViewId();
 
     /**
+     * Clean up invalid fragment tags from the tag list
+     * This prevents repeated error logs when fragments are recycled by the system
+     */
+    private void cleanupInvalidFragmentTags(FragmentManager fragmentManager) {
+        for (int i = mSceneTagList.size() - 1; i >= 0; i--) {
+            String tag = mSceneTagList.get(i);
+            Fragment fragment = fragmentManager.findFragmentByTag(tag);
+            if (fragment == null) {
+                Log.d(TAG, "Removing invalid fragment tag: " + tag);
+                mSceneTagList.remove(i);
+            }
+        }
+    }
+
+    /**
      * @return {@code true} for start scene
      */
     private boolean startSceneFromIntent(Intent intent) {
@@ -170,6 +185,18 @@ public abstract class StageActivity extends EhActivity {
                 mDelaySceneTagList.addAll(list);
             }
             mIdGenerator.lazySet(savedInstanceState.getInt(KEY_NEXT_ID));
+
+            // Schedule cleanup of invalid fragment tags after fragment manager is ready
+            // This prevents the "Can't find fragment with tag" errors
+            getSupportFragmentManager().registerFragmentLifecycleCallbacks(
+                new FragmentManager.FragmentLifecycleCallbacks() {
+                    @Override
+                    public void onFragmentViewCreated(@NonNull FragmentManager fm, @NonNull Fragment f, @NonNull View v, @Nullable Bundle savedInstanceState) {
+                        super.onFragmentViewCreated(fm, f, v, savedInstanceState);
+                        // Clean up invalid tags when fragments are being restored
+                        cleanupInvalidFragmentTags(fm);
+                    }
+                }, false);
         }
 
         if (mStageId == IntIdGenerator.INVALID_ID) {
@@ -276,11 +303,18 @@ public abstract class StageActivity extends EhActivity {
 
         // Check LAUNCH_MODE_SINGLE_TASK
         if (launchMode == SceneFragment.LAUNCH_MODE_SINGLE_TASK) {
+            // Clean up invalid tags first to avoid repeated errors
+            cleanupInvalidFragmentTags(fragmentManager);
+
             for (int i = 0, n = mSceneTagList.size(); i < n; i++) {
                 String tag = mSceneTagList.get(i);
                 Fragment fragment = fragmentManager.findFragmentByTag(tag);
                 if (fragment == null) {
-                    Log.e(TAG, "Can't find fragment with tag: " + tag);
+                    // Fragment was recycled, remove from tag list and continue
+                    Log.w(TAG, "Fragment with tag " + tag + " was recycled, removing from tag list");
+                    mSceneTagList.remove(i);
+                    i--; // Adjust index after removal
+                    n--; // Adjust size after removal
                     continue;
                 }
 
@@ -295,7 +329,11 @@ public abstract class StageActivity extends EhActivity {
                         String topTag = mSceneTagList.get(j);
                         Fragment topFragment = fragmentManager.findFragmentByTag(topTag);
                         if (null == topFragment) {
-                            Log.e(TAG, "Can't find fragment with tag: " + topTag);
+                            // Fragment was recycled, remove from tag list and continue
+                            Log.w(TAG, "Top fragment with tag " + topTag + " was recycled, removing from tag list");
+                            mSceneTagList.remove(j);
+                            j--; // Adjust index after removal
+                            n--; // Adjust size after removal
                             continue;
                         }
                         // Clear shared element
@@ -385,8 +423,18 @@ public abstract class StageActivity extends EhActivity {
             }
         }
 
+        // Check if container view exists
+        int containerViewId = getContainerViewId();
+        View containerView = findViewById(containerViewId);
+        if (containerView == null) {
+            Log.e(TAG, "Container view not found: " + containerViewId + ", delaying scene start");
+            // Delay scene start until views are ready
+            getWindow().getDecorView().post(() -> startScene(announcer));
+            return;
+        }
+
         // Add new scene
-        transaction.add(getContainerViewId(), newScene, newTag);
+        transaction.add(containerViewId, newScene, newTag);
 
         // Commit
         transaction.commitAllowingStateLoss();
@@ -418,7 +466,11 @@ public abstract class StageActivity extends EhActivity {
             String tag = mSceneTagList.get(i);
             Fragment fragment = fragmentManager.findFragmentByTag(tag);
             if (fragment == null) {
-                Log.e(TAG, "Can't find fragment with tag: " + tag);
+                // Fragment was recycled, remove from tag list and continue
+                Log.w(TAG, "Fragment with tag " + tag + " was recycled during scene start, removing from tag list");
+                mSceneTagList.remove(i);
+                i--; // Adjust index after removal
+                n--; // Adjust size after removal
                 continue;
             }
 
@@ -461,8 +513,18 @@ public abstract class StageActivity extends EhActivity {
             mSceneTagList.add(tag);
             mDelaySceneTagList.add(tag);
 
+            // Check if container view exists
+            int containerViewId = getContainerViewId();
+            View containerView = findViewById(containerViewId);
+            if (containerView == null) {
+                Log.e(TAG, "Container view not found in startSceneFirstly: " + containerViewId + ", delaying scene start");
+                // Delay scene start until views are ready
+                getWindow().getDecorView().post(() -> startSceneFirstly(announcer));
+                return;
+            }
+
             // Add scene
-            transaction.add(getContainerViewId(), scene, tag);
+            transaction.add(containerViewId, scene, tag);
         }
 
         // Commit
@@ -614,6 +676,13 @@ public abstract class StageActivity extends EhActivity {
             return null;
         }
         return fragment.getClass();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Clean up any invalid fragment tags that might have been missed
+        cleanupInvalidFragmentTags(getSupportFragmentManager());
     }
 
     @Override

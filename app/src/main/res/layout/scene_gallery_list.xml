@@ -30,16 +30,8 @@
     <com.hippo.ehviewer.widget.SearchLayout
         android:id="@+id/search_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
-
-    <com.hippo.ehviewer.widget.SearchBar
-        android:id="@+id/search_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="@dimen/gallery_search_bar_margin_h"
-        android:layout_marginRight="@dimen/gallery_search_bar_margin_h"
-        android:layout_marginTop="@dimen/gallery_search_bar_margin_v"
-        style="@style/CardView.Normal"/>
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
 
     <com.hippo.widget.FabLayout
         xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -107,4 +99,15 @@
             style="@style/Widget.Design.FloatingActionButton"/>
 
     </com.hippo.widget.FabLayout>
+
+    <!-- SearchBar moved to top layer to prevent dropdown being covered -->
+    <com.hippo.ehviewer.widget.SearchBar
+        android:id="@+id/search_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="@dimen/gallery_search_bar_margin_h"
+        android:layout_marginRight="@dimen/gallery_search_bar_margin_h"
+        android:layout_marginTop="@dimen/gallery_search_bar_margin_v"
+        android:elevation="8dp"
+        style="@style/CardView.Normal"/>
 </FrameLayout>

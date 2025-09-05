@@ -1,28 +1,10 @@
 // ==UserScript==
-// @name         EhViewer APP拦截屏蔽器
+// @name         EhViewer 微信支付宝专用拦截器
 // @namespace    http://ehviewer.com/
-// @version      2.1.0
-// @description  深度拦截小红书、知乎、百度等APP客户端拉起，屏蔽各种app下载引导，让用户安心在浏览器中使用
+// @version      2.2.0
+// @description  仅支持微信和支付宝的APP拦截，支持安全的支付功能
 // @author       EhViewer Team
-// @match        *://*.xiaohongshu.com/*
-// @match        *://*.zhihu.com/*
-// @match        *://*.baidu.com/*
-// @match        *://*.weibo.com/*
-// @match        *://*.bilibili.com/*
-// @match        *://*.douyin.com/*
-// @match        *://*.kuaishou.com/*
-// @match        *://*.jd.com/*
-// @match        *://*.taobao.com/*
-// @match        *://*.tmall.com/*
-// @match        *://*.meituan.com/*
-// @match        *://*.ele.me/*
-// @match        *://*.didi.com/*
-// @match        *://*.ctrip.com/*
-// @match        *://*.qunar.com/*
-// @match        *://*.12306.cn/*
-// @match        *://*.alipay.com/*
-// @match        *://*.wechat.com/*
-// @match        *://*.qq.com/*
+// @match        *://*/*
 // @exclude      *://*.google.com/*
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -34,104 +16,47 @@
 (function() {
     'use strict';
 
-    GM_log('EhViewer APP拦截屏蔽器已启动');
+    GM_log('EhViewer 微信支付宝专用拦截器已启动');
 
-    // 配置选项
+    // 配置选项 - 增强版默认设置
     const config = {
-        enabled: GM_getValue('appInterceptEnabled', true),
-        blockSchemes: GM_getValue('blockSchemes', true),
-        blockJavaScript: GM_getValue('blockJavaScript', true),
-        blockDownloadPrompts: GM_getValue('blockDownloadPrompts', true),
-        blockAppBanners: GM_getValue('blockAppBanners', true),
-        showNotifications: GM_getValue('showNotifications', true),
-        logBlocked: GM_getValue('logBlocked', false),
+        enabled: GM_getValue('appInterceptEnabled', true), // 默认启用
+        blockSchemes: GM_getValue('blockSchemes', true), // 默认拦截Scheme
+        blockJavaScript: GM_getValue('blockJavaScript', true), // 默认拦截JavaScript
+        blockDownloadPrompts: GM_getValue('blockDownloadPrompts', true), // 默认拦截下载提示
+        blockAppBanners: GM_getValue('blockAppBanners', true), // 默认拦截横幅
+        showNotifications: GM_getValue('showNotifications', false), // 默认关闭通知（避免过多弹窗）
+        logBlocked: GM_getValue('logBlocked', false), // 默认关闭日志
+        aggressiveMode: GM_getValue('appInterceptAggressiveMode', true), // 新增：激进模式
+        blockDynamicContent: GM_getValue('appInterceptBlockDynamic', true), // 新增：拦截动态内容
         customRules: GM_getValue('customRules', [])
     };
 
-    // APP Scheme映射表
+    // 仅支持微信和支付宝的Scheme映射表
     const appSchemes = {
-        // 社交媒体类
-        'xiaohongshu': ['xhs://', 'com.xingin.xhs://', 'xhs_lite://'],
-        'zhihu': ['zhihu://', 'com.zhihu.android://', 'zhihu_lite://'],
-        'weibo': ['weibo://', 'sinaweibo://', 'com.sina.weibo://'],
-        'bilibili': ['bilibili://', 'com.bilibili.app://', 'bilibili_lite://'],
-        'douyin': ['douyin://', 'com.ss.android.ugc.aweme://', 'douyin_lite://'],
-        'kuaishou': ['kuaishou://', 'com.smile.gifmaker://', 'kuaishou_lite://'],
-        'qq': ['qq://', 'com.tencent.mobileqq://', 'mqq://'],
-        'wechat': ['weixin://', 'com.tencent.mm://', 'wechat://'],
-
-        // 电商平台类
-        'taobao': ['taobao://', 'com.taobao.taobao://', 'tbopen://'],
-        'jd': ['jd://', 'com.jingdong.app.mall://', 'openapp.jdmobile://'],
-        'tmall': ['tmall://', 'com.tmall.wireless://', 'tmall_lite://'],
-        'pinduoduo': ['pinduoduo://', 'com.xunmeng.pinduoduo://', 'pdd_lite://'],
-
-        // 生活服务类
-        'meituan': ['meituan://', 'com.sankuai.meituan://', 'meituan_lite://'],
-        'eleme': ['eleme://', 'me.ele://', 'eleme_lite://'],
-        'didi': ['didi://', 'com.sdu.didi.psnger://', 'didi_lite://'],
-
-        // 旅游出行类
-        'ctrip': ['ctrip://', 'ctrip.com://', 'ctrip_lite://'],
-        'qunar': ['qunar://', 'com.Qunar://', 'qunar_lite://'],
-        '12306': ['train12306://', 'com.MobileTicket://', '12306_lite://'],
-
-        // 工具应用类
-        'alipay': ['alipay://', 'com.eg.android.AlipayGphone://', 'alipay_lite://'],
-        'baidu': ['baidu://', 'com.baidu.searchbox://', 'baidu_lite://'],
-        'uc': ['ucbrowser://', 'com.UCMobile://', 'uc_lite://'],
-        'quark': ['quark://', 'com.quark.browser://', 'quark_lite://'],
-
-        // 其他常用APP
-        'youku': ['youku://', 'com.youku.phone://', 'youku_lite://'],
-        'iqiyi': ['iqiyi://', 'com.qiyi.video://', 'iqiyi_lite://'],
-        'tencentvideo': ['tenvideo://', 'com.tencent.qqlive://', 'qqvideo://']
+        // 微信相关
+        'wechat': ['weixin://', 'com.tencent.mm://', 'wechat://', 'wework://'],
+        'wechatpay': ['wxpay://', 'com.tencent.wechatpay://'],
+        // 支付宝相关
+        'alipay': ['alipay://', 'com.eg.android.AlipayGphone://', 'alipayqr://']
     };
 
-    // 网站特定的拦截规则
+    // 简化的通用拦截规则 - 仅支持微信和支付宝
     const siteSpecificRules = {
-        'xiaohongshu.com': {
+        'default': {
             selectors: {
-                appDownload: '.app-download, .download-banner, .app-banner, [data-test*="download"]',
-                schemeLinks: 'a[href*="xhs://"], a[href*="com.xingin.xhs"]',
-                jsHooks: ['openApp', 'callApp', 'launchApp', 'downloadApp'],
-                banners: '.fixed-banner, .floating-banner, .app-popup'
+                appDownload: '.app-download, .download-app, .app-banner, .download-banner',
+                schemeLinks: 'a[href*="weixin://"], a[href*="alipay://"], a[href*="wxpay://"]',
+                jsHooks: ['openWeChat', 'openAlipay', 'wechatApp', 'alipayApp'],
+                banners: '.app-popup, .download-popup, .app-modal, .download-modal'
             },
             patterns: [
-                /xhs:\/\/[^"'\s]+/g,
-                /com\.xingin\.xhs:\/\/[^"'\s]+/g,
-                /window\.openApp\([^)]+\)/g,
-                /location\.href\s*=\s*['"`]xhs:\/\/[^'"`]+['"`]/g
+                /weixin:\/\/[^"'\s]+/g,
+                /alipay:\/\/[^"'\s]+/g,
+                /wxpay:\/\/[^"'\s]+/g,
+                /window\.(openWeChat|openAlipay|wechatApp|alipayApp)\([^)]+\)/g
             ]
-        },
-        'zhihu.com': {
-            selectors: {
-                appDownload: '.AppBanner, .DownloadBanner, .app-download',
-                schemeLinks: 'a[href*="zhihu://"], a[href*="com.zhihu.android"]',
-                jsHooks: ['openZhihuApp', 'launchZhihu', 'zhihuApp'],
-                banners: '.Modal-appPromotion, .app-promotion-modal'
-            },
-            patterns: [
-                /zhihu:\/\/[^"'\s]+/g,
-                /com\.zhihu\.android:\/\/[^"'\s]+/g,
-                /window\.openZhihuApp\([^)]+\)/g,
-                /location\.href\s*=\s*['"`]zhihu:\/\/[^'"`]+['"`]/g
-            ]
-        },
-        'baidu.com': {
-            selectors: {
-                appDownload: '.app-download, .download-guide, .app-guide',
-                schemeLinks: 'a[href*="baidu://"], a[href*="com.baidu.searchbox"]',
-                jsHooks: ['openBaiduApp', 'baiduApp', 'bdApp'],
-                banners: '.app-popup, .download-popup, .app-modal'
-            },
-            patterns: [
-                /baidu:\/\/[^"'\s]+/g,
-                /com\.baidu\.searchbox:\/\/[^"'\s]+/g,
-                /window\.openBaiduApp\([^)]+\)/g,
-                /location\.href\s*=\s*['"`]baidu:\/\/[^'"`]+['"`]/g
-            ]
-        },
+        }
         'weibo.com': {
             selectors: {
                 appDownload: '.app-download, .weibo-app, .download-banner',

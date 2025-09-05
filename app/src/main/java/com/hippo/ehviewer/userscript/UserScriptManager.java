@@ -49,6 +49,69 @@ public class UserScriptManager {
     }
 
     /**
+     * 加载assets中的默认脚本
+     */
+    public void loadDefaultScriptsFromAssets() {
+        try {
+            String[] assetFiles = context.getAssets().list("");
+            if (assetFiles != null) {
+                for (String fileName : assetFiles) {
+                    if (fileName.endsWith(".js") && (fileName.contains("enhancer") || fileName.contains("blocker") || fileName.contains("intercept") || fileName.contains("app"))) {
+                        try {
+                            // 检查是否已经安装
+                            boolean alreadyInstalled = false;
+                            for (UserScript script : userScripts) {
+                                if (script.getId().equals(fileName)) {
+                                    alreadyInstalled = true;
+                                    break;
+                                }
+                            }
+
+                            if (!alreadyInstalled) {
+                                // 从assets加载脚本内容
+                                String scriptContent = loadAssetScript(fileName);
+                                if (scriptContent != null) {
+                                    UserScript script = UserScriptParser.parse(scriptContent);
+                                    if (script != null) {
+                                        userScripts.add(script);
+                                        android.util.Log.d("UserScriptManager", "Loaded default script: " + fileName);
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            android.util.Log.e("UserScriptManager", "Failed to load script: " + fileName, e);
+                        }
+                    }
+                }
+                // 保存到存储
+                scriptStorage.saveScripts(userScripts);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("UserScriptManager", "Failed to load default scripts from assets", e);
+        }
+    }
+
+    /**
+     * 从assets加载脚本内容
+     */
+    private String loadAssetScript(String fileName) {
+        try {
+            java.io.InputStream is = context.getAssets().open(fileName);
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, length);
+            }
+            is.close();
+            return baos.toString("UTF-8");
+        } catch (Exception e) {
+            android.util.Log.e("UserScriptManager", "Failed to load asset script: " + fileName, e);
+            return null;
+        }
+    }
+
+    /**
      * 安装用户脚本
      */
     public synchronized boolean installScript(String scriptContent) {

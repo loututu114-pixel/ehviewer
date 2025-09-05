@@ -48,6 +48,13 @@ public class SystemErrorHandler {
     public static final String CATEGORY_SURFACE_FLINGER = "surface_flinger";
     public static final String CATEGORY_MEMORY = "memory";
     public static final String CATEGORY_DISK_IO = "disk_io";
+    public static final String CATEGORY_CROSS_DEVICE = "cross_device";
+    public static final String CATEGORY_RUNTIME_FLAGS = "runtime_flags";
+    public static final String CATEGORY_GOOGLE_PLAY_SERVICES = "google_play_services";
+    public static final String CATEGORY_ART_COMPATIBILITY = "art_compatibility";
+    public static final String CATEGORY_SCHED_ASSIST = "sched_assist";
+    public static final String CATEGORY_AUTOFILL = "autofill";
+    public static final String CATEGORY_SURFACE_FLINGER_OPT = "surface_flinger_opt";
 
     private final Context context;
     private final Handler mainHandler;
@@ -94,6 +101,25 @@ public class SystemErrorHandler {
 
         // Disk I/O errors
         errorHandlers.put(CATEGORY_DISK_IO, new DiskIOErrorHandler());
+
+        // Runtime flags errors
+        errorHandlers.put(CATEGORY_RUNTIME_FLAGS, new RuntimeFlagsErrorHandler());
+
+        // Google Play Services errors
+        errorHandlers.put(CATEGORY_GOOGLE_PLAY_SERVICES, new GooglePlayServicesErrorHandler());
+
+        // ART compatibility errors
+        errorHandlers.put(CATEGORY_ART_COMPATIBILITY, new ArtCompatibilityErrorHandler());
+        errorHandlers.put(CATEGORY_CROSS_DEVICE, new CrossDeviceErrorHandler());
+
+        // SchedAssist errors
+        errorHandlers.put(CATEGORY_SCHED_ASSIST, new SchedAssistErrorHandler());
+
+        // Autofill errors
+        errorHandlers.put(CATEGORY_AUTOFILL, new AutofillErrorHandler());
+
+        // SurfaceFlinger optimization errors
+        errorHandlers.put(CATEGORY_SURFACE_FLINGER_OPT, new SurfaceFlingerOptErrorHandler());
     }
 
     /**
@@ -142,6 +168,23 @@ public class SystemErrorHandler {
         if (logMessage.contains("Read-only file system") ||
             logMessage.contains("No such file or directory")) {
             return CATEGORY_DISK_IO;
+        }
+
+        if (logMessage.contains("Unknown bits set in runtime_flags") ||
+            logMessage.contains("runtime_flags")) {
+            return CATEGORY_RUNTIME_FLAGS;
+        }
+
+        if (logMessage.contains("com.google.android.gms.chimera") ||
+            logMessage.contains("Google Play services") ||
+            logMessage.contains("Failed to find provider info")) {
+            return CATEGORY_GOOGLE_PLAY_SERVICES;
+        }
+
+        if (logMessage.contains("ART") ||
+            logMessage.contains("dalvik.system.VMRuntime") ||
+            logMessage.contains("Not starting debugger since process cannot load the jdwp agent")) {
+            return CATEGORY_ART_COMPATIBILITY;
         }
 
         return null;
@@ -370,5 +413,191 @@ public class SystemErrorHandler {
         }
 
         return info.toString();
+    }
+
+    /**
+     * Runtime flags error handler
+     */
+    private class RuntimeFlagsErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.d(TAG, "Runtime flags error detected: " + logMessage);
+
+            // Runtime flags errors are usually benign warnings
+            // Only log if they occur frequently
+            if (stats.getCount() > 3) {
+                Log.i(TAG, "Frequent runtime flags warnings detected");
+
+                // Try to apply runtime compatibility fixes
+                mainHandler.post(() -> {
+                    try {
+                        // Set system properties to suppress warnings
+                        System.setProperty("dalvik.vm.checkjni", "false");
+
+                        // Additional runtime compatibility handling
+                        // This is handled by SystemCompatibilityManager
+                        Log.d(TAG, "Applied runtime flags compatibility fixes");
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error applying runtime flags fixes", e);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Google Play Services error handler
+     */
+    private class GooglePlayServicesErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.d(TAG, "Google Play Services error detected: " + logMessage);
+
+            // Check if we should enable fallback mode
+            if (stats.getCount() > 2) {
+                Log.i(TAG, "Multiple Google Play Services errors detected, enabling fallback mode");
+
+                mainHandler.post(() -> {
+                    try {
+                        // Enable Google Play Services fallback mode
+                        com.hippo.ehviewer.Settings.putGooglePlayServicesFallback(true);
+
+                        // Notify application about the fallback
+                        EhApplication application = (EhApplication) context.getApplicationContext();
+                        Log.i(TAG, "Google Play Services fallback mode enabled");
+
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error enabling Google Play Services fallback", e);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * ART compatibility error handler
+     */
+    private class ArtCompatibilityErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.d(TAG, "ART compatibility error detected: " + logMessage);
+
+            // ART errors are usually non-critical
+            // Only handle if they occur frequently
+            if (stats.getCount() > 5) {
+                Log.i(TAG, "Frequent ART compatibility issues detected");
+
+                mainHandler.post(() -> {
+                    try {
+                        // Apply ART-specific compatibility fixes
+                        System.setProperty("dalvik.vm.dex2oat-flags", "--no-watch-dog");
+
+                        // Additional ART compatibility handling
+                        Log.d(TAG, "Applied ART compatibility fixes");
+
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error applying ART compatibility fixes", e);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * CrossDevice error handler
+     */
+    private class CrossDeviceErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.w(TAG, "CrossDevice error detected: " + logMessage);
+
+            // Handle CrossDevice errors immediately
+            mainHandler.post(() -> {
+                try {
+                    CrossDeviceErrorRecovery recovery = CrossDeviceErrorRecovery.getInstance(context);
+                    recovery.handleCrossDeviceError(logMessage, null);
+
+                    Log.i(TAG, "CrossDevice error recovery initiated");
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error during CrossDevice error recovery", e);
+                }
+            });
+
+            // Clear error stats after handling to prevent duplicate recovery attempts
+            if (stats.getTimeSinceFirstOccurrence() > 60000) { // 1 minute
+                stats.count.set(0);
+            }
+        }
+    }
+
+    /**
+     * SchedAssist error handler
+     */
+    private class SchedAssistErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.w(TAG, "SchedAssist error detected: " + logMessage);
+
+            // Handle SchedAssist errors
+            mainHandler.post(() -> {
+                try {
+                    SchedulingOptimizer optimizer = SchedulingOptimizer.getInstance(context);
+                    optimizer.handleSchedAssistError(logMessage);
+
+                    Log.i(TAG, "SchedAssist error handled");
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error handling SchedAssist error", e);
+                }
+            });
+        }
+    }
+
+    /**
+     * Autofill error handler
+     */
+    private class AutofillErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.w(TAG, "Autofill error detected: " + logMessage);
+
+            // Handle autofill errors
+            mainHandler.post(() -> {
+                try {
+                    com.hippo.ehviewer.util.AutofillErrorHandler handler =
+                        com.hippo.ehviewer.util.AutofillErrorHandler.getInstance(context);
+                    handler.handleAutofillError(logMessage, null);
+
+                    Log.i(TAG, "Autofill error handled");
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error handling autofill error", e);
+                }
+            });
+        }
+    }
+
+    /**
+     * SurfaceFlinger optimization error handler
+     */
+    private class SurfaceFlingerOptErrorHandler implements ErrorHandler {
+        @Override
+        public void handleError(String logMessage, ErrorStats stats) {
+            Log.w(TAG, "SurfaceFlinger optimization error detected: " + logMessage);
+
+            // Handle SurfaceFlinger errors
+            mainHandler.post(() -> {
+                try {
+                    SurfaceFlingerOptimizer optimizer = SurfaceFlingerOptimizer.getInstance(context);
+                    optimizer.handleSurfaceFlingerError(logMessage);
+
+                    Log.i(TAG, "SurfaceFlinger error handled");
+
+                } catch (Exception e) {
+                    Log.w(TAG, "Error handling SurfaceFlinger error", e);
+                }
+            });
+        }
     }
 }

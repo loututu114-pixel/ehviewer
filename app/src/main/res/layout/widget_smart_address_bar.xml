@@ -7,124 +7,52 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
-    <!-- Material Design 3 地址栏容器 -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- 地址栏容器 -->
+    <LinearLayout
         android:id="@+id/address_bar_container"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_margin="8dp"
-        app:cardBackgroundColor="@color/modern_surface"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:strokeColor="@color/modern_outline"
-        app:strokeWidth="1dp"
-        android:stateListAnimator="@animator/address_bar_elevation">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp">
+        <!-- 文本输入字段 -->
+        <EditText
+            android:id="@+id/address_edit_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="搜索或输入网址..."
+            android:imeOptions="actionGo"
+            android:inputType="textUri"
+            android:maxLines="1" />
 
-            <!-- 搜索图标 -->
-            <ImageView
-                android:id="@+id/search_icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="8dp"
-                android:src="@drawable/ic_search"
-                android:tint="@color/modern_on_surface_variant"
-                android:contentDescription="搜索图标" />
+        <!-- 清除按钮 -->
+        <ImageButton
+            android:id="@+id/clear_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:contentDescription="清除输入"
+            android:src="@drawable/ic_clear"
+            android:visibility="gone" />
 
-            <!-- Material Design 3 文本输入字段 -->
-            <EditText
-                android:id="@+id/address_edit_text"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:hint="搜索或输入网址..."
-                android:imeOptions="actionGo"
-                android:inputType="textUri"
-                android:maxLines="1"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:textColor="@color/modern_on_surface"
-                android:textColorHint="@color/modern_on_surface_variant"
-                android:textSize="16sp"
-                android:lineSpacingExtra="1dp"
-                android:letterSpacing="0.005"
-                android:fontFamily="sans-serif"
-                tools:text="github.com" />
+        <!-- 刷新/停止按钮 -->
+        <ImageButton
+            android:id="@+id/refresh_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:contentDescription="刷新页面"
+            android:src="@drawable/ic_refresh" />
 
-            <!-- 清除按钮 -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/clear_button"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="4dp"
-                android:contentDescription="清除输入"
-                app:icon="@drawable/ic_clear"
-                app:iconTint="@color/modern_on_surface_variant"
-                app:iconSize="20dp"
-                android:visibility="gone"
-                app:rippleColor="@color/modern_primary" />
+    </LinearLayout>
 
-            <!-- 刷新/停止按钮 -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/refresh_button"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="4dp"
-                android:contentDescription="刷新页面"
-                app:icon="@drawable/ic_refresh"
-                app:iconTint="@color/modern_on_surface_variant"
-                app:iconSize="20dp"
-                app:rippleColor="@color/modern_primary" />
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Material Design 3 建议列表容器 -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/suggestions_container"
+    <!-- 建议列表容器 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/suggestions_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="68dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        app:cardBackgroundColor="@color/modern_surface"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="8dp"
-        app:strokeColor="@color/modern_outline"
-        app:strokeWidth="0dp"
-        android:visibility="gone"
-        android:clipToPadding="false"
-        android:alpha="0"
-        android:scaleY="0.8"
-        android:translationY="-16dp">
-
-        <!-- 建议列表 -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/suggestions_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:maxHeight="400dp"
-            android:scrollbars="vertical"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:clipToPadding="false"
-            android:overScrollMode="ifContentScrolls"
-            tools:itemCount="6"
-            tools:listitem="@layout/item_enhanced_suggestion"
-            tools:visibility="visible" />
-
-    </com.google.android.material.card.MaterialCardView>
+        android:background="@android:color/transparent"
+        android:visibility="gone" />
 
 </FrameLayout>

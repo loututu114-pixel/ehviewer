@@ -42,6 +42,7 @@ public class SearchConfigManager {
 
     private static final String TAG = "SearchConfigManager";
     private static final String CONFIG_URL = "https://raw.githubusercontent.com/loututu114-pixel/ehviewer/main/sou.json";
+    private static final String FALLBACK_CONFIG_URL = "http://www.eh-viewer.com/site/sou.json";
     private static final String PREFS_NAME = "search_config";
     private static final String KEY_CONFIG_JSON = "config_json";
     private static final String KEY_LAST_UPDATE = "last_update";
@@ -537,11 +538,34 @@ public class SearchConfigManager {
      * 下载远程配置
      */
     private String downloadConfig() {
+        // 首先尝试从GitHub下载
+        String config = downloadConfigFromUrl(CONFIG_URL);
+        if (config != null) {
+            Log.d(TAG, "Successfully downloaded config from GitHub");
+            return config;
+        }
+
+        // GitHub下载失败，尝试从eh-viewer.com下载
+        Log.w(TAG, "GitHub config download failed, trying fallback URL");
+        config = downloadConfigFromUrl(FALLBACK_CONFIG_URL);
+        if (config != null) {
+            Log.d(TAG, "Successfully downloaded config from fallback URL");
+            return config;
+        }
+
+        Log.e(TAG, "All config download attempts failed");
+        return null;
+    }
+
+    /**
+     * 从指定URL下载配置
+     */
+    private String downloadConfigFromUrl(String urlString) {
         HttpURLConnection connection = null;
         BufferedReader reader = null;
 
         try {
-            URL url = new URL(CONFIG_URL);
+            URL url = new URL(urlString);
             connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(15000); // 15秒连接超时
             connection.setReadTimeout(20000); // 20秒读取超时
@@ -563,30 +587,30 @@ public class SearchConfigManager {
 
                 String result = sb.toString().trim();
                 if (result.isEmpty()) {
-                    Log.w(TAG, "Downloaded config is empty");
+                    Log.w(TAG, "Downloaded config is empty from " + urlString);
                     return null;
                 }
 
                 // 验证JSON格式
                 try {
                     new JSONObject(result);
-                    Log.d(TAG, "Successfully downloaded config, size: " + result.length() + " bytes");
+                    Log.d(TAG, "Successfully downloaded config from " + urlString + ", size: " + result.length() + " bytes");
                     return result;
                 } catch (JSONException e) {
-                    Log.e(TAG, "Downloaded config is not valid JSON", e);
+                    Log.e(TAG, "Downloaded config is not valid JSON from " + urlString, e);
                     return null;
                 }
             } else {
-                Log.w(TAG, "Failed to download config, response code: " + responseCode);
+                Log.w(TAG, "Failed to download config from " + urlString + ", response code: " + responseCode);
             }
         } catch (java.net.SocketTimeoutException e) {
-            Log.w(TAG, "Config download timeout", e);
+            Log.w(TAG, "Config download timeout from " + urlString, e);
         } catch (java.net.UnknownHostException e) {
-            Log.w(TAG, "Network unreachable, cannot download config", e);
+            Log.w(TAG, "Network unreachable, cannot download config from " + urlString, e);
         } catch (java.io.IOException e) {
-            Log.e(TAG, "IO error during config download", e);
+            Log.e(TAG, "IO error during config download from " + urlString, e);
         } catch (Exception e) {
-            Log.e(TAG, "Unexpected error during config download", e);
+            Log.e(TAG, "Unexpected error during config download from " + urlString, e);
         } finally {
             if (connection != null) {
                 connection.disconnect();

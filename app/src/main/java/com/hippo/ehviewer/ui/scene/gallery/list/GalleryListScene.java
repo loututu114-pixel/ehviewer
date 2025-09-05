@@ -1821,6 +1821,44 @@ public final class GalleryListScene extends BaseScene
                 break;
         }
 
+        // Handle SearchLayout and FAB visibility based on search state
+        if (newState == SearchBar.STATE_SEARCH_LIST) {
+            // When showing search dropdown, hide search layout and FAB to prevent covering
+            if (mSearchLayout != null) {
+                mSearchLayout.setVisibility(View.GONE);
+            }
+            if (mFabLayout != null) {
+                mFabLayout.setVisibility(View.GONE);
+            }
+            if (mSearchFab != null) {
+                mSearchFab.setVisibility(View.GONE);
+            }
+        } else if (newState == SearchBar.STATE_SEARCH) {
+            // When in search mode but not showing dropdown, show search layout
+            if (mSearchLayout != null) {
+                mSearchLayout.setVisibility(View.VISIBLE);
+            }
+            // Restore FAB buttons
+            if (mFabLayout != null) {
+                mFabLayout.setVisibility(View.VISIBLE);
+            }
+            if (mSearchFab != null) {
+                // Only show search fab if it should be visible
+                mSearchFab.setVisibility(View.INVISIBLE);
+            }
+        } else if (newState == SearchBar.STATE_NORMAL) {
+            // When back to normal, hide search layout and restore FAB buttons
+            if (mSearchLayout != null) {
+                mSearchLayout.setVisibility(View.GONE);
+            }
+            if (mFabLayout != null) {
+                mFabLayout.setVisibility(View.VISIBLE);
+            }
+            if (mSearchFab != null) {
+                mSearchFab.setVisibility(View.INVISIBLE);
+            }
+        }
+
         if (newState == STATE_NORMAL || newState == STATE_SIMPLE_SEARCH) {
             setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED, Gravity.LEFT);
             setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED, Gravity.RIGHT);
@@ -1868,6 +1906,10 @@ public final class GalleryListScene extends BaseScene
     // SearchBarMover.Helper
     @Override
     public boolean forceShowSearchBar() {
+        // Don't move search bar when dropdown is showing to prevent covering
+        if (mSearchBar != null && mSearchBar.getState() == SearchBar.STATE_SEARCH_LIST) {
+            return true; // Keep search bar in place when dropdown is visible
+        }
         return mState == STATE_SIMPLE_SEARCH || mState == STATE_SEARCH_SHOW_LIST;
     }
 

@@ -23,6 +23,7 @@ import android.util.Log;
 
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.hippo.scene.SceneFragment;
+import com.hippo.ehviewer.Settings;
 
 import java.util.Locale;
 
@@ -42,6 +43,19 @@ public final class Analytics {
 
     public static void start(Context context) {
         try {
+            // 检查是否处于降级模式
+            if (Settings.getGooglePlayServicesFallback()) {
+                Log.w(TAG, "Google Play Services fallback mode enabled, skipping Firebase Analytics initialization");
+                return;
+            }
+
+            // 检查Google Play服务是否可用
+            if (!isGooglePlayServicesAvailable(context)) {
+                Log.w(TAG, "Google Play Services not available, Firebase Analytics will be disabled");
+                Settings.putGooglePlayServicesFallback(true);
+                return;
+            }
+
             // Initialize Firebase Analytics
             firebaseAnalytics = FirebaseAnalytics.getInstance(context);
 
@@ -77,6 +91,8 @@ public final class Analytics {
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize analytics", e);
+            // 启用降级模式
+            Settings.putGooglePlayServicesFallback(true);
         }
     }
 
@@ -177,5 +193,44 @@ public final class Analytics {
                 Log.e(TAG, "Failed to track app exception", e);
             }
         }
+    }
+
+    /**
+     * 检查Google Play服务是否可用
+     */
+    private static boolean isGooglePlayServicesAvailable(Context context) {
+        try {
+            // 检查Google Play服务包是否存在
+            android.content.pm.PackageManager pm = context.getPackageManager();
+            pm.getPackageInfo("com.google.android.gms", 0);
+
+            // 检查Google Play服务版本是否足够
+            try {
+                Class<?> googleApiAvailabilityClass = Class.forName("com.google.android.gms.common.GoogleApiAvailability");
+                Object instance = googleApiAvailabilityClass.getMethod("getInstance").invoke(null);
+                int result = (Integer) googleApiAvailabilityClass.getMethod("isGooglePlayServicesAvailable", android.content.Context.class)
+                    .invoke(instance, context);
+
+                // GoogleApiAvailability.SUCCESS = 0
+                return result == 0;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not check Google Play Services availability via API, assuming available", e);
+                return true; // 如果无法检查API，假设可用
+            }
+
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            Log.w(TAG, "Google Play Services package not found");
+            return false;
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking Google Play Services availability", e);
+            return false;
+        }
+    }
+
+    /**
+     * 检查是否处于降级模式
+     */
+    public static boolean isInFallbackMode() {
+        return Settings.getGooglePlayServicesFallback();
     }
 }

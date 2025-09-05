@@ -35,6 +35,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -458,6 +459,14 @@ public final class MainActivity extends StageActivity
         }
         setContentView(R.layout.activity_main);
 
+        // 确保 fragment_container 视图已初始化
+        View fragmentContainer = findViewById(R.id.fragment_container);
+        if (fragmentContainer == null) {
+            Log.e("MainActivity", "Fragment container not found after setContentView");
+            return;
+        }
+        Log.d("MainActivity", "Fragment container found: " + fragmentContainer.getClass().getSimpleName());
+
         mDrawerLayout = (EhDrawerLayout) ViewUtils.$$(this, R.id.draw_view);
         mDrawerLayout.setDrawerListener(this);
         mNavView = (NavigationView) ViewUtils.$$(this, R.id.nav_view);
@@ -501,9 +510,12 @@ public final class MainActivity extends StageActivity
         // 初始化浏览器组件
         initializeBrowserComponents();
         
+        // 初始化启动缓存管理器（优先级最高）
+        initializeStartupCache();
+
         // 初始化性能优化组件
         initializePerformanceOptimizers();
-        
+
         // 初始化智能提示管理器
         initializeSmartTipsManager();
 
@@ -1249,6 +1261,24 @@ public final class MainActivity extends StageActivity
             }
         } else {
             android.util.Log.e("MainActivity", "Bottom navigation test - view is null");
+        }
+    }
+
+    /**
+     * 初始化启动缓存管理器
+     */
+    private void initializeStartupCache() {
+        try {
+            com.hippo.ehviewer.cache.StartupCacheManager startupCache =
+                com.hippo.ehviewer.cache.StartupCacheManager.getInstance(this);
+
+            // 开始预加载关键资源
+            startupCache.startPreloading();
+
+            android.util.Log.d("MainActivity", "Startup cache manager initialized and preloading started");
+
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to initialize startup cache", e);
         }
     }
 

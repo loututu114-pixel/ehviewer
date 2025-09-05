@@ -66,67 +66,103 @@ public class PasswordAutofillService extends AutofillService {
 
         Log.d(TAG, "onFillRequest called");
 
-        // 检查密码管理器是否已解锁
-        if (!mPasswordManager.isUnlocked()) {
-            Log.w(TAG, "Password manager is locked, cannot provide autofill");
+        try {
+            // 检查密码管理器是否已解锁
+            if (mPasswordManager == null || !mPasswordManager.isUnlocked()) {
+                Log.w(TAG, "Password manager is locked or null, cannot provide autofill");
+                callback.onSuccess(null);
+                return;
+            }
+
+            // 检查用户是否启用了自动填充
+            if (!isAutofillEnabled()) {
+                Log.d(TAG, "Autofill is disabled by user");
+                callback.onSuccess(null);
+                return;
+            }
+
+            // 安全地获取AssistStructure
+            if (request.getFillContexts() == null || request.getFillContexts().isEmpty()) {
+                Log.w(TAG, "No fill contexts available");
+                callback.onSuccess(null);
+                return;
+            }
+
+            AssistStructure structure = request.getFillContexts().get(request.getFillContexts().size() - 1)
+                    .getStructure();
+
+            if (structure == null) {
+                Log.w(TAG, "AssistStructure is null");
+                callback.onSuccess(null);
+                return;
+            }
+
+            // 解析表单字段
+            ParsedStructure parsedStructure = parseStructure(structure);
+            if (parsedStructure == null || parsedStructure.usernameFields.isEmpty()) {
+                Log.d(TAG, "No suitable fields found for autofill");
+                callback.onSuccess(null);
+                return;
+            }
+
+            // 构建填充响应
+            FillResponse response = buildFillResponse(parsedStructure);
+            if (response != null) {
+                callback.onSuccess(response);
+            } else {
+                Log.w(TAG, "Failed to build fill response");
+                callback.onSuccess(null);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onFillRequest", e);
+            // 发生异常时返回null而不是抛出异常，避免系统服务崩溃
             callback.onSuccess(null);
-            return;
         }
-
-        // 检查用户是否启用了自动填充
-        if (!isAutofillEnabled()) {
-            Log.d(TAG, "Autofill is disabled by user");
-            callback.onSuccess(null);
-            return;
-        }
-
-        AssistStructure structure = request.getFillContexts().get(request.getFillContexts().size() - 1)
-                .getStructure();
-
-        if (structure == null) {
-            callback.onSuccess(null);
-            return;
-        }
-
-        // 解析表单字段
-        ParsedStructure parsedStructure = parseStructure(structure);
-        if (parsedStructure == null || parsedStructure.usernameFields.isEmpty()) {
-            callback.onSuccess(null);
-            return;
-        }
-
-        // 构建填充响应
-        FillResponse response = buildFillResponse(parsedStructure);
-        callback.onSuccess(response);
     }
 
     @Override
     public void onSaveRequest(@NonNull SaveRequest request, @NonNull SaveCallback callback) {
         Log.d(TAG, "onSaveRequest called");
 
-        // 检查密码管理器是否已解锁
-        if (!mPasswordManager.isUnlocked()) {
-            Log.w(TAG, "Password manager is locked, cannot save password");
-            callback.onSuccess();
-            return;
-        }
+        try {
+            // 检查密码管理器是否已解锁
+            if (mPasswordManager == null || !mPasswordManager.isUnlocked()) {
+                Log.w(TAG, "Password manager is locked or null, cannot save password");
+                callback.onSuccess();
+                return;
+            }
 
-        AssistStructure structure = request.getFillContexts().get(request.getFillContexts().size() - 1)
-                .getStructure();
+            // 安全地获取AssistStructure
+            if (request.getFillContexts() == null || request.getFillContexts().isEmpty()) {
+                Log.w(TAG, "No fill contexts available for save request");
+                callback.onSuccess();
+                return;
+            }
 
-        if (structure == null) {
-            callback.onSuccess();
-            return;
-        }
+            AssistStructure structure = request.getFillContexts().get(request.getFillContexts().size() - 1)
+                    .getStructure();
 
-        // 解析并保存密码
-        boolean saved = savePasswordFromStructure(structure);
-        if (saved) {
+            if (structure == null) {
+                Log.w(TAG, "AssistStructure is null for save request");
+                callback.onSuccess();
+                return;
+            }
+
+            // 解析并保存密码
+            boolean saved = savePasswordFromStructure(structure);
+            if (saved) {
+                callback.onSuccess();
+                Log.d(TAG, "Password saved successfully");
+            } else {
+                callback.onFailure("Failed to save password");
+                Log.w(TAG, "Failed to save password");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onSaveRequest", e);
+            // 发生异常时调用onSuccess，避免系统服务崩溃
             callback.onSuccess();
-            Log.d(TAG, "Password saved successfully");
-        } else {
-            callback.onFailure("Failed to save password");
-            Log.w(TAG, "Failed to save password");
         }
     }
 
@@ -134,55 +170,94 @@ public class PasswordAutofillService extends AutofillService {
      * 解析AssistStructure以查找用户名和密码字段
      */
     private ParsedStructure parseStructure(AssistStructure structure) {
-        ParsedStructure result = new ParsedStructure();
-        result.domain = extractDomain(structure);
-
-        int windowCount = structure.getWindowNodeCount();
-        for (int i = 0; i < windowCount; i++) {
-            AssistStructure.WindowNode window = structure.getWindowNodeAt(i);
-            parseViewNode(window.getRootViewNode(), result);
+        if (structure == null) {
+            Log.w(TAG, "Structure is null in parseStructure");
+            return null;
         }
 
-        return result.hasCredentials() ? result : null;
+        try {
+            ParsedStructure result = new ParsedStructure();
+            result.domain = extractDomain(structure);
+
+            int windowCount = structure.getWindowNodeCount();
+            for (int i = 0; i < windowCount; i++) {
+                try {
+                    AssistStructure.WindowNode window = structure.getWindowNodeAt(i);
+                    if (window != null && window.getRootViewNode() != null) {
+                        parseViewNode(window.getRootViewNode(), result);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Error parsing window node at index " + i, e);
+                    // 继续处理下一个窗口节点
+                }
+            }
+
+            return result.hasCredentials() ? result : null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error in parseStructure", e);
+            return null;
+        }
     }
 
     /**
      * 递归解析View节点
      */
     private void parseViewNode(AssistStructure.ViewNode node, ParsedStructure structure) {
-        if (node == null) return;
+        if (node == null || structure == null) return;
 
-        // 检查是否是输入字段
-        if (node.getAutofillHints() != null || node.getHint() != null) {
-            String[] hints = node.getAutofillHints();
-            if (hints != null) {
-                for (String hint : hints) {
-                    if (isUsernameHint(hint)) {
-                        structure.usernameFields.add(node);
-                    } else if (isPasswordHint(hint)) {
-                        structure.passwordFields.add(node);
+        try {
+            // 检查是否是输入字段
+            if (node.getAutofillHints() != null || node.getHint() != null) {
+                String[] hints = node.getAutofillHints();
+                if (hints != null) {
+                    for (String hint : hints) {
+                        if (hint != null) {
+                            if (isUsernameHint(hint)) {
+                                structure.usernameFields.add(node);
+                            } else if (isPasswordHint(hint)) {
+                                structure.passwordFields.add(node);
+                            }
+                        }
                     }
+                }
+
+                // 检查HTML输入类型
+                try {
+                    int inputTypeInt = node.getInputType();
+                    String inputType = String.valueOf(inputTypeInt);
+                    if (inputType != null) {
+                        if (inputType.contains("1") || inputType.contains("33") || inputType.contains("32")) { // TYPE_TEXT_VARIATION_EMAIL, TYPE_TEXT, TYPE_TEXT_VARIATION_NORMAL
+                            if (isLikelyUsernameField(node)) {
+                                structure.usernameFields.add(node);
+                            }
+                        } else if (inputType.contains("password")) {
+                            structure.passwordFields.add(node);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Error getting input type", e);
                 }
             }
 
-            // 检查HTML输入类型
-            int inputTypeInt = node.getInputType();
-            String inputType = String.valueOf(inputTypeInt);
-            if (inputType != null) {
-                if (inputType.contains("1") || inputType.contains("33") || inputType.contains("32")) { // TYPE_TEXT_VARIATION_EMAIL, TYPE_TEXT, TYPE_TEXT_VARIATION_NORMAL
-                    if (isLikelyUsernameField(node)) {
-                        structure.usernameFields.add(node);
+            // 递归处理子节点
+            try {
+                int childCount = node.getChildCount();
+                for (int i = 0; i < childCount; i++) {
+                    try {
+                        AssistStructure.ViewNode child = node.getChildAt(i);
+                        if (child != null) {
+                            parseViewNode(child, structure);
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error parsing child node at index " + i, e);
+                        // 继续处理其他子节点
                     }
-                } else if (inputType.contains("password")) {
-                    structure.passwordFields.add(node);
                 }
+            } catch (Exception e) {
+                Log.w(TAG, "Error getting child nodes", e);
             }
-        }
-
-        // 递归处理子节点
-        int childCount = node.getChildCount();
-        for (int i = 0; i < childCount; i++) {
-            parseViewNode(node.getChildAt(i), structure);
+        } catch (Exception e) {
+            Log.w(TAG, "Error parsing view node", e);
         }
     }
 

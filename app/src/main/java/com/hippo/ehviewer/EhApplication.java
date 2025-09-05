@@ -55,7 +55,9 @@ import com.hippo.ehviewer.util.AppOptimizationManager;
 import com.hippo.ehviewer.util.SystemErrorHandler;
 import com.hippo.ehviewer.util.LogMonitor;
 import com.hippo.ehviewer.util.SystemMonitor;
+import com.hippo.ehviewer.util.StartupLogger;
 import com.hippo.ehviewer.util.UserEnvironmentDetector;
+import com.hippo.ehviewer.SystemCompatibilityManager;
 import com.hippo.ehviewer.client.data.EhNewsDetail;
 import com.hippo.ehviewer.client.data.GalleryDetail;
 import com.hippo.ehviewer.client.data.userTag.UserTagList;
@@ -113,6 +115,8 @@ public class EhApplication extends RecordingApplication {
 
     public static final boolean BETA = false;
 
+    private Thread.UncaughtExceptionHandler defaultExceptionHandler;
+
     private static final boolean DEBUG_CONACO = false;
     private static final boolean DEBUG_PRINT_NATIVE_MEMORY = false;
     private static final boolean DEBUG_PRINT_IMAGE_COUNT = false;
@@ -160,44 +164,103 @@ public class EhApplication extends RecordingApplication {
     public void onCreate() {
         instance = this;
 
-        Thread.UncaughtExceptionHandler handler = Thread.getDefaultUncaughtExceptionHandler();
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+        // 初始化启动日志记录器
+        StartupLogger startupLogger = StartupLogger.getInstance(this);
+        startupLogger.logStartupStepStart("Application.onCreate");
+
+        startupLogger.logStartupStep("ExceptionHandler", "Setting up uncaught exception handler");
+        defaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.UncaughtExceptionHandler enhancedHandler = (t, e) -> {
             try {
                 // Always save crash file if onCreate() is not done
                 if (!initialized || Settings.getSaveCrashLog()) {
                     Crash.saveCrashLog(instance, e);
                 }
+
+                // Log additional context for system service errors
+                if (e != null && e.getMessage() != null) {
+                    if (e.getMessage().contains("RemoteFillService") ||
+                        e.getMessage().contains("Autofill") ||
+                        e.getMessage().contains("SystemService")) {
+                        Log.w(TAG, "System service error detected: " + e.getMessage());
+                    }
+                }
             } catch (Throwable ignored) {
             }
 
-            if (handler != null) {
-                handler.uncaughtException(t, e);
+            if (defaultExceptionHandler != null) {
+                defaultExceptionHandler.uncaughtException(t, e);
             }
-        });
+        };
+        Thread.setDefaultUncaughtExceptionHandler(enhancedHandler);
 
         super.onCreate();
 //        if(BuildConfig.DEBUG){
 //            TooLargeTool.startLogging(this);
 //        }
 
+        startupLogger.logStartupStep("Initialization", "Starting core components initialization");
+
+        long initStartTime = System.currentTimeMillis();
         GetText.initialize(this);
+        startupLogger.logStartupStep("GetText", "Initialized in " + (System.currentTimeMillis() - initStartTime) + "ms");
+
         StatusCodeException.initialize(this);
+        startupLogger.logStartupStep("StatusCodeException", "Initialized");
+
         Settings.initialize(this);
+        startupLogger.logStartupStep("Settings", "Initialized");
+
         ReadableTime.initialize(this);
+        startupLogger.logStartupStep("ReadableTime", "Initialized");
+
         Html.initialize(this);
+        startupLogger.logStartupStep("Html", "Initialized");
+
         AppConfig.initialize(this);
+        startupLogger.logStartupStep("AppConfig", "Initialized");
+
         SpiderDen.initialize(this);
+        startupLogger.logStartupStep("SpiderDen", "Initialized");
+
         EhDB.initialize(this);
+        startupLogger.logStartupStep("EhDB", "Initialized");
+
         EhEngine.initialize();
+        startupLogger.logStartupStep("EhEngine", "Initialized");
+
         BitmapUtils.initialize(this);
+        startupLogger.logStartupStep("BitmapUtils", "Initialized");
+
         Image.initialize(this);
+        startupLogger.logStartupStep("Image", "Initialized");
+
         Native.initialize();
+        startupLogger.logStartupStep("Native", "Initialized");
 
         // 初始化腾讯X5浏览器
         X5WebViewManager.getInstance().initX5(this);
 
         // 初始化内存管理器
         MemoryManager.getInstance(this);
+
+        // 初始化系统兼容性管理器
+        SystemCompatibilityManager.getInstance().initialize(this);
+
+        // 初始化CrossDevice权限管理器
+        com.hippo.ehviewer.permission.CrossDevicePermissionManager.getInstance(this).handleCrossDevicePermissions();
+
+        // 初始化系统调度优化器
+        com.hippo.ehviewer.util.SchedulingOptimizer.getInstance(this).initializeSchedulingOptimization();
+
+        // 初始化自动填充错误处理器
+        com.hippo.ehviewer.util.AutofillErrorHandler.getInstance(this);
+
+        // 初始化SurfaceFlinger优化器
+        com.hippo.ehviewer.util.SurfaceFlingerOptimizer.getInstance(this).initializeSurfaceOptimization();
+
+        // 处理Google Play服务兼容性
+        handleGooglePlayServicesCompatibility();
         
         // 初始化应用优化管理器
         AppOptimizationManager.getInstance(this).initializeOnAppCreate(this);
@@ -214,23 +277,30 @@ public class EhApplication extends RecordingApplication {
         // 实际作用不确定，但是与64位应用有冲突
 //        A7Zip.loadLibrary(A7ZipExtractLite.LIBRARY, libname -> ReLinker.loadLibrary(EhApplication.this, libname));
         // 64位适配
+        startupLogger.logStartupStep("A7Zip", "Initializing A7Zip library");
         A7Zip.initialize(this);
+
         if (EhDB.needMerge()) {
+            startupLogger.logStartupStep("EhDB", "Merging old database");
             EhDB.mergeOldDB(this);
         }
 
         if (Settings.getEnableAnalytics()) {
+            startupLogger.logStartupStep("Analytics", "Starting analytics");
             Analytics.start(this);
         }
 
         // 初始化渠道统计SDK
+        startupLogger.logStartupStep("ChannelTracker", "Initializing channel tracker");
         try {
             ChannelTracker.initialize(this, BuildConfig.CHANNEL_CODE);
         } catch (Exception e) {
+            startupLogger.logWarning("Failed to initialize ChannelTracker", e);
             Log.w(TAG, "Failed to initialize ChannelTracker", e);
         }
 
         // Do io tasks in new thread
+        startupLogger.logStartupStep("IOTasks", "Starting background I/O tasks");
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
@@ -242,14 +312,18 @@ public class EhApplication extends RecordingApplication {
                     } else {
                         CommonOperations.ensureNoMediaFile(downloadLocation);
                     }
+                    startupLogger.logStartupStep("MediaScan", "Media scan configuration applied");
                 } catch (Throwable t) {
+                    startupLogger.logError("Media scan configuration failed", t);
                     ExceptionUtils.throwIfFatal(t);
                 }
 
                 // Clear temp files
                 try {
                     clearTempDir();
+                    startupLogger.logStartupStep("TempCleanup", "Temporary files cleared");
                 } catch (Throwable t) {
+                    startupLogger.logError("Temp cleanup failed", t);
                     ExceptionUtils.throwIfFatal(t);
                 }
 
@@ -258,14 +332,16 @@ public class EhApplication extends RecordingApplication {
         }.executeOnExecutor(IoThreadPoolExecutor.getInstance());
 
         // Check app update
+        startupLogger.logStartupStep("UpdateCheck", "Checking for updates");
         update();
 
         // Update version code
+        startupLogger.logStartupStep("VersionUpdate", "Updating version code");
         try {
             PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
             Settings.putVersionCode(pi.versionCode);
         } catch (PackageManager.NameNotFoundException e) {
-            // Ignore
+            startupLogger.logWarning("Failed to get package info", e);
         }
 
         mIdGenerator.setNextId(Settings.getInt(KEY_GLOBAL_STUFF_NEXT_ID, 0));
@@ -275,9 +351,13 @@ public class EhApplication extends RecordingApplication {
         }
 
         // 初始化用户环境检测
+        startupLogger.logStartupStep("UserEnvironment", "Initializing user environment detection");
         initializeUserEnvironmentDetection();
 
         initialized = true;
+
+        startupLogger.logStartupStepEnd("Application.onCreate", startupLogger.getStartupDuration());
+        startupLogger.logStartupComplete();
     }
 
     /**
@@ -832,6 +912,44 @@ public class EhApplication extends RecordingApplication {
     public static ExecutorService getExecutorService(@NonNull Context context){
         EhApplication application = ((EhApplication) context.getApplicationContext());
         return  application.executorService;
+    }
+
+    /**
+     * 处理Google Play服务兼容性问题
+     */
+    private void handleGooglePlayServicesCompatibility() {
+        try {
+            // 检查Google Play服务是否可用
+            boolean isGooglePlayServicesAvailable = checkGooglePlayServicesAvailability();
+
+            if (!isGooglePlayServicesAvailable) {
+                Log.w(TAG, "Google Play Services not available, using fallback mode");
+                // 在这里可以设置一些降级方案
+                Settings.putGooglePlayServicesFallback(true);
+            } else {
+                Settings.putGooglePlayServicesFallback(false);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking Google Play Services compatibility", e);
+        }
+    }
+
+    /**
+     * 检查Google Play服务是否可用
+     */
+    private boolean checkGooglePlayServicesAvailability() {
+        try {
+            // 尝试获取Google Play服务的包信息
+            PackageManager pm = getPackageManager();
+            pm.getPackageInfo("com.google.android.gms", 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.w(TAG, "Google Play Services package not found");
+            return false;
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking Google Play Services", e);
+            return false;
+        }
     }
 
 }
