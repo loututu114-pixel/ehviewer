@@ -31,16 +31,16 @@
       ]
     },
     "default": {
-      "engine": "google",
-      "name": "Google",
-      "url": "https://www.google.com/search?q=%s",
-      "icon": "https://www.google.com/favicon.ico"
+      "engine": "bing",
+      "name": "Bing",
+      "url": "https://www.bing.com/search?q=%s",
+      "icon": "https://www.bing.com/favicon.ico"
     },
     "china": {
-      "engine": "baidu",
-      "name": "百度",
-      "url": "https://www.baidu.com/s?wd=%s",
-      "icon": "https://www.baidu.com/favicon.ico"
+      "engine": "bing",
+      "name": "Bing",
+      "url": "https://www.bing.com/search?q=%s",
+      "icon": "https://www.bing.com/favicon.ico"
     },
     "engines": {
       "google": {
@@ -83,23 +83,23 @@
     },
     "channelMapping": {
       "xiaomi": {
-        "engine": "baidu",
+        "engine": "bing",
         "priority": 10
       },
       "huawei": {
-        "engine": "baidu",
+        "engine": "bing",
         "priority": 9
       },
       "oppo": {
-        "engine": "baidu",
+        "engine": "bing",
         "priority": 8
       },
       "vivo": {
-        "engine": "baidu",
+        "engine": "bing",
         "priority": 7
       },
       "google": {
-        "engine": "google",
+        "engine": "bing",
         "priority": 5
       }
     }
