@@ -15,8 +15,11 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 版本信息
-VERSION="2.0.0.3"
+# 版本信息读取自 Gradle（确保与产物一致）
+VERSION=$(./gradlew -q :app:properties | awk -F': ' '/versionName/ {print $2; exit}')
+VERSION_CODE=$(./gradlew -q :app:properties | awk -F': ' '/versionCode/ {print $2; exit}')
+[ -z "$VERSION" ] && { echo -e "${RED}❌ 无法读取 versionName${NC}"; exit 1; }
+[ -z "$VERSION_CODE" ] && { echo -e "${RED}❌ 无法读取 versionCode${NC}"; exit 1; }
 BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S')
 
 # 创建输出目录
@@ -24,6 +27,7 @@ OUTPUT_DIR="@apk/release-v${VERSION}"
 mkdir -p "$OUTPUT_DIR"
 
 echo -e "${BLUE}📦 输出目录: $OUTPUT_DIR${NC}"
+echo -e "${BLUE}🔢 版本: ${VERSION} (${VERSION_CODE})${NC}"
 echo ""
 
 # 清理之前的构建
@@ -39,7 +43,7 @@ build_channel() {
     echo -e "${BLUE}🔨 开始构建渠道 $channel ($channel_name)...${NC}"
     echo "--------------------------------"
     
-    # 构建APK
+    # 构建APK（统一使用 release 签名参数，缺失即失败）
     if ./gradlew assembleAppReleaseRelease -PCHANNEL_CODE="$channel"; then
         echo -e "${GREEN}✅ 渠道 $channel 构建成功${NC}"
         
@@ -57,13 +61,17 @@ build_channel() {
             echo -e "${GREEN}📦 APK已保存: $(basename "$OUTPUT_FILE")${NC}"
             echo -e "${GREEN}📏 文件大小: $FILE_SIZE${NC}"
             
-            # 验证APK签名
-            if aapt dump badging "$OUTPUT_FILE" >/dev/null 2>&1; then
-                echo -e "${GREEN}✅ APK签名验证通过${NC}"
-            else
-                echo -e "${RED}❌ APK签名验证失败${NC}"
-                return 1
+            # 验证APK基本信息：包名与版本
+            PKG=$(aapt dump badging "$OUTPUT_FILE" 2>/dev/null | awk -F"'" '/package:/ {print $2; exit}')
+            VN=$(aapt dump badging "$OUTPUT_FILE" 2>/dev/null | awk -F"'" '/versionName=/ {print $4; exit}')
+            VC=$(aapt dump badging "$OUTPUT_FILE" 2>/dev/null | awk -F"'" '/versionCode=/ {print $4; exit}')
+            if [ "$PKG" != "com.hippo.ehviewer" ]; then
+                echo -e "${RED}❌ 包名不一致: $PKG（期望 com.hippo.ehviewer）${NC}"; return 1
             fi
+            if [ "$VN" != "$VERSION" ] || [ "$VC" != "$VERSION_CODE" ]; then
+                echo -e "${RED}❌ 版本不一致: $VN($VC)（期望 $VERSION($VERSION_CODE)）${NC}"; return 1
+            fi
+            echo -e "${GREEN}✅ 包名与版本校验通过${NC}"
         else
             echo -e "${RED}❌ 未找到生成的APK文件${NC}"
             return 1

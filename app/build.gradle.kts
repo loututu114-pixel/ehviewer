@@ -61,10 +61,23 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val storeFilePath = project.findProperty("RELEASE_STORE_FILE")?.toString()
+                ?: System.getenv("RELEASE_STORE_FILE")
+                ?: throw GradleException("Missing RELEASE_STORE_FILE for release signing")
+            val storePass = project.findProperty("RELEASE_STORE_PASSWORD")?.toString()
+                ?: System.getenv("RELEASE_STORE_PASSWORD")
+                ?: throw GradleException("Missing RELEASE_STORE_PASSWORD for release signing")
+            val keyAliasName = project.findProperty("RELEASE_KEY_ALIAS")?.toString()
+                ?: System.getenv("RELEASE_KEY_ALIAS")
+                ?: throw GradleException("Missing RELEASE_KEY_ALIAS for release signing")
+            val keyPass = project.findProperty("RELEASE_KEY_PASSWORD")?.toString()
+                ?: System.getenv("RELEASE_KEY_PASSWORD")
+                ?: throw GradleException("Missing RELEASE_KEY_PASSWORD for release signing")
+
+            storeFile = file(storeFilePath)
+            storePassword = storePass
+            keyAlias = keyAliasName
+            keyPassword = keyPass
         }
     }
 
@@ -77,6 +90,7 @@ android {
             )
             signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "FILE_PROVIDER_AUTHORITY", "\"com.hippo.ehviewer.fileprovider\"")
+            // 防止误用debug签名：如果找不到release签名配置，则构建直接失败（上面已抛出异常）
             
             // 支持通过命令行参数设置渠道号，默认为3001
             val channelCode = project.findProperty("CHANNEL_CODE")?.toString() ?: "3001"
