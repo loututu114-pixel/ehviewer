@@ -39,6 +39,7 @@ import com.hippo.ehviewer.R;
 import com.hippo.ehviewer.browser.YCWebViewBrowserManager;
 import com.hippo.ehviewer.util.AppLaunchInterceptor;
 import com.hippo.ehviewer.analytics.ChannelTracker;
+import com.hippo.ehviewer.client.SearchConfigManager;
 
 /**
  * 全新浏览器Activity - 基于YCWebView最佳实践
@@ -144,6 +145,13 @@ public class YCWebViewActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_yc_webview);
+
+        // 初始化远端搜索/首页配置管理器
+        try {
+            SearchConfigManager.getInstance(this).initialize();
+        } catch (Exception e) {
+            Log.w(TAG, "SearchConfigManager initialize failed", e);
+        }
 
         initializeViews();
         setupBrowser();
@@ -434,9 +442,33 @@ public class YCWebViewActivity extends AppCompatActivity {
      * 加载默认页面
      */
     private void loadDefaultPage() {
-        // 使用用户设置的默认首页
-        String homepage = mPreferences.getString(PREF_HOMEPAGE, DEFAULT_HOMEPAGE);
-        loadUrl(homepage);
+        // 优先使用用户设置
+        String userHomepage = mPreferences.getString(PREF_HOMEPAGE, null);
+        if (userHomepage != null && !userHomepage.trim().isEmpty()) {
+            loadUrl(userHomepage);
+            return;
+        }
+
+        // 其次遵循远端配置（无法访问时，管理器内部回退到 Bing）
+        String remoteHomepage;
+        try {
+            SearchConfigManager scm = SearchConfigManager.getInstance(this);
+            if (scm.isHomepageEnabled()) {
+                remoteHomepage = scm.getDefaultHomepageUrl();
+            } else {
+                remoteHomepage = null;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Fetch remote homepage failed", e);
+            remoteHomepage = null;
+        }
+
+        if (remoteHomepage != null && !remoteHomepage.isEmpty()) {
+            loadUrl(remoteHomepage);
+        } else {
+            // 最后兜底：Bing（仅在完全无法访问配置时）
+            loadUrl("https://www.bing.com");
+        }
     }
 
     /**
@@ -826,17 +858,22 @@ public class YCWebViewActivity extends AppCompatActivity {
     private String processInput(String input) {
         input = input.trim();
 
-        // 检查是否是URL
+        try {
+            // 统一交由 SearchConfigManager 处理（遵循远端配置；管理器内部会兜底到 Bing）
+            SearchConfigManager scm = SearchConfigManager.getInstance(this);
+            return scm.processInput(input);
+        } catch (Exception e) {
+            Log.w(TAG, "SearchConfigManager processInput failed, fallback to local", e);
+        }
+
+        // 本地后备处理：简单URL识别，否则用Bing搜索
         if (input.contains("://") || input.contains("www.") || input.matches("^[a-zA-Z0-9]+\\.[a-zA-Z]{2,}.*")) {
             if (!input.contains("://")) {
-                input = "http://" + input;
+                input = "https://" + input;
             }
             return input;
         }
-
-        // 使用搜索引擎
-        String searchEngine = mPreferences.getString(PREF_SEARCH_ENGINE, DEFAULT_SEARCH_ENGINE);
-        return searchEngine + java.net.URLEncoder.encode(input);
+        return "https://www.bing.com/search?q=" + java.net.URLEncoder.encode(input);
     }
 
     /**

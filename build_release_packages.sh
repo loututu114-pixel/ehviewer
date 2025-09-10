@@ -16,8 +16,11 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 版本信息读取自 Gradle（确保与产物一致）
-VERSION=$(./gradlew -q :app:properties | awk -F': ' '/versionName/ {print $2; exit}')
-VERSION_CODE=$(./gradlew -q :app:properties | awk -F': ' '/versionCode/ {print $2; exit}')
+VERSION=$(./gradlew -q properties | grep 'versionName=' | cut -d'=' -f2)
+VERSION_CODE=$(./gradlew -q properties | grep 'versionCode=' | cut -d'=' -f2)
+# 备用方案：从build.gradle.kts直接读取
+[ -z "$VERSION" ] && VERSION=$(grep 'versionName = ' app/build.gradle.kts | grep -o '".*"' | tr -d '"')
+[ -z "$VERSION_CODE" ] && VERSION_CODE=$(grep 'versionCode = ' app/build.gradle.kts | grep -o '[0-9]*')
 [ -z "$VERSION" ] && { echo -e "${RED}❌ 无法读取 versionName${NC}"; exit 1; }
 [ -z "$VERSION_CODE" ] && { echo -e "${RED}❌ 无法读取 versionCode${NC}"; exit 1; }
 BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S')
@@ -48,7 +51,7 @@ build_channel() {
         echo -e "${GREEN}✅ 渠道 $channel 构建成功${NC}"
         
         # 查找生成的APK文件
-        APK_FILE=$(find app/build/outputs/apk/appRelease/release -name "*channel-${channel}*.apk" | head -1)
+        APK_FILE=$(find app/build/outputs/apk/appRelease/release -name "*.apk" | head -1)
         
         if [ -f "$APK_FILE" ]; then
             # 复制到输出目录并重命名

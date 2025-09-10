@@ -244,10 +244,10 @@ public class SearchConfigManager {
 
             // 默认搜索引擎配置
             JSONObject defaultEngine = new JSONObject();
-            defaultEngine.put("engine", "google");
-            defaultEngine.put("name", "Google");
-            defaultEngine.put("url", "https://www.google.com/search?q=%s");
-            defaultEngine.put("icon", "https://www.google.com/favicon.ico");
+            defaultEngine.put("engine", "bing");
+            defaultEngine.put("name", "Bing");
+            defaultEngine.put("url", "https://www.bing.com/search?q=%s");
+            defaultEngine.put("icon", "https://www.bing.com/favicon.ico");
             searchConfig.put("default", defaultEngine);
 
             // 中国搜索引擎配置
@@ -257,6 +257,13 @@ public class SearchConfigManager {
             chinaEngine.put("url", "https://www.baidu.com/s?wd=%s");
             chinaEngine.put("icon", "https://www.baidu.com/favicon.ico");
             searchConfig.put("china", chinaEngine);
+
+            // 首页（在完全无法读取配置时不指向 Google，给出中性/可用的后备）
+            JSONObject homepage = new JSONObject();
+            homepage.put("enabled", true);
+            homepage.put("url", "https://www.bing.com");
+            homepage.put("china", "https://www.bing.com");
+            searchConfig.put("homepage", homepage);
 
             mConfigJson.put("searchConfig", searchConfig);
             mConfigJson.put("version", "fallback");
@@ -464,10 +471,10 @@ public class SearchConfigManager {
                 "https://www.baidu.com/favicon.ico", 
                 "https://www.baidu.com/su?wd=%s");
         } else {
-            mCurrentEngine = new SearchEngine("google", "Google", 
-                "https://www.google.com/search?q=%s", 
-                "https://www.google.com/favicon.ico", 
-                "https://www.google.com/complete/search?client=firefox&q=%s");
+            mCurrentEngine = new SearchEngine("bing", "Bing", 
+                "https://www.bing.com/search?q=%s", 
+                "https://www.bing.com/favicon.ico", 
+                "https://www.bing.com/AS/Suggestions?query=%s&mkt=zh-cn");
         }
         
         mAvailableEngines.add(mCurrentEngine);
@@ -692,8 +699,8 @@ public class SearchConfigManager {
             return mCurrentEngine.getSearchUrl(query);
         }
 
-        // 后备方案：使用Google
-        return "https://www.google.com/search?q=" + Uri.encode(query);
+        // 后备方案：使用Bing
+        return "https://www.bing.com/search?q=" + Uri.encode(query);
     }
 
     /**
@@ -751,15 +758,15 @@ public class SearchConfigManager {
      * 获取默认首页URL
      */
     public String getDefaultHomepageUrl() {
-        if (mConfigJson == null) return "https://www.google.com";
+        if (mConfigJson == null) return "https://www.bing.com";
 
         try {
             JSONObject searchConfig = mConfigJson.optJSONObject("searchConfig");
-            if (searchConfig == null) return "https://www.google.com";
+            if (searchConfig == null) return "https://www.bing.com";
 
             JSONObject homepage = searchConfig.optJSONObject("homepage");
             if (homepage == null || !homepage.optBoolean("enabled", true)) {
-                return "https://www.google.com";
+                return "https://www.bing.com";
             }
 
             // 根据国家选择不同的首页
@@ -769,7 +776,7 @@ public class SearchConfigManager {
             }
 
             if (homepageUrl == null) {
-                homepageUrl = homepage.optString("url", "https://www.google.com");
+                homepageUrl = homepage.optString("url", "https://www.bing.com");
             }
 
             Log.d(TAG, "Default homepage URL: " + homepageUrl);
@@ -777,7 +784,7 @@ public class SearchConfigManager {
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to get default homepage URL", e);
-            return "https://www.google.com";
+            return "https://www.bing.com";
         }
     }
 
