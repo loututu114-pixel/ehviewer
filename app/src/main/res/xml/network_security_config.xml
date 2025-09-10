@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2018 Hippo Seven
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">ehtracker.org</domain>
+    </domain-config>
+    <!-- 允许浏览器访问HTTP网站 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+        <!-- 允许常见的HTTP网站 -->
+        <domain includeSubdomains="true">baidu.com</domain>
+        <domain includeSubdomains="true">qq.com</domain>
+        <domain includeSubdomains="true">sina.com</domain>
+        <domain includeSubdomains="true">163.com</domain>
+        <domain includeSubdomains="true">sohu.com</domain>
+        <domain includeSubdomains="true">taobao.com</domain>
+        <domain includeSubdomains="true">tmall.com</domain>
+        <domain includeSubdomains="true">jd.com</domain>
+        <domain includeSubdomains="true">weibo.com</domain>
+        <domain includeSubdomains="true">zhihu.com</domain>
+        <domain includeSubdomains="true">bilibili.com</domain>
+        <domain includeSubdomains="true">douyin.com</domain>
+        <domain includeSubdomains="true">toutiao.com</domain>
+        <domain includeSubdomains="true">xiaomi.com</domain>
+        <domain includeSubdomains="true">huawei.com</domain>
+    </domain-config>
+    
+    <!-- 兼容模式：允许所有HTTP流量（用于浏览器功能） -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

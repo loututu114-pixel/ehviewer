@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- 标题 -->
+    <TextView
+        android:id="@+id/title_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="完成设置以开始下载"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 说明文字 -->
+    <TextView
+        android:id="@+id/message_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="为了提供完整的下载体验，我们需要设置以下权限："
+        android:textSize="16sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="16dp"
+        android:lineSpacingMultiplier="1.2" />
+
+    <!-- 权限列表 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="?android:attr/selectableItemBackground"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+
+        <!-- 存储权限 -->
+        <TextView
+            android:id="@+id/storage_permission_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📁 文件存储权限 - 用于保存下载的漫画到您指定的目录"
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:layout_marginBottom="8dp"
+            android:lineSpacingMultiplier="1.2"
+            android:visibility="visible" />
+
+        <!-- 默认浏览器权限 -->
+        <TextView
+            android:id="@+id/browser_permission_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🌐 默认浏览器设置 - 让EhViewer处理网页链接，提升浏览体验"
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:lineSpacingMultiplier="1.2"
+            android:visibility="visible" />
+
+    </LinearLayout>
+
+    <!-- 提示信息 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="?android:attr/colorControlHighlight"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="💡 提示：您可以先体验应用的其他功能，稍后再进行设置"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:lineSpacingMultiplier="1.2" />
+
+    </LinearLayout>
+
+    <!-- 提醒选项 -->
+    <CheckBox
+        android:id="@+id/remind_checkbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="3天后再提醒我"
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:checked="true"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

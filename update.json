@@ -1,0 +1,22 @@
+{
+  "version": "1.9.9.19",
+  "versionCode": 189919,
+  "mustUpdate": false,
+  "updateContent": {
+    "title": "EhViewer TUTU v1.9.9.19 正式版",
+    "content": [
+      "🎉 EhViewer v1.9.9.19 正式版发布",
+      "📱 浏览器核心功能完全实现",
+      "🌐 多标签页浏览体验优化",
+      "📚 书签管理和历史记录功能",
+      "🔒 隐私保护和广告拦截",
+      "⚡ WebView性能深度优化",
+      "🎨 现代化UI设计和主题支持",
+      "🔧 代码架构优化和稳定性提升",
+      "📦 APK大小优化至23MB",
+      "🌍 多语言支持 (中文、英文、日文、韩文等)",
+      "📋 完整的版本发布说明文档"
+    ],
+    "fileDownloadUrl": "https://github.com/loututu114-pixel/ehviewer/releases/tag/v1.9.9.19"
+  }
+}

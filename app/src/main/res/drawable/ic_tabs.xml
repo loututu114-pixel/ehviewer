@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- 多标签图标 - Chrome风格 -->
+    
+    <!-- 底层标签页 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,6 L15,6 L15,18 L3,18 Z"
+        android:strokeColor="#666666"
+        android:strokeWidth="1"/>
+    
+    <!-- 中间标签页 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M6,4 L18,4 L18,16 L6,16 Z"
+        android:strokeColor="#666666"
+        android:strokeWidth="1"/>
+    
+    <!-- 顶层标签页 -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9,2 L21,2 L21,14 L9,14 Z"
+        android:strokeColor="#333333"
+        android:strokeWidth="1.5"/>
+    
+    <!-- 数字背景圆圈 -->
+    <path
+        android:fillColor="#FF4444"
+        android:pathData="M18,11 C20.76,11 23,8.76 23,6 C23,3.24 20.76,1 18,1 C15.24,1 13,3.24 13,6 C13,8.76 15.24,11 18,11 Z" />
+    
+    <!-- 数字文字将通过代码动态设置 -->
+    
+</vector>

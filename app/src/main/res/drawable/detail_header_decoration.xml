@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 空的装饰元素，使用橙色背景时不需要额外的装饰 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+</layer-list>

@@ -1,0 +1,253 @@
+{
+  "project_info": {
+    "name": "EhViewer Android",
+    "description": "功能强大的Android图片浏览器应用，集成完整浏览器功能、用户脚本系统、文件管理等特性",
+    "version": "2.0.0.1",
+    "channel": "3001",
+    "last_scan": "2025-09-06T03:01:06Z",
+    "scan_coverage": {
+      "total_estimated_files": 800,
+      "scanned_files": 120,
+      "coverage_percentage": 15,
+      "scan_depth": "moderate"
+    }
+  },
+  "technology_stack": {
+    "languages": ["Java", "Kotlin", "JavaScript", "C++"],
+    "platform": "Android",
+    "min_sdk": 23,
+    "target_sdk": 34,
+    "compile_sdk": 35,
+    "jdk_version": "17",
+    "architecture": "MVP + Repository Pattern + EventBus",
+    "ui_framework": "AndroidX + Material Design + ViewBinding",
+    "network": "OkHttp3 3.14.7 + Conscrypt SSL",
+    "database": "GreenDAO 3.0.0",
+    "browser_engine": "腾讯X5 WebView (TBS SDK 44286) + WebView",
+    "user_scripts": "JavaScript引擎 + Tampermonkey兼容API",
+    "file_processing": "7Zip + UniFile抽象层",
+    "image_processing": "Conaco + BitmapHelper + PNG原生库"
+  },
+  "modules": {
+    "app": {
+      "path": "app",
+      "type": "主应用模块",
+      "description": "应用入口和核心组件",
+      "key_classes": ["EhApplication", "Settings", "AppConfig"],
+      "file_count": 13,
+      "status": "active",
+      "documentation": "CLAUDE.md"
+    },
+    "app_ui": {
+      "path": "app/src/main/java/com/hippo/ehviewer/ui",
+      "type": "用户界面层",
+      "description": "39个Activity和UI组件",
+      "key_classes": ["MainActivity", "WebViewActivity", "GalleryActivity", "FileManagerActivity"],
+      "file_count": 39,
+      "status": "active",
+      "documentation": "app/src/main/java/com/hippo/ehviewer/ui/CLAUDE.md"
+    },
+    "app_client": {
+      "path": "app/src/main/java/com/hippo/ehviewer/client",
+      "type": "网络客户端层",
+      "description": "HTTP通信、HTML解析、数据处理",
+      "key_classes": ["EhEngine", "EhClient", "EhCookieStore", "EhRequestBuilder"],
+      "file_count": 25,
+      "status": "active",
+      "documentation": "app/src/main/java/com/hippo/ehviewer/client/CLAUDE.md"
+    },
+    "app_gallery": {
+      "path": "app/src/main/java/com/hippo/ehviewer/gallery",
+      "type": "画廊系统",
+      "description": "画廊提供者、压缩包处理、图片管理",
+      "key_classes": ["GalleryProvider2", "EhGalleryProvider", "ArchiveGalleryProvider", "A7ZipArchive"],
+      "file_count": 6,
+      "status": "active"
+    },
+    "app_download": {
+      "path": "app/src/main/java/com/hippo/ehviewer/download",
+      "type": "下载管理系统", 
+      "description": "下载管理、后台服务、任务调度",
+      "key_classes": ["DownloadManager", "DownloadService"],
+      "status": "active"
+    },
+    "app_spider": {
+      "path": "app/src/main/java/com/hippo/ehviewer/spider",
+      "type": "爬虫系统",
+      "description": "网页爬虫、内容抓取、数据同步",
+      "key_classes": ["SpiderDen", "SpiderQueen", "SpiderInfo"],
+      "status": "active"
+    },
+    "app_dao": {
+      "path": "app/src/main/java/com/hippo/ehviewer/dao",
+      "type": "数据访问层",
+      "description": "GreenDAO生成类、数据实体、数据库访问",
+      "key_classes": ["DaoSession", "DaoMaster"],
+      "file_count": 15,
+      "status": "active"
+    },
+    "app_widget": {
+      "path": "app/src/main/java/com/hippo/ehviewer/widget",
+      "type": "自定义控件",
+      "description": "UI组件库、自定义View、布局管理",
+      "key_classes": ["EhDrawerView", "GalleryHeader", "ImageSearchLayout"],
+      "file_count": 40,
+      "status": "active"
+    },
+    "app_util": {
+      "path": "app/src/main/java/com/hippo/ehviewer/util",
+      "type": "工具类库",
+      "description": "系统兼容性、文件处理、图形处理工具",
+      "file_count": 30,
+      "status": "active"
+    },
+    "app_assets": {
+      "path": "app/src/main/assets",
+      "type": "用户脚本资源",
+      "description": "20+个预置增强脚本，Tampermonkey兼容",
+      "key_files": ["universal_ad_blocker.js", "baidu_app_blocker.js", "video_player_enhancer.js"],
+      "file_count": 20,
+      "status": "active",
+      "documentation": "app/src/main/assets/CLAUDE.md"
+    },
+    "app_preference": {
+      "path": "app/src/main/java/com/hippo/ehviewer/preference",
+      "type": "偏好设置",
+      "description": "设置Activity的Preference实现",
+      "file_count": 10,
+      "status": "active"
+    }
+  },
+  "key_entry_points": {
+    "application": "app/src/main/java/com/hippo/ehviewer/EhApplication.java",
+    "main_activity": "app/src/main/java/com/hippo/ehviewer/ui/MainActivity.java",
+    "webview_activity": "app/src/main/java/com/hippo/ehviewer/ui/WebViewActivity.java",
+    "network_engine": "app/src/main/java/com/hippo/ehviewer/client/EhEngine.java",
+    "build_config": "app/build.gradle.kts",
+    "manifest": "app/src/main/AndroidManifest.xml"
+  },
+  "core_features": [
+    {
+      "name": "内置浏览器",
+      "description": "双内核(X5+WebView)浏览器，支持用户脚本",
+      "components": ["WebViewActivity", "X5WebViewManager", "UserScriptManager"]
+    },
+    {
+      "name": "用户脚本系统",
+      "description": "20+预置脚本，Tampermonkey兼容API",
+      "components": ["ScriptEngine", "脚本注入器", "Assets脚本"]
+    },
+    {
+      "name": "画廊系统",
+      "description": "多源画廊浏览，智能缓存，下载管理",
+      "components": ["GalleryProvider", "DownloadManager", "SpiderQueen"]
+    },
+    {
+      "name": "文件管理",
+      "description": "完整文件浏览，APK安装，媒体播放",
+      "components": ["FileManagerActivity", "ApkInstallerActivity", "MediaPlayerActivity"]
+    }
+  ],
+  "dependencies": {
+    "core_android": {
+      "androidx_core": "1.15.0",
+      "androidx_appcompat": "1.7.0",
+      "androidx_fragment": "1.8.6",
+      "material": "1.12.0"
+    },
+    "network": {
+      "okhttp3": "3.14.7",
+      "jsoup": "1.15.3",
+      "conscrypt": "2.5.1"
+    },
+    "database": {
+      "greendao": "3.0.0"
+    },
+    "browser": {
+      "tencent_tbs": "44286",
+      "androidx_webkit": "1.13.0"
+    },
+    "native": {
+      "a7zip": "1b21783",
+      "libpng": "1.6.37",
+      "relinker": "1.4.4"
+    },
+    "firebase": {
+      "crashlytics": "19.4.2",
+      "analytics": "22.4.0",
+      "messaging": "24.0.0"
+    }
+  },
+  "test_structure": {
+    "unit_tests": {
+      "location": "app/src/test/",
+      "framework": "JUnit 4 + Robolectric + Mockito",
+      "coverage": "核心业务逻辑、工具类、数据访问层"
+    },
+    "integration_tests": {
+      "location": "app/src/androidTest/", 
+      "framework": "Espresso + AndroidX Test",
+      "coverage": "UI交互、Activity生命周期、权限处理"
+    }
+  },
+  "build_info": {
+    "gradle_version": "8.x",
+    "agp_version": "最新版",
+    "build_tools": "Gradle + Kotlin DSL",
+    "signing": "Debug keystore (需要签名才能安装)",
+    "proguard": "已禁用",
+    "multidex": true,
+    "ndk_support": true
+  },
+  "important_constraints": [
+    "不要轻易修改EhEngine、EhClient等核心业务逻辑",
+    "不要随意添加新的依赖库，影响APK体积",
+    "不要破坏现有用户脚本的兼容性",
+    "不要直接修改GreenDAO生成的代码",
+    "注意Android版本兼容性处理",
+    "APK必须带签名才能安装",
+    "首次运行需要下载X5内核",
+    "Android 11+需要MANAGE_EXTERNAL_STORAGE权限"
+  ],
+  "common_issues": [
+    {
+      "issue": "权限问题",
+      "solution": "参考SystemCompatibilityManager处理方案"
+    },
+    {
+      "issue": "WebView问题", 
+      "solution": "查看X5WebViewManager的初始化和降级逻辑"
+    },
+    {
+      "issue": "文件访问",
+      "solution": "使用UniFile抽象层处理存储权限"
+    },
+    {
+      "issue": "脚本注入",
+      "solution": "参考assets目录中的脚本实现模式"
+    }
+  ],
+  "scan_gaps": [
+    "需要进一步扫描download模块的具体实现",
+    "需要补充spider模块的详细架构",
+    "需要深入分析用户脚本的注入机制",
+    "需要扫描native C++组件的实现",
+    "需要补充测试覆盖率的详细数据"
+  ],
+  "next_scan_recommendations": [
+    "app/src/main/java/com/hippo/ehviewer/download/",
+    "app/src/main/java/com/hippo/ehviewer/spider/",
+    "app/src/main/java/com/hippo/ehviewer/userscript/",
+    "app/src/main/cpp/",
+    "app/src/test/",
+    "app/src/androidTest/"
+  ],
+  "metadata": {
+    "scan_strategy": "adaptive_mixed",
+    "scan_depth": "moderate",
+    "truncated": false,
+    "truncated_reason": null,
+    "generator": "AI自适应架构师",
+    "timestamp": "2025-09-06T03:01:06Z"
+  }
+}

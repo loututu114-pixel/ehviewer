@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_search"
+        android:title="搜索历史记录"
+        android:icon="@drawable/v_magnify_x24"
+        app:showAsAction="always"
+        app:actionViewClass="androidx.appcompat.widget.SearchView" />
+
+    <item
+        android:id="@+id/action_clear_all"
+        android:title="@string/clear_all_history"
+        android:icon="@drawable/v_delete_red_x24"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sort"
+        android:title="排序"
+        app:showAsAction="never">
+        <menu>
+            <item
+                android:id="@+id/action_sort_last_visit"
+                android:title="按访问时间" />
+            <item
+                android:id="@+id/action_sort_visit_count"
+                android:title="按访问次数" />
+            <item
+                android:id="@+id/action_sort_alphabetical"
+                android:title="按字母顺序" />
+        </menu>
+    </item>
+
+</menu>

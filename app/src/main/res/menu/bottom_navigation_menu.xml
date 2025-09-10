@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 第一个按钮：Eh主页 -->
+    <item
+        android:id="@+id/nav_bottom_eh"
+        android:title="Eh主页"
+        android:icon="@mipmap/ic_launcher" />
+
+    <!-- 浏览器功能按钮 -->
+    <item
+        android:id="@+id/nav_bottom_browser"
+        android:title="浏览器"
+        android:icon="@drawable/v_homepage_black_x24" />
+
+    <!-- 书签功能 -->
+    <item
+        android:id="@+id/nav_bottom_bookmarks"
+        android:title="书签"
+        android:icon="@drawable/v_heart_black_x24" />
+
+    <!-- 设置 -->
+    <item
+        android:id="@+id/nav_bottom_settings"
+        android:title="设置"
+        android:icon="@drawable/v_settings_black_x24" />
+
+</menu>

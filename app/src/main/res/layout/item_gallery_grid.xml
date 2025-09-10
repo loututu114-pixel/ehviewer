@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2016 Hippo Seven
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/spacing_small"
+    style="@style/CardView.Elevated"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:stateListAnimator="@animator/card_elevation"
+    android:transitionName="gallery_grid_item">
+
+    <!-- 精美的网格缩略图容器 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.hippo.ehviewer.widget.TileThumb
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/thumb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="3dp"
+            android:scaleType="centerCrop"
+            android:background="@drawable/grid_thumb_background"
+            app:retryType="none"/>
+
+        <!-- 网格装饰效果 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="2dp"
+            android:background="@drawable/grid_thumb_overlay" />
+
+    </FrameLayout>
+
+    <!-- 精美的分类标签 -->
+    <FrameLayout
+        android:layout_width="36dp"
+        android:layout_height="28dp"
+        android:layout_gravity="top|right"
+        android:layout_margin="@dimen/spacing_xsmall">
+
+        <TextView
+            android:id="@+id/category"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/category_badge_grid_cartoon"
+            android:gravity="center"
+            style="@style/TextAppearance.ModernCaption"
+            android:textColor="@android:color/white"
+            android:textAllCaps="true" />
+
+    </FrameLayout>
+
+    <!-- 精美的语言标识 -->
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:layout_gravity="top|right"
+        android:layout_marginTop="32dp"
+        android:layout_marginRight="@dimen/spacing_xsmall">
+
+        <TextView
+            xmlns:tools="http://schemas.android.com/tools"
+            android:id="@+id/simple_language"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginRight="@dimen/spacing_xsmall"
+            android:background="@drawable/language_badge_cartoon"
+            android:gravity="center"
+            android:paddingLeft="@dimen/spacing_small"
+            android:paddingRight="@dimen/spacing_small"
+            style="@style/TextAppearance.ModernCaption"
+            android:textColor="@color/modern_on_surface"
+            tools:ignore="SpUsage"/>
+
+    </FrameLayout>
+
+</androidx.cardview.widget.CardView>

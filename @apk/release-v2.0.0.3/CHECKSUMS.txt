@@ -1,0 +1,47 @@
+# EhViewer v2.0.0.3 APK文件校验和
+
+发布时间: 2025-09-10
+版本: 2.0.0.3
+构建号: 200003
+
+## MD5 校验和
+
+EhViewer-v2.0.0.3-channel-0000-default.apk: c154b1ee82b1a11e7c3ca56f2e2b42b2
+EhViewer-v2.0.0.3-channel-3001-partner.apk: babaaabda9c0a98d92210f98adda92c6
+
+## 文件大小
+
+EhViewer-v2.0.0.3-channel-0000-default.apk: 24,836,941 字节 (24.0 MB)
+EhViewer-v2.0.0.3-channel-3001-partner.apk: 24,836,945 字节 (24.0 MB)
+
+## 验证方法
+
+### macOS / Linux
+```bash
+md5 EhViewer-v2.0.0.3-channel-*.apk
+```
+
+### Windows
+```cmd
+certutil -hashfile EhViewer-v2.0.0.3-channel-0000-default.apk MD5
+certutil -hashfile EhViewer-v2.0.0.3-channel-3001-partner.apk MD5
+```
+
+### Android终端
+```bash
+md5sum EhViewer-v2.0.0.3-channel-*.apk
+```
+
+## 签名验证
+
+两个APK文件均使用debug.keystore签名：
+- 签名算法: SHA256withRSA
+- 证书指纹: [Debug Certificate]
+- 有效期: 2024-2054
+
+## 注意事项
+
+1. 下载完成后请验证MD5值是否匹配
+2. 如果校验和不匹配，请重新下载
+3. 两个渠道包功能完全相同，仅统计后台不同
+4. 建议使用官方下载链接确保文件完整性

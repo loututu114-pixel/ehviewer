@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 书签管理 -->
+    <item
+        android:id="@+id/menu_bookmarks"
+        android:title="书签管理"
+        android:icon="@android:drawable/ic_menu_add"
+        android:showAsAction="never" />
+
+    <!-- 历史记录 -->
+    <item
+        android:id="@+id/menu_history"
+        android:title="历史记录"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:showAsAction="never" />
+
+    <!-- 设置 -->
+    <item
+        android:id="@+id/menu_settings"
+        android:title="设置"
+        android:icon="@android:drawable/ic_menu_preferences"
+        android:showAsAction="never" />
+
+    <!-- 分享 -->
+    <item
+        android:id="@+id/menu_share"
+        android:title="分享页面"
+        android:icon="@android:drawable/ic_menu_share"
+        android:showAsAction="never" />
+
+    <!-- 桌面模式 -->
+    <item
+        android:id="@+id/menu_desktop_mode"
+        android:title="桌面模式"
+        android:icon="@android:drawable/ic_menu_view"
+        android:showAsAction="never" />
+
+    <!-- 隐私模式 -->
+    <item
+        android:id="@+id/menu_incognito"
+        android:title="隐私模式"
+        android:icon="@android:drawable/ic_menu_camera"
+        android:showAsAction="never" />
+
+    <!-- 页面信息 -->
+    <item
+        android:id="@+id/menu_page_info"
+        android:title="页面信息"
+        android:icon="@android:drawable/ic_menu_info_details"
+        android:showAsAction="never" />
+
+    <!-- 下载管理 -->
+    <item
+        android:id="@+id/menu_downloads"
+        android:title="下载管理"
+        android:icon="@android:drawable/ic_menu_save"
+        android:showAsAction="never" />
+
+    <!-- 查找 -->
+    <item
+        android:id="@+id/menu_find"
+        android:title="在页面中查找"
+        android:icon="@android:drawable/ic_menu_search"
+        android:showAsAction="never" />
+
+    <!-- 打印 -->
+    <item
+        android:id="@+id/menu_print"
+        android:title="打印页面"
+        android:icon="@android:drawable/ic_menu_crop"
+        android:showAsAction="never" />
+
+</menu>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/windowBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 标题区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="浏览器设置"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="检查和修复EhViewer的浏览器注册状态"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary" />
+
+        </LinearLayout>
+
+        <!-- 状态显示区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_status_card"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="当前状态"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:id="@+id/status_text_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="点击'检查状态'查看浏览器注册状态"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:lineSpacingExtra="4dp" />
+
+        </LinearLayout>
+
+        <!-- 操作按钮区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/check_status_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="检查状态"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:background="@drawable/bg_button_primary"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/fix_registration_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="修复注册"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:background="@drawable/bg_button_secondary"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/set_default_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="设为默认浏览器"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:background="@drawable/bg_button_accent"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/open_settings_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="打开系统设置"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:background="@drawable/bg_button_normal"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/test_browser_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="测试浏览器"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:background="@drawable/bg_button_normal" />
+
+        </LinearLayout>
+
+        <!-- 帮助信息 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_help_card"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="使用说明"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="1. 点击'检查状态'查看当前浏览器注册情况\n\n2. 如果EhViewer不在浏览器列表中，点击'修复注册'\n\n3. 要设置为默认浏览器，点击'设为默认浏览器'\n\n4. 也可以手动到系统设置中设置默认浏览器\n\n5. 使用'测试浏览器'验证功能是否正常"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:lineSpacingExtra="4dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

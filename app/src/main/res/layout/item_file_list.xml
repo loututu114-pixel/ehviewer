@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="?android:attr/selectableItemBackground"
+    android:minHeight="56dp">
+
+    <!-- 文件图标 -->
+    <ImageView
+        android:id="@+id/file_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/ic_file"
+        android:contentDescription="文件图标" />
+
+    <!-- 文件信息 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_gravity="center_vertical">
+
+        <!-- 文件名 -->
+        <TextView
+            android:id="@+id/file_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="文件名"
+            android:textSize="16sp"
+            android:textColor="@android:color/black"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            tools:text="example_file.apk" />
+
+        <!-- 文件大小和修改时间 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:id="@+id/file_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="文件信息"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                tools:text="15.2 MB" />
+
+            <TextView
+                android:id="@+id/file_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="修改时间"
+                android:textSize="12sp"
+                android:textColor="@android:color/darker_gray"
+                android:gravity="end"
+                tools:text="2024-01-15 14:30" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

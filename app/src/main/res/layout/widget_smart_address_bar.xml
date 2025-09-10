@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- 地址栏容器 -->
+    <LinearLayout
+        android:id="@+id/address_bar_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- 文本输入字段 -->
+        <EditText
+            android:id="@+id/address_edit_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="搜索或输入网址..."
+            android:imeOptions="actionGo"
+            android:inputType="textUri"
+            android:maxLines="1" />
+
+        <!-- 清除按钮 -->
+        <ImageButton
+            android:id="@+id/clear_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:contentDescription="清除输入"
+            android:src="@drawable/ic_clear"
+            android:visibility="gone" />
+
+        <!-- 刷新/停止按钮 -->
+        <ImageButton
+            android:id="@+id/refresh_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:contentDescription="刷新页面"
+            android:src="@drawable/ic_refresh" />
+
+    </LinearLayout>
+
+    <!-- 建议列表容器 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/suggestions_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:visibility="gone" />
+
+</FrameLayout>
